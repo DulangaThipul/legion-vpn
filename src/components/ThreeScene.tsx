@@ -3,11 +3,10 @@
 import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Points, PointMaterial, Icosahedron } from "@react-three/drei";
-// @ts-ignore
 import * as random from "maath/random/dist/maath-random.esm";
 
 function StarBackground(props: any) {
-  const ref = useRef<any>(null);
+  const ref = useRef<any>();
   // Generate 5001 random points in a sphere (must be divisible by 3)
   const sphere = random.inSphere(new Float32Array(5001), { radius: 1.5 });
 
@@ -34,8 +33,8 @@ function StarBackground(props: any) {
 }
 
 function WireframeShape() {
-  const meshRef = useRef<any>(null);
-  const groupRef = useRef<any>(null);
+  const meshRef = useRef<any>();
+  const groupRef = useRef<any>();
 
   useFrame((state, delta) => {
     if (meshRef.current) {
@@ -66,7 +65,7 @@ function WireframeShape() {
 export default function ThreeScene() {
   return (
     <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: "none" }}>
-      <Canvas style={{ width: "100%", height: "100%", display: "block" }} camera={{ position: [0, 0, 1] }}>
+      <Canvas style={{ width: "100%", height: "100%", display: "block" }} camera={{ position: [0, 0, 1] }} dpr={[1, 1.5]}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} color="#ffffff" />
         <StarBackground />

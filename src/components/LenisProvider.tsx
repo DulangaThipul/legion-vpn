@@ -7,8 +7,16 @@ import "lenis/dist/lenis.css";
 export default function LenisProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const lenis = new Lenis({
-      autoRaf: true, // Let Lenis handle requestAnimationFrame automatically in version 1.1+
+      lerp: 0.08,
+      smoothWheel: true,
     });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    
+    requestAnimationFrame(raf);
 
     return () => {
       lenis.destroy();
