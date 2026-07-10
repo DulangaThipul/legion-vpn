@@ -3,7 +3,7 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
 
-import { handleGoogleAuth } from "@/app/api/auth/google/route"; 
+import { handleGoogleAuth } from "@/lib/authActions"; 
 
 export default function GoogleSignIn() {
   const router = useRouter();
