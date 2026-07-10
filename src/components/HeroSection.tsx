@@ -50,7 +50,6 @@ export default function HeroSection() {
     let index = 0;
     const logInterval = setInterval(() => {
       if (index < ubuntuLogs.length) {
-        // Use a function to ensure we get the latest state and don't miss updates
         setRenderedLogs(prev => {
           if (prev.length === ubuntuLogs.length) return prev;
           return [...prev, ubuntuLogs[prev.length]];
@@ -68,15 +67,15 @@ export default function HeroSection() {
           } else {
             clearInterval(slashInterval);
             
-            // Hold for 2 seconds, then smoothly fade out
+            // Hold for just 0.3s (LCP fix), then fade out
             setTimeout(() => {
               setExit(true);
-              setTimeout(() => setUnmountOverlay(true), 1200); // Wait for transition
-            }, 2000);
+              setTimeout(() => setUnmountOverlay(true), 500); // 0.5s transition wait
+            }, 300);
           }
-        }, 300);
+        }, 100);
       }
-    }, 80); // Readably fast, but not instantly chaotic
+    }, 15); // Faster animation to prevent LCP delay
 
     return () => clearInterval(logInterval);
   }, []);
@@ -97,8 +96,7 @@ export default function HeroSection() {
           color: "#FFFFFF",
           fontFamily: "'Courier New', Courier, monospace",
           zIndex: 9999,
-          // Smooth fade out instead of sliding up, as requested ("smoothly fade out the loading screen")
-          transition: "opacity 1s ease-in-out",
+          transition: "opacity 0.5s ease-in-out",
           opacity: exit ? 0 : 1,
           overflow: "hidden",
           overflowX: "hidden",
@@ -156,7 +154,7 @@ export default function HeroSection() {
       <div className="container text-center" style={{ 
         position: "relative", 
         zIndex: 2, 
-        transition: "opacity 1.5s ease-in-out", 
+        transition: "opacity 0.5s ease-in-out", 
         opacity: unmountOverlay ? 1 : (exit ? 1 : 0),
         display: "flex",
         flexDirection: "column",
@@ -179,7 +177,7 @@ export default function HeroSection() {
           Uncompromising speed. Unbreakable security. Total privacy.
         </p>
         
-        <div style={{ display: "inline-block", marginTop: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem", minHeight: "44px", minWidth: "250px" }}>
           <GoogleSignIn />
         </div>
 

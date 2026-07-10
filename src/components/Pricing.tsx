@@ -59,13 +59,13 @@ export default function Pricing() {
           alignItems: "center"
         }}>
           {plans.map((plan, index) => (
-            <ScrollReveal 
-              key={index} 
-              delay={index * 200} 
-              className={`glass-panel flex-1 min-w-[300px] max-w-[350px] relative ${
-                plan.popular ? 'p-12 md:p-8 border-2 border-[var(--text-color)]' : 'p-8 border border-[var(--card-border)]'
-              }`}
-            >
+            <ScrollReveal key={index} delay={index * 200} className="glass-panel" style={{
+              flex: "1 1 300px",
+              maxWidth: "350px",
+              padding: plan.popular ? "3rem 2rem" : "2rem",
+              border: plan.popular ? "2px solid var(--text-color)" : "1px solid var(--card-border)",
+              position: "relative"
+            }}>
               {plan.popular && (
                 <div style={{
                   position: "absolute",
@@ -98,9 +98,9 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
-              <div className="text-center" style={{ minHeight: "45px", display: "flex", justifyContent: "center" }}>
+              <div className="text-center" style={{ minHeight: "44px", display: "flex", justifyContent: "center" }}>
                 {activePlan === index ? (
-                  <div className="animate-fade-in" style={{ width: "100%" }}>
+                  <div className="animate-fade-in" style={{ width: "100%", display: "flex", justifyContent: "center" }}>
                     <GoogleSignIn />
                   </div>
                 ) : (
