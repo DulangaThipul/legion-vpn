@@ -1,3 +1,12 @@
+export const dynamic = "force-dynamic"; //
+
+import { NextResponse } from "next/server";
+import { OAuth2Client } from "google-auth-library";
+import { prisma } from "@/lib/prisma";
+import { signJwt } from "@/lib/auth";
+import { cookies } from "next/headers";
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import { NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "@/lib/prisma";
