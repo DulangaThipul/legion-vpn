@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Providers from "@/components/Providers";
+import LenisProvider from "@/components/LenisProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "600", "800"], display: "swap" });
@@ -19,7 +20,9 @@ export default function RootLayout({
     <html lang="en" className={inter.className}>
       <body>
         <Providers>
-          {children}
+          <LenisProvider>
+            {children}
+          </LenisProvider>
         </Providers>
       </body>
     </html>
