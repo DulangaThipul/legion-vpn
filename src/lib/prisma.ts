@@ -1,13 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 
 const prismaClientSingleton = () => {
-  // Updated Prism by Dulanga
+  // Prisma 7 updated by Dulanga
   return new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
+    datasourceUrl: process.env.DATABASE_URL,
   });
 };
 
@@ -17,6 +13,7 @@ declare const globalThis: {
 
 const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
+// Used sagala warahan option
 export { prisma };
 
 if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma;
