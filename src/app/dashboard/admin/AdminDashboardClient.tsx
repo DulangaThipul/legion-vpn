@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { updateUserAdmin } from "@/app/actions/admin";
+// 🚀 පරණ ලෙඩ දෙන import එක වෙනුවට අලුත් ආරක්ෂිත තැනින් ගේනවා!
+import { updateUserAdmin } from "@/lib/authActions";
 
 export default function AdminDashboardClient({ initialUsers }: { initialUsers: any[] }) {
   const [users, setUsers] = useState(initialUsers);
