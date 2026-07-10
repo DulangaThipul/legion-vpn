@@ -67,15 +67,15 @@ export default function HeroSection() {
           } else {
             clearInterval(slashInterval);
             
-            // Hold for just 0.3s (LCP fix), then fade out
+            // Hold before fading out (Total duration ~ 4s)
             setTimeout(() => {
               setExit(true);
               setTimeout(() => setUnmountOverlay(true), 500); // 0.5s transition wait
-            }, 300);
+            }, 1200);
           }
-        }, 100);
+        }, 200);
       }
-    }, 15); // Faster animation to prevent LCP delay
+    }, 70); // Adjusted for a 4-second total duration
 
     return () => clearInterval(logInterval);
   }, []);
