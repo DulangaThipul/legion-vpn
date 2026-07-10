@@ -3,10 +3,11 @@
 import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Points, PointMaterial, Icosahedron } from "@react-three/drei";
+// @ts-ignore
 import * as random from "maath/random/dist/maath-random.esm";
 
 function StarBackground(props: any) {
-  const ref = useRef<any>();
+  const ref = useRef<any>(null);
   // Generate 5001 random points in a sphere (must be divisible by 3)
   const sphere = random.inSphere(new Float32Array(5001), { radius: 1.5 });
 
@@ -33,8 +34,8 @@ function StarBackground(props: any) {
 }
 
 function WireframeShape() {
-  const meshRef = useRef<any>();
-  const groupRef = useRef<any>();
+  const meshRef = useRef<any>(null);
+  const groupRef = useRef<any>(null);
 
   useFrame((state, delta) => {
     if (meshRef.current) {
