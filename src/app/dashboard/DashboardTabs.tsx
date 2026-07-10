@@ -96,7 +96,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
             {tabs.find(t => t.id === activeTab)?.label}
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <span style={{ fontWeight: "600", fontSize: "1.1rem" }}>{user.name}</span>
+            <span className="hidden sm:block" style={{ fontWeight: "600", fontSize: "1.1rem" }}>{user.name}</span>
             {avatar ? (
               <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid #FFFFFF", objectFit: "cover" }} />
             ) : (
@@ -111,10 +111,10 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
           
           {/* MY CONFIGS TAB */}
           {activeTab === "configs" && (
-            <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
               
               {/* How the Legion Network Works */}
-              <div className="glass-panel" style={{ padding: "3rem", borderLeft: "4px solid #FFFFFF", position: "relative", overflow: "hidden" }}>
+              <div className="glass-panel" style={{ padding: "3rem", borderLeft: "4px solid #FFFFFF", position: "relative", overflow: "hidden", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
                 <div style={{ position: "absolute", top: 0, right: 0, width: "150px", height: "150px", background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)", filter: "blur(20px)" }} />
                 <h2 style={{ marginBottom: "1.5rem", fontSize: "1.8rem", display: "flex", alignItems: "center", gap: "12px" }}>
                   <span style={{ color: "#FFFFFF", textShadow: "0 0 15px rgba(255,255,255,1)" }}>●</span> How the Legion Network Works
@@ -130,7 +130,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
               </div>
 
               {/* Your VPN Configuration Key & Usage */}
-              <div className="glass-panel" style={{ padding: "3rem", position: "relative" }}>
+              <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", position: "relative", animation: "fadeInUp 0.5s ease forwards 0.1s", opacity: 0 }}>
                 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
                   <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Your Unique VLESS Configuration Key</h2>
@@ -151,11 +151,13 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                       e.currentTarget.style.background = "#FFFFFF";
                       e.currentTarget.style.color = "#000000";
                       e.currentTarget.style.boxShadow = "0 0 15px rgba(255,255,255,0.8)";
+                      e.currentTarget.style.transform = "scale(1.05)";
                     }}
                     onMouseOut={(e) => {
                       e.currentTarget.style.background = "rgba(255,255,255,0.1)";
                       e.currentTarget.style.color = "#FFFFFF";
                       e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.transform = "scale(1)";
                     }}
                   >
                     📊 View Usage
@@ -203,7 +205,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
               </div>
 
               {/* Setup Guides & Clients (Bilingual) */}
-              <div className="glass-panel" style={{ padding: "3rem" }}>
+              <div className="glass-panel" style={{ padding: "3rem", animation: "fadeInUp 0.5s ease forwards 0.2s", opacity: 0 }}>
                 <h2 style={{ marginBottom: "2.5rem", fontSize: "1.8rem" }}>Client Configuration Workflows</h2>
                 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2.5rem" }}>
@@ -231,10 +233,10 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                     </div>
                     
                     <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                      <button className="btn btn-outline" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna&hl=en&pli=1", "_blank")}>
+                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna&hl=en&pli=1", "_blank")}>
                         Download Android
                       </button>
-                      <button className="btn btn-outline" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://sourceforge.net/projects/netmodhttp/", "_blank")}>
+                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://sourceforge.net/projects/netmodhttp/", "_blank")}>
                         Download PC
                       </button>
                     </div>
@@ -262,7 +264,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                       </div>
                     </div>
                     
-                    <button className="btn btn-outline" style={{ width: "100%", padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")}>
+                    <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ width: "100%", padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")}>
                       Download iOS
                     </button>
                   </div>
@@ -280,7 +282,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                   <button
                     key={provider}
                     onClick={() => setSelectedProvider(provider)}
-                    className="btn"
+                    className="btn hover:scale-105"
                     style={{ 
                       minWidth: "130px", 
                       fontSize: "1.1rem",
@@ -409,7 +411,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
 
           {/* PROFILE TAB */}
           {activeTab === "profile" && (
-            <div className="animate-fade-in glass-panel" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto" }}>
+            <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
               
               <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
