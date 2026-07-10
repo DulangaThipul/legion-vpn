@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { getAdminUsers } from "@/lib/authActions";
 
 export default async function AdminPage() {
   const cookieStore = await cookies();
@@ -65,9 +66,9 @@ export default async function AdminPage() {
     );
   }
 
-  const allUsers = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" }
-  });
+  // 🛠️ පරණ කෙලින්ම කරපු prisma.user.findMany එක වෙනුවට සර්වර් ඇක්ෂන් එකෙන් දත්ත ගන්නවා:
+  const result = await getAdminUsers();
+  const allUsers = result.users;
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, color: "#FFFFFF" }}>
