@@ -46,7 +46,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
     if (!modalPackage || !selectedQuota) return;
     const price = pricingRules[modalPackage][selectedQuota];
     const message = `Hi, I want to purchase the ${modalPackage} with ${selectedQuota} Quota (RS ${price}).`;
-    const whatsappUrl = `https://wa.me/94700000000?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/94753403800?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
     setModalPackage(null);
     setSelectedQuota(null);
