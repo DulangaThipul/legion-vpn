@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import DashboardTabs from "./DashboardTabs";
 
 import { cookies } from "next/headers";
