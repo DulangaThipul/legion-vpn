@@ -4,23 +4,24 @@ generator client {
 
 datasource db {
   provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  email        String    @unique
-  name         String
-  image        String?
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  email            String    @unique
+  name             String
+  image            String?
   
   // VPN Details
-  vpnStatus    String    @default("Inactive") // "Active" or "Inactive"
-  expiryDate   DateTime?
-  vpnConfigKey String?
+  vpnStatus        String    @default("Inactive") // "Active" or "Inactive"
+  expiryDate       DateTime?
+  vpnConfigKey     String?
   subscriptionLink String?
 
-  reviews      Review[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  reviews          Review[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Review {
