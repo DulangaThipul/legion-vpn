@@ -1,6 +1,5 @@
-export const dynamic = "force-dynamic";
+"use server"; // <--
 
-import { NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "@/lib/prisma";
 import { signJwt } from "@/lib/auth";
@@ -8,12 +7,10 @@ import { cookies } from "next/headers";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-export async function POST(req: Request) {
+export async function handleGoogleAuth(token: string) {
   try {
-    const { token } = await req.json();
-
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 400 });
+      return { error: "No token provided", status: 400 };
     }
 
     // Verify Google Token
@@ -24,7 +21,7 @@ export async function POST(req: Request) {
     
     const payload = ticket.getPayload();
     if (!payload || !payload.email) {
-      return NextResponse.json({ error: "Invalid token payload" }, { status: 400 });
+      return { error: "Invalid token payload", status: 400 };
     }
 
     const { email, name, picture } = payload;
@@ -63,9 +60,9 @@ export async function POST(req: Request) {
       path: "/",
     });
 
-    return NextResponse.json({ success: true, user });
+    return { success: true, user };
   } catch (error) {
     console.error("Google Auth Error:", error);
-    return NextResponse.json({ error: "Authentication failed" }, { status: 500 });
+    return { error: "Authentication failed", status: 500 };
   }
 }
