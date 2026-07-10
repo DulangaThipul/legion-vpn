@@ -3,25 +3,27 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
 
+import { handleGoogleAuth } from "@/app/api/auth/google/route"; 
+
 export default function GoogleSignIn() {
   const router = useRouter();
 
   const handleSuccess = async (credentialResponse: any) => {
     try {
-      // Send the token to the backend
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token: credentialResponse.credential }),
-      });
+      if (!credentialResponse.credential) {
+        console.error("No credential received from Google");
+        return;
+      }
 
-      if (res.ok) {
-        // Redirect to dashboard on success
+      // 🛠️ පරණ fetch එක වෙනුවට කෙලින්ම සර්වර් ඇක්ෂන් එක call කරනවා:
+      const response = await handleGoogleAuth(credentialResponse.credential);
+
+      if (response.success) {
+        // සාර්ථකව ලොග් වුණාට පස්සේ Dashboard එකට redirect කරනවා
         router.push("/dashboard");
       } else {
-        console.error("Authentication failed");
+        console.error("Authentication failed:", response.error);
+        alert("Authentication failed! Please try again.");
       }
     } catch (error) {
       console.error("Error during authentication:", error);
