@@ -7,7 +7,6 @@ import { cookies } from "next/headers";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Google Auth සඳහා
 export async function handleGoogleAuth(token: string) {
   try {
     if (!token) return { error: "No token provided", status: 400 };
@@ -55,7 +54,6 @@ export async function handleGoogleAuth(token: string) {
   }
 }
 
-// 🚀 Admin දත්ත සහ සත්‍යාපනය (Auth Check) සම්පූර්ණයෙන්ම සර්වර් ඇක්ෂන් එකක් ඇතුළට ගත්තා!
 export async function getAdminData() {
   try {
     const cookieStore = await cookies();
@@ -65,7 +63,6 @@ export async function getAdminData() {
     const payload = await verifyJwt(sessionCookie.value);
     if (!payload || !payload.userId) return { authorized: false, users: [] };
 
-    // බිල්ඩ් එක වෙලාවේ නෙවෙයි, Runtime එකේ විතරක් වැඩ කරන චෙකින් එකක්:
     const user = await prisma.user.findUnique({ where: { id: payload.userId as string } });
     if (!user || user.email !== "dulangathipul@gmail.com") return { authorized: false, users: [] };
 
@@ -80,5 +77,22 @@ export async function getAdminData() {
   } catch (error) {
     console.error("Admin Data Error:", error);
     return { authorized: false, users: [] };
+  }
+}
+
+// 🚀 අලුතින්ම එකතු කරපු කෑල්ල (Database Update කිරීම)
+export async function updateUserAdmin(userId: string, newConfig: string, newLink: string) {
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        vpnConfigKey: newConfig,
+        subscriptionLink: newLink,
+      },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update user:", error);
+    return { success: false, error: "Failed to update user" };
   }
 }
