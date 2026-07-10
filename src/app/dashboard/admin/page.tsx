@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import AdminDashboardClient from "./AdminDashboardClient";
 import Link from "next/link";
 import DashboardMatrix from "@/components/DashboardMatrix";
