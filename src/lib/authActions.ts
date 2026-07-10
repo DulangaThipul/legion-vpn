@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// 1. Google Auth සඳහා සර්වර් ඇක්ෂන් එක
 export async function handleGoogleAuth(token: string) {
   try {
     if (!token) {
@@ -64,5 +65,19 @@ export async function handleGoogleAuth(token: string) {
   } catch (error) {
     console.error("Google Auth Error:", error);
     return { error: "Authentication failed", status: 500 };
+  }
+}
+
+// 2. 🚀 Admin Users ලා සේරම Build එකට බාධා නොවී ගෙන්න ගන්න අලුතින්ම එකතු කරපු සර්වර් ඇක්ෂන් එක!
+export async function getAdminUsers() {
+  try {
+    const allUsers = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+    // JSON දත්ත සරල array එකක් විදිහට සකස් කරලා පිටුවට යවනවා
+    return { success: true, users: JSON.parse(JSON.stringify(allUsers)) };
+  } catch (error) {
+    console.error("Failed to fetch admin users:", error);
+    return { success: false, users: [] };
   }
 }
