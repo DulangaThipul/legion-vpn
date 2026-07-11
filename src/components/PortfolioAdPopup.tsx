@@ -10,7 +10,7 @@ export default function PortfolioAdPopup() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!adDismissed) setShowAd(true);
-    }, 4000); // Pops exactly when loading screen finishes
+    }, 5000); // Pops exactly when loading screen finishes
     return () => clearTimeout(timer);
   }, [adDismissed]);
 
