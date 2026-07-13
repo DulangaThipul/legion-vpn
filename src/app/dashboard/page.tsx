@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import DashboardTabs from "./DashboardTabs";
+import AntigravityWrapper from "@/components/AntigravityWrapper"; // 🚀 Antigravity Wrapper එක
 
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
@@ -14,11 +15,10 @@ export default async function DashboardPage() {
 
   const payload = await verifyJwt(sessionCookie.value);
   
-  // 💡 මෙතන payload.userId වෙනුවට payload.id කියලා වෙනස් කළා
+  // 💡 ආරක්ෂිත JWT වෙරිෆිකේෂන් එක (payload.id)
   if (!payload || !payload.id) redirect("/"); 
 
   const user = await prisma.user.findUnique({ 
-    // 💡 මෙතනත් payload.id කියලා වෙනස් කළා
     where: { id: payload.id as string } 
   });
   
@@ -26,7 +26,10 @@ export default async function DashboardPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg-color)" }}>
-      <DashboardTabs user={user} />
+      {/* 🔮 මුළු Dashboard එකම Antigravity Wrapper එක ඇතුළට දැම්මා */}
+      <AntigravityWrapper>
+        <DashboardTabs user={user} />
+      </AntigravityWrapper>
     </main>
   );
 }
