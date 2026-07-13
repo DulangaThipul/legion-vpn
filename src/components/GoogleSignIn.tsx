@@ -22,8 +22,8 @@ export default function GoogleSignIn() {
       if (res.ok) {
         // Trigger Loading Overlay before redirecting
         setIsLoading(true);
-        // Redirect to dashboard on success
-        router.push("/dashboard");
+        // Force a hard redirect to ensure cookies are read by the server component
+        window.location.href = "/dashboard";
       } else {
         console.error("Authentication failed");
       }
