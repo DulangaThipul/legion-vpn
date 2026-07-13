@@ -1,11 +1,8 @@
 "use client";
 
 import { GoogleLogin } from "@react-oauth/google";
-import { useRouter } from "next/navigation";
 
 export default function GoogleSignIn() {
-  const router = useRouter();
-
   const handleSuccess = async (credentialResponse: any) => {
     try {
       // Send the token to the backend
@@ -18,8 +15,8 @@ export default function GoogleSignIn() {
       });
 
       if (res.ok) {
-        // Redirect to dashboard on success
-        router.push("/dashboard");
+        // 💡 Hard Redirect එකක් දෙනවා, එතකොට අලුත් Cookie එකත් එක්කම ලස්සනට ලෝඩ් වෙනවා!
+        window.location.href = "/dashboard";
       } else {
         console.error("Authentication failed");
       }
