@@ -13,10 +13,13 @@ export default async function DashboardPage() {
   if (!sessionCookie?.value) redirect("/");
 
   const payload = await verifyJwt(sessionCookie.value);
-  if (!payload || !payload.userId) redirect("/");
+  
+  // 💡 මෙතන payload.userId වෙනුවට payload.id කියලා වෙනස් කළා
+  if (!payload || !payload.id) redirect("/"); 
 
   const user = await prisma.user.findUnique({ 
-    where: { id: payload.userId as string } 
+    // 💡 මෙතනත් payload.id කියලා වෙනස් කළා
+    where: { id: payload.id as string } 
   });
   
   if (!user) redirect("/");
