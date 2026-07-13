@@ -21,7 +21,8 @@
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "matter-js": "^0.19.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
@@ -29,6 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.185.1",
+    "@types/matter-js": "^0.19.6",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "prisma": "^6.0.0",
