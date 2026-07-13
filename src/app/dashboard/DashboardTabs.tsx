@@ -87,33 +87,33 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative", zIndex: 1 }}>
       <DashboardMatrix />
       
-      {/* MAIN CONTENT AREA */}
       <main style={{ padding: "3rem 1.5rem", maxWidth: "1000px", margin: "0 auto", position: "relative" }}>
         
-        {/* Header */}
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
+        {/* Header - MOBILE OPTIMIZED & LINK ADDED */}
+        <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
           <h1 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "300", letterSpacing: "1px" }}>
             {tabs.find(t => t.id === activeTab)?.label}
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <span className="hidden sm:block" style={{ fontWeight: "600", fontSize: "1.1rem" }}>{user.name}</span>
-            {avatar ? (
-              <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid #FFFFFF", objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "#333", border: "2px solid #FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-            )}
+            {/* Hidden on mobile, visible on medium (desktop/tablet) */}
+            <span className="hidden md:block" style={{ fontWeight: "600", fontSize: "1.1rem" }}>{user.name}</span>
+            <Link href="/dashboard/profile" style={{ display: "block", cursor: "pointer" }}>
+              {avatar ? (
+                <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid #FFFFFF", objectFit: "cover", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"} />
+              ) : (
+                <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "#333", border: "2px solid #FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}>
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </Link>
           </div>
         </header>
 
         <div>
-          
           {/* MY CONFIGS TAB */}
           {activeTab === "configs" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
               
-              {/* How the Legion Network Works */}
               <div className="glass-panel" style={{ padding: "3rem", borderLeft: "4px solid #FFFFFF", position: "relative", overflow: "hidden", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
                 <div style={{ position: "absolute", top: 0, right: 0, width: "150px", height: "150px", background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)", filter: "blur(20px)" }} />
                 <h2 style={{ marginBottom: "1.5rem", fontSize: "1.8rem", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -129,7 +129,6 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                 </div>
               </div>
 
-              {/* Your VPN Configuration Key & Usage */}
               <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", position: "relative", animation: "fadeInUp 0.5s ease forwards 0.1s", opacity: 0 }}>
                 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
@@ -204,7 +203,6 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                 </div>
               </div>
 
-              {/* Setup Guides & Clients (Bilingual) */}
               <div className="glass-panel" style={{ padding: "3rem", animation: "fadeInUp 0.5s ease forwards 0.2s", opacity: 0 }}>
                 <h2 style={{ marginBottom: "2.5rem", fontSize: "1.8rem" }}>Client Configuration Workflows</h2>
                 
@@ -409,7 +407,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* PROFILE TAB */}
+          {/* PROFILE TAB (We leave this for backward compatibility if needed) */}
           {activeTab === "profile" && (
             <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
@@ -609,7 +607,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                 maxWidth: isActive ? "150px" : "0px", 
                 opacity: isActive ? 1 : 0, 
                 transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
-                fontWeight: "bold",
+                fontWeight: "bold", // <-- TEXT EXPLICITLY BOLD
                 fontSize: "1rem"
               }}>
                 {tab.label}
