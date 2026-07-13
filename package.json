@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "framer-motion": "^11.0.0",
+    "jose": "^5.2.3",
     "@prisma/client": "^6.0.0",
     "@react-oauth/google": "^0.13.5",
     "@react-three/drei": "^10.7.7",
