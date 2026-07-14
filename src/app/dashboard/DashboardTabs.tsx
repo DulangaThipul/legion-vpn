@@ -131,7 +131,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
               
               <div className="glass-panel" style={{ padding: "3rem", borderLeft: "4px solid #FFFFFF", position: "relative", overflow: "hidden", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
-                <div style={{ position: "absolute", top: 0, right: 0, width: "150px", height: "150px", background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)", filter: "blur(20px)" }} />
+                <div style={{ position: "absolute", top: 0, right: 0, width: "200px", height: "200px", background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%)", pointerEvents: "none" }} />
                 <h2 style={{ marginBottom: "1.5rem", fontSize: "1.8rem", display: "flex", alignItems: "center", gap: "12px" }}>
                   <span style={{ color: "#FFFFFF", textShadow: "0 0 15px rgba(255,255,255,1)" }}>●</span> How the Legion Network Works
                 </h2>
