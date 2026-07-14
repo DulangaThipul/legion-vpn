@@ -26,7 +26,7 @@ const packages = {
   ],
   SLT: [
     { name: "SLT 4G/Fiber Router 490 Zoom 100GB Package" },
-    { name: "SLT Fiber 1990 Unlimited" }
+    { name: "SLT Fiber 1990 Unlimited (650+ Mbps+)" }
   ]
 };
 
