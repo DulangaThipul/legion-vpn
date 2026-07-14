@@ -35,11 +35,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [activeTab, setActiveTab] = useState("configs");
   const [selectedProvider, setSelectedProvider] = useState<"Airtel" | "Dialog" | "SLT" | null>(null);
   
-  // Modal State
   const [modalPackage, setModalPackage] = useState<string | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
 
-  // Profile & Avatar State
   const [user, setUser] = useState(initialUser);
   const [editName, setEditName] = useState(user.name || "");
   const [editEmail, setEditEmail] = useState(user.email || "");
@@ -65,7 +63,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (isUpdating) return;
     setIsUpdating(true);
     
-    // Optimistic UI Update (හිස් ලින්ක් එකක් ආවොත් Google පින්තූරෙ දානවා)
     setAvatar(gifPath === "" ? (initialUser.googleImage || null) : gifPath);
     
     const res = await updateUserAvatar(gifPath);
@@ -73,7 +70,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       router.refresh(); 
     } else {
       alert("Error updating avatar!");
-      setAvatar(initialUser.image); // Revert on fail
+      setAvatar(initialUser.image); 
     }
     setIsUpdating(false);
   };
@@ -87,11 +84,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   if (user.email === "dulangathipul@gmail.com") {
     tabs.push({ 
-      id: "admin", 
-      label: "Admin Panel", 
+      id: "admin", label: "Admin Panel", 
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, 
-      isLink: true, 
-      href: "/dashboard/admin" 
+      isLink: true, href: "/dashboard/admin" 
     });
   }
 
@@ -101,16 +96,23 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       
       <main style={{ padding: "3rem 1.5rem", maxWidth: "1000px", margin: "0 auto", position: "relative" }}>
         
-        {/* 🔥 HEADER - මාතෘකාව ඉබේම වෙනස් වෙනවා */}
+        {/* 🔥 HEADER - MOBILE OPTIMIZED */}
         <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", position: "relative", zIndex: 50 }}>
-          <h1 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "300", letterSpacing: "1px" }}>
+          
+          {/* Dashboard Title - Now responsive and won't wrap */}
+          <h1 className="dashboard-title" style={{ margin: 0, fontWeight: "300", letterSpacing: "1px", whiteSpace: "nowrap" }}>
             {tabs.find(t => t.id === activeTab)?.label}
           </h1>
+          
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <span className="hidden md:block" style={{ fontWeight: "600", fontSize: "1.1rem" }}>{user.name}</span>
             
-            {/* උඩ Profile පින්තූරේ එබුවම කෙලින්ම Profile Tab එකට යනවා (Popup එන්නේ නෑ) */}
-            <div onClick={() => setActiveTab("profile")} style={{ display: "block", cursor: "pointer" }}>
+            {/* User Name - Only visible on PC/Desktop */}
+            <span className="desktop-name" style={{ fontWeight: "600", fontSize: "1.1rem" }}>
+              {user.name}
+            </span>
+            
+            {/* Profile Avatar (Always visible) */}
+            <div onClick={() => setActiveTab("profile")} style={{ display: "block", cursor: "pointer", flexShrink: 0 }}>
               {avatar ? (
                 <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid #FFFFFF", objectFit: "cover", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"} />
               ) : (
@@ -119,6 +121,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
               )}
             </div>
+            
           </div>
         </header>
 
@@ -143,72 +146,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               </div>
 
               <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", position: "relative", animation: "fadeInUp 0.5s ease forwards 0.1s", opacity: 0 }}>
-                
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
                   <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Your Unique VLESS Configuration Key</h2>
                   <button 
                     className="btn" 
                     onClick={() => user.subscriptionLink ? window.open(user.subscriptionLink, "_blank") : alert("Usage link not available.")}
-                    style={{ 
-                      background: "rgba(255,255,255,0.1)", 
-                      color: "#FFFFFF", 
-                      border: "1px solid rgba(255,255,255,0.3)",
-                      padding: "0.5rem 1.5rem",
-                      fontSize: "0.9rem",
-                      borderRadius: "20px",
-                      cursor: "pointer",
-                      transition: "all 0.3s ease"
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = "#FFFFFF";
-                      e.currentTarget.style.color = "#000000";
-                      e.currentTarget.style.boxShadow = "0 0 15px rgba(255,255,255,0.8)";
-                      e.currentTarget.style.transform = "scale(1.05)";
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-                      e.currentTarget.style.color = "#FFFFFF";
-                      e.currentTarget.style.boxShadow = "none";
-                      e.currentTarget.style.transform = "scale(1)";
-                    }}
+                    style={{ background: "rgba(255,255,255,0.1)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.3)", padding: "0.5rem 1.5rem", fontSize: "0.9rem", borderRadius: "20px", cursor: "pointer", transition: "all 0.3s ease" }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.color = "#000000"; e.currentTarget.style.boxShadow = "0 0 15px rgba(255,255,255,0.8)"; e.currentTarget.style.transform = "scale(1.05)"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "scale(1)"; }}
                   >
                     📊 View Usage
                   </button>
                 </div>
-
-                <div style={{ 
-                  background: "#050505", 
-                  padding: "1.5rem", 
-                  borderRadius: "12px", 
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "1.5rem",
-                  wordBreak: "break-all"
-                }}>
+                <div style={{ background: "#050505", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", gap: "1.5rem", wordBreak: "break-all" }}>
                   <code style={{ color: "#FFFFFF", fontSize: "1.1rem", fontFamily: "'Courier New', Courier, monospace" }}>
                     {user.vpnConfigKey || "No config assigned yet. Please purchase a package."}
                   </code>
                   {user.vpnConfigKey && (
                     <button 
                       className="btn" 
-                      style={{ 
-                        alignSelf: "flex-start", 
-                        background: "#FFFFFF", 
-                        color: "#000000", 
-                        fontWeight: "bold",
-                        border: "none",
-                        padding: "0.8rem 2.5rem",
-                        fontSize: "1rem",
-                        cursor: "pointer",
-                        transition: "transform 0.2s ease"
-                      }}
+                      style={{ alignSelf: "flex-start", background: "#FFFFFF", color: "#000000", fontWeight: "bold", border: "none", padding: "0.8rem 2.5rem", fontSize: "1rem", cursor: "pointer", transition: "transform 0.2s ease" }}
                       onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
                       onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-                      onClick={() => {
-                        navigator.clipboard.writeText(user.vpnConfigKey);
-                        alert("Copied to clipboard!");
-                      }}
+                      onClick={() => { navigator.clipboard.writeText(user.vpnConfigKey); alert("Copied to clipboard!"); }}
                     >
                       Copy Key
                     </button>
@@ -218,38 +178,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               <div className="glass-panel" style={{ padding: "3rem", animation: "fadeInUp 0.5s ease forwards 0.2s", opacity: 0 }}>
                 <h2 style={{ marginBottom: "2.5rem", fontSize: "1.8rem" }}>Client Configuration Workflows</h2>
-                
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2.5rem" }}>
                   
                   {/* NetMod Guide */}
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "2.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "#FFFFFF" }} />
                     <h3 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", color: "#FFFFFF" }}>Android & Windows PC<br/><span style={{ fontSize: "1rem", color: "var(--muted-text)", fontWeight: "normal" }}>(NetMod HTTP)</span></h3>
-                    
                     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginBottom: "2rem", color: "var(--muted-text)", lineHeight: 1.6 }}>
-                      <div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>1.</span> Click the Download button to grab NetMod for your device.</div>
-                        <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem", marginTop: "0.2rem" }}>NetMod ඇප් එක පහළින් Download කරගන්න.</div>
-                      </div>
-                      
-                      <div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>2.</span> Copy your unique VLESS Configuration Key from the panel above.</div>
-                        <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem", marginTop: "0.2rem" }}>ඔබගේ VLESS කන්ෆිග් කී (Configuration Key) එක කොපි කරගන්න.</div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>3.</span> Open NetMod, navigate to Menu &gt; Import Config from Clipboard, and hit the 'Start' terminal button.</div>
-                        <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem", marginTop: "0.2rem" }}>NetMod ඇප් එක open කරලා, Menu එකට ගිහින් 'Import Config from Clipboard' තෝරන්න. ඊට පස්සෙ 'Start' button එක ඔබන්න.</div>
-                      </div>
+                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>1.</span> Click the Download button to grab NetMod.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>NetMod ඇප් එක පහළින් Download කරගන්න.</div></div>
+                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>2.</span> Copy your VLESS Configuration Key.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>VLESS කන්ෆිග් කී එක කොපි කරගන්න.</div></div>
+                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>3.</span> Open NetMod &gt; Import Config from Clipboard &gt; Start.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>ඇප් එක open කරලා, Import Config දීලා Connect කරන්න.</div></div>
                     </div>
-                    
                     <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna&hl=en&pli=1", "_blank")}>
-                        Download Android
-                      </button>
-                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://sourceforge.net/projects/netmodhttp/", "_blank")}>
-                        Download PC
-                      </button>
+                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna&hl=en&pli=1", "_blank")}>Download Android</button>
+                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://sourceforge.net/projects/netmodhttp/", "_blank")}>Download PC</button>
                     </div>
                   </div>
 
@@ -257,27 +199,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "2.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "#FFFFFF" }} />
                     <h3 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", color: "#FFFFFF" }}>iOS / iPhone<br/><span style={{ fontSize: "1rem", color: "var(--muted-text)", fontWeight: "normal" }}>(V2Box Client)</span></h3>
-                    
                     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginBottom: "2rem", color: "var(--muted-text)", lineHeight: 1.6 }}>
-                      <div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>1.</span> Download V2Box from the Apple App Store using our direct button.</div>
-                        <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem", marginTop: "0.2rem" }}>පහළ තියෙන button එකෙන් V2Box ඇප් එක Download කරගන්න.</div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>2.</span> Copy the VLESS configuration key generated for your account.</div>
-                        <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem", marginTop: "0.2rem" }}>ඔබගේ VLESS කන්ෆිග් කී (Configuration Key) එක කොපි කරගන්න.</div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>3.</span> Open V2Box, tap the '+' sign at the top right, select 'Import v2ray config from clipboard', and switch on the connection toggle.</div>
-                        <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem", marginTop: "0.2rem" }}>V2Box ඇප් එක open කරලා, උඩ දකුණු පැත්තේ තියෙන '+' ලකුණ ඔබලා, 'Import v2ray config from clipboard' තෝරලා connect කරන්න.</div>
-                      </div>
+                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>1.</span> Download V2Box from the App Store.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>V2Box ඇප් එක Download කරගන්න.</div></div>
+                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>2.</span> Copy your VLESS configuration key.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>VLESS කන්ෆිග් කී එක කොපි කරගන්න.</div></div>
+                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>3.</span> Open V2Box &gt; '+' sign &gt; Import v2ray config from clipboard.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>ඇප් එකට ගිහින් '+' ඔබලා Import කරලා Connect කරන්න.</div></div>
                     </div>
-                    
-                    <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ width: "100%", padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")}>
-                      Download iOS
-                    </button>
+                    <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ width: "100%", padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")}>Download iOS</button>
                   </div>
 
                 </div>
@@ -290,21 +217,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div className="animate-fade-in">
               <div style={{ display: "flex", gap: "1rem", marginBottom: "3rem", flexWrap: "wrap", justifyContent: "center" }}>
                 {(["Airtel", "Dialog", "SLT"] as const).map(provider => (
-                  <button
-                    key={provider}
-                    onClick={() => setSelectedProvider(provider)}
-                    className="btn hover:scale-105"
-                    style={{ 
-                      minWidth: "130px", 
-                      fontSize: "1.1rem",
-                      background: selectedProvider === provider ? "#FFFFFF" : "transparent",
-                      color: selectedProvider === provider ? "#000000" : "#FFFFFF",
-                      border: "1px solid #FFFFFF",
-                      borderRadius: "30px",
-                      boxShadow: selectedProvider === provider ? "0 0 15px rgba(255,255,255,0.5)" : "none",
-                      transition: "all 0.3s ease"
-                    }}
-                  >
+                  <button key={provider} onClick={() => setSelectedProvider(provider)} className="btn hover:scale-105" style={{ minWidth: "130px", fontSize: "1.1rem", background: selectedProvider === provider ? "#FFFFFF" : "transparent", color: selectedProvider === provider ? "#000000" : "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: "30px", boxShadow: selectedProvider === provider ? "0 0 15px rgba(255,255,255,0.5)" : "none", transition: "all 0.3s ease" }}>
                     {provider}
                   </button>
                 ))}
@@ -312,107 +225,26 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {!selectedProvider && (
                 <div className="animate-fade-in glass-panel" style={{ padding: "2rem", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.02)", textAlign: "center", maxWidth: "800px", margin: "0 auto" }}>
-                  <p style={{ color: "var(--muted-text)", lineHeight: 1.6, marginBottom: "1.5rem", fontSize: "1.05rem" }}>
-                    If you are using a mobile SIM, internet speeds vary depending on your device and location, making it difficult to maintain a stable connection speed; please note that this is not an issue caused by us at LEGION VPN.
-                  </p>
-                  <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0, fontSize: "0.95rem" }}>
-                    ඔයා use කරන්නෙ Mobile Sim එකක් නම් packages වල internet speed එක ඔයාගෙ Device එක අනුව සහ ස්තානය අනුව වෙනස් වෙන නිසා Mobile Sim එකකින් stable connection speed එකක් තියාගන්න අමාරු වෙනවා. එය LEGION VPN වන අපගේ දෝශයක් නොවන බව කරුණාවෙන් දන්වා සිටිමු.
-                  </p>
+                  <p style={{ color: "var(--muted-text)", lineHeight: 1.6, marginBottom: "1.5rem", fontSize: "1.05rem" }}>If you are using a mobile SIM, internet speeds vary depending on your device and location, making it difficult to maintain a stable connection speed; please note that this is not an issue caused by us at LEGION VPN.</p>
+                  <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0, fontSize: "0.95rem" }}>ඔයා use කරන්නෙ Mobile Sim එකක් නම් packages වල internet speed එක ඔයාගෙ Device එක අනුව සහ ස්තානය අනුව වෙනස් වෙන නිසා Mobile Sim එකකින් stable connection speed එකක් තියාගන්න අමාරු වෙනවා. එය LEGION VPN වන අපගේ දෝශයක් නොවන බව කරුණාවෙන් දන්වා සිටිමු.</p>
                 </div>
               )}
 
               {selectedProvider && (
                 <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem" }}>
                   {packages[selectedProvider].map((pkg, index) => (
-                    <div key={index} className="glass-panel" style={{ 
-                      display: "flex", 
-                      flexDirection: "column",
-                      justifyContent: "space-between", 
-                      padding: "2.5rem",
-                      transition: "all 0.3s ease",
-                      animation: `fadeInUp 0.5s ease forwards ${index * 0.1}s`,
-                      opacity: 0,
-                      transform: "translateY(20px)",
-                      border: "1px solid rgba(255,255,255,0.05)",
-                      position: "relative",
-                      overflow: "hidden"
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.borderColor = "rgba(255,255,255,0.8)";
-                      e.currentTarget.style.transform = "translateY(-5px) scale(1.02)";
-                      e.currentTarget.style.boxShadow = "0 15px 40px rgba(255,255,255,0.1)";
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
-                      e.currentTarget.style.transform = "translateY(0) scale(1)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                    >
+                    <div key={index} className="glass-panel" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2.5rem", transition: "all 0.3s ease", animation: `fadeInUp 0.5s ease forwards ${index * 0.1}s`, opacity: 0, transform: "translateY(20px)", border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden" }} onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.8)"; e.currentTarget.style.transform = "translateY(-5px) scale(1.02)"; e.currentTarget.style.boxShadow = "0 15px 40px rgba(255,255,255,0.1)"; }} onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; e.currentTarget.style.boxShadow = "none"; }}>
                       <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "2px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)" }} />
-                      
                       <div style={{ marginBottom: "2rem" }}>
-                        <span style={{ 
-                          display: "inline-block", 
-                          padding: "0.4rem 1rem", 
-                          background: "rgba(255,255,255,0.1)", 
-                          borderRadius: "30px", 
-                          fontSize: "0.75rem", 
-                          fontWeight: "bold", 
-                          letterSpacing: "1.5px", 
-                          textTransform: "uppercase",
-                          marginBottom: "1.5rem",
-                          border: "1px solid rgba(255,255,255,0.2)"
-                        }}>
-                          Premium Access
-                        </span>
+                        <span style={{ display: "inline-block", padding: "0.4rem 1rem", background: "rgba(255,255,255,0.1)", borderRadius: "30px", fontSize: "0.75rem", fontWeight: "bold", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "1.5rem", border: "1px solid rgba(255,255,255,0.2)" }}>Premium Access</span>
                         <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.5rem", lineHeight: 1.4, fontWeight: "500" }}>{pkg.name}</h3>
-                        
                         <ul style={{ padding: 0, margin: 0, listStyle: "none", color: "var(--muted-text)", fontSize: "1rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> 
-                            Unthrottled High Speed
-                          </li>
-                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> 
-                            Secure XTLS-Reality Tunnel
-                          </li>
-                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> 
-                            Gaming Optimized Ping
-                          </li>
+                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}><span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> Unthrottled High Speed</li>
+                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}><span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> Secure XTLS-Reality Tunnel</li>
+                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}><span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> Gaming Optimized Ping</li>
                         </ul>
                       </div>
-
-                      <button 
-                        onClick={() => {
-                          setModalPackage(pkg.name);
-                          setSelectedQuota(null);
-                        }}
-                        style={{ 
-                          width: "100%",
-                          padding: "1.2rem", 
-                          borderRadius: "30px",
-                          background: "#FFFFFF",
-                          color: "#000000",
-                          fontWeight: "bold",
-                          fontSize: "1.1rem",
-                          border: "none",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                          boxShadow: "0 0 20px rgba(255,255,255,0.2)",
-                          marginTop: "auto"
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.boxShadow = "0 0 30px rgba(255,255,255,0.6)";
-                          e.currentTarget.style.transform = "scale(1.03)";
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.boxShadow = "0 0 20px rgba(255,255,255,0.2)";
-                          e.currentTarget.style.transform = "scale(1)";
-                        }}
-                      >
-                        Select Package →
-                      </button>
+                      <button onClick={() => { setModalPackage(pkg.name); setSelectedQuota(null); }} style={{ width: "100%", padding: "1.2rem", borderRadius: "30px", background: "#FFFFFF", color: "#000000", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer", transition: "all 0.3s ease", boxShadow: "0 0 20px rgba(255,255,255,0.2)", marginTop: "auto" }} onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 0 30px rgba(255,255,255,0.6)"; e.currentTarget.style.transform = "scale(1.03)"; }} onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 0 20px rgba(255,255,255,0.2)"; e.currentTarget.style.transform = "scale(1)"; }}>Select Package →</button>
                     </div>
                   ))}
                 </div>
@@ -420,14 +252,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 🔥 PROFILE TAB (අලුත් GIF Grid එක මෙතනයි තියෙන්නේ) */}
+          {/* PROFILE TAB */}
           {activeTab === "profile" && (
             <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center", color: "#FFFFFF" }}>Edit Profile</h2>
               
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                
-                {/* Current Avatar Display */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
                   <div style={{ width: "120px", height: "120px", borderRadius: "50%", border: "2px solid #FFFFFF", background: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {avatar ? (
@@ -438,102 +268,44 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 </div>
 
-                {/* 9-Grid GIF Selector */}
                 <div style={{ background: "rgba(0,0,0,0.4)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <h3 style={{ textAlign: "center", color: "var(--muted-text)", marginBottom: "1.2rem", fontSize: "0.95rem" }}>Choose your Avatar</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(60px, 1fr))", gap: "1rem", justifyItems: "center" }}>
                     {AVAILABLE_AVATARS.map((gifPath) => (
-                      <div 
-                        key={gifPath}
-                        onClick={() => handleAvatarSelect(gifPath)}
-                        style={{
-                          width: "60px", height: "60px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", position: "relative", overflow: "hidden",
-                          border: avatar === gifPath ? "3px solid #3b82f6" : "2px solid transparent",
-                          boxShadow: avatar === gifPath ? "0 0 20px rgba(59, 130, 246, 0.6)" : "none",
-                          transform: avatar === gifPath ? "scale(1.1)" : "scale(1)",
-                          transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)",
-                          opacity: isUpdating && avatar !== gifPath ? 0.5 : 1
-                        }}
-                      >
+                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "60px", height: "60px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", position: "relative", overflow: "hidden", border: avatar === gifPath ? "3px solid #3b82f6" : "2px solid transparent", boxShadow: avatar === gifPath ? "0 0 20px rgba(59, 130, 246, 0.6)" : "none", transform: avatar === gifPath ? "scale(1.1)" : "scale(1)", transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", opacity: isUpdating && avatar !== gifPath ? 0.5 : 1 }}>
                         <img src={gifPath} alt="Avatar option" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       </div>
                     ))}
                   </div>
-                  
-                  {/* Restore Google Image Button */}
-                  <button 
-                    onClick={() => handleAvatarSelect("")} 
-                    style={{ width: "100%", marginTop: "1.5rem", padding: "0.8rem", background: "rgba(255,0,0,0.1)", color: "#ff4444", borderRadius: "8px", border: "1px solid rgba(255,0,0,0.2)", cursor: "pointer", fontWeight: "bold" }}
-                  >
-                    Restore Google Image
-                  </button>
+                  <button onClick={() => handleAvatarSelect("")} style={{ width: "100%", marginTop: "1.5rem", padding: "0.8rem", background: "rgba(255,0,0,0.1)", color: "#ff4444", borderRadius: "8px", border: "1px solid rgba(255,0,0,0.2)", cursor: "pointer", fontWeight: "bold" }}>Restore Google Image</button>
                 </div>
 
-                {/* Info Form */}
                 <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginTop: "1rem" }}>
-                  <div>
-                    <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Full Name</label>
-                    <input 
-                      type="text" 
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} 
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Email Address</label>
-                    <input 
-                      type="email" 
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} 
-                    />
-                  </div>
-                  <button type="submit" className="btn hover:scale-105 transition-transform" style={{ background: "#FFFFFF", color: "#000000", fontWeight: "bold", padding: "1rem", marginTop: "1rem", fontSize: "1.1rem", borderRadius: "30px" }}>
-                    Save Changes
-                  </button>
+                  <div><label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Full Name</label><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} /></div>
+                  <div><label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Email Address</label><input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} /></div>
+                  <button type="submit" className="btn hover:scale-105 transition-transform" style={{ background: "#FFFFFF", color: "#000000", fontWeight: "bold", padding: "1rem", marginTop: "1rem", fontSize: "1.1rem", borderRadius: "30px" }}>Save Changes</button>
                 </form>
               </div>
             </div>
           )}
-
         </div>
       </main>
 
       {/* LIQUID GLASS BUBBLE TASKBAR */}
-      <nav style={{
-        position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.6rem", background: "rgba(5, 5, 5, 0.8)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.2)", borderRadius: "50px", zIndex: 100, boxShadow: "0 0 25px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255,255,255,0.05)"
-      }}>
+      <nav style={{ position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.6rem", background: "rgba(5, 5, 5, 0.8)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.2)", borderRadius: "50px", zIndex: 100, boxShadow: "0 0 25px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255,255,255,0.05)" }}>
         {tabs.map(tab => {
           if (tab.isLink) {
             return (
-              <Link 
-                key={tab.id} 
-                href={tab.href as string}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "50px", height: "50px", borderRadius: "50%", color: "rgba(255,255,255,0.4)", textDecoration: "none", transition: "all 0.3s ease", background: "transparent" }}
-                onMouseOver={(e) => { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; }}
-                onMouseOut={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.textShadow = "none"; }}
-              >
+              <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "50px", height: "50px", borderRadius: "50%", color: "rgba(255,255,255,0.4)", textDecoration: "none", transition: "all 0.3s ease", background: "transparent" }} onMouseOver={(e) => { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; }} onMouseOut={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.textShadow = "none"; }}>
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{tab.icon}</span>
               </Link>
             );
           }
-
           const isActive = activeTab === tab.id;
           return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: isActive ? "0.8rem" : "0", padding: isActive ? "0 1.5rem 0 1rem" : "0", height: "50px", minWidth: isActive ? "auto" : "50px", width: isActive ? "auto" : "50px", justifyContent: "center", background: isActive ? "#FFFFFF" : "transparent", color: isActive ? "#000000" : "rgba(255,255,255,0.4)", borderRadius: "25px", border: "none", cursor: "pointer", transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden", boxShadow: isActive ? "0 0 20px rgba(255, 255, 255, 0.6)" : "none"
-              }}
-              onMouseOver={(e) => { if (!isActive) { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; } }}
-              onMouseOut={(e) => { if (!isActive) { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.textShadow = "none"; } }}
-            >
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.8rem" : "0", padding: isActive ? "0 1.5rem 0 1rem" : "0", height: "50px", minWidth: isActive ? "auto" : "50px", width: isActive ? "auto" : "50px", justifyContent: "center", background: isActive ? "#FFFFFF" : "transparent", color: isActive ? "#000000" : "rgba(255,255,255,0.4)", borderRadius: "25px", border: "none", cursor: "pointer", transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden", boxShadow: isActive ? "0 0 20px rgba(255, 255, 255, 0.6)" : "none" }} onMouseOver={(e) => { if (!isActive) { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; } }} onMouseOut={(e) => { if (!isActive) { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.textShadow = "none"; } }}>
               <span style={{ display: "flex", alignItems: "center", justifyContent: "center", textShadow: "none" }}>{tab.icon}</span>
-              <span style={{ maxWidth: isActive ? "150px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "1rem" }}>
-                {tab.label}
-              </span>
+              <span style={{ maxWidth: isActive ? "150px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "1rem" }}>{tab.label}</span>
             </button>
           );
         })}
@@ -548,28 +320,38 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <p style={{ color: "var(--muted-text)", marginBottom: "2rem" }}>{modalPackage}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
               {Object.entries(pricingRules[modalPackage] || {}).map(([quota, price]) => (
-                <button
-                  key={quota} onClick={() => setSelectedQuota(quota)}
-                  style={{ display: "flex", justifyContent: "space-between", padding: "1.5rem", background: selectedQuota === quota ? "rgba(255,255,255,0.1)" : "transparent", border: "1px solid", borderColor: selectedQuota === quota ? "#FFFFFF" : "rgba(255,255,255,0.2)", borderRadius: "8px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer", transition: "all 0.2s ease" }}
-                >
+                <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ display: "flex", justifyContent: "space-between", padding: "1.5rem", background: selectedQuota === quota ? "rgba(255,255,255,0.1)" : "transparent", border: "1px solid", borderColor: selectedQuota === quota ? "#FFFFFF" : "rgba(255,255,255,0.2)", borderRadius: "8px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontWeight: selectedQuota === quota ? "bold" : "normal" }}>{quota}</span>
                   <span style={{ fontWeight: "bold" }}>RS {price}</span>
                 </button>
               ))}
             </div>
-            <button 
-              className="btn" onClick={handleConfirmOrder} disabled={!selectedQuota}
-              style={{ width: "100%", padding: "1rem", background: selectedQuota ? "#FFFFFF" : "rgba(255,255,255,0.2)", color: selectedQuota ? "#000000" : "rgba(255,255,255,0.5)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "30px" }}
-            >
-              Confirm Order via WhatsApp
-            </button>
+            <button className="btn" onClick={handleConfirmOrder} disabled={!selectedQuota} style={{ width: "100%", padding: "1rem", background: selectedQuota ? "#FFFFFF" : "rgba(255,255,255,0.2)", color: selectedQuota ? "#000000" : "rgba(255,255,255,0.5)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "30px" }}>Confirm Order via WhatsApp</button>
           </div>
         </div>
       )}
 
+      {/* 🔥 MEDIA QUERIES FOR MOBILE OPTIMIZATION */}
       <style>{`
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Mobile Specific Styles */
+        @media (max-width: 768px) {
+          .desktop-name {
+            display: none !important;
+          }
+          .dashboard-title {
+            font-size: 1.6rem !important; /* Make font smaller on mobile to prevent breaking */
+          }
+        }
+        
+        /* Desktop Specific Styles */
+        @media (min-width: 769px) {
+          .dashboard-title {
+            font-size: 2.2rem !important;
+          }
+        }
       `}</style>
     </div>
   );
