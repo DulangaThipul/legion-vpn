@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import DashboardHeaderClient from "@/components/DashboardHeaderClient"; 
 import DashboardTabs from "./DashboardTabs";
 
 export default async function DashboardPage() {
@@ -22,10 +21,9 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-color)", padding: "2rem" }}>
-      {/* 🔴 Title එක අයින් කරපු අලුත් Header එක විතරයි මෙතන තියෙන්නේ */}
-      <DashboardHeaderClient user={user} />
-      
+    <main style={{ minHeight: "100vh", background: "var(--bg-color)" }}>
+      {/* 🔴 මෙතන තිබුණු අමතර DashboardHeaderClient එක අයින් කළා. 
+          දැන් DashboardTabs එකෙන් විතරයි Profile එක පෙන්නන්නේ */}
       <DashboardTabs user={user} />
     </main>
   );
