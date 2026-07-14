@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import DashboardTabs from "./DashboardTabs";
 
 import { cookies } from "next/headers";
@@ -13,22 +11,17 @@ export default async function DashboardPage() {
   if (!sessionCookie?.value) redirect("/");
 
   const payload = await verifyJwt(sessionCookie.value);
-  
-  // 💡 ආරක්ෂිත JWT වෙරිෆිකේෂන් එක (payload.id)
-  if (!payload || !payload.id) redirect("/"); 
+  if (!payload || !payload.userId) redirect("/");
 
   const user = await prisma.user.findUnique({ 
-    where: { id: payload.id as string } 
+    where: { id: payload.userId as string } 
   });
   
   if (!user) redirect("/");
 
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg-color)" }}>
-      {/* 🔮 මුළු Dashboard එකම Antigravity Wrapper එක ඇතුළට දැම්මා */}
-      <AntigravityWrapper>
-        <DashboardTabs user={user} />
-      </AntigravityWrapper>
+      <DashboardTabs user={user} />
     </main>
   );
 }
