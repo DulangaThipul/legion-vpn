@@ -1,11 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import DashboardHeaderClient from "@/components/DashboardHeaderClient"; // අලුත් Client Component එක
+import DashboardHeaderClient from "@/components/DashboardHeaderClient"; 
 import DashboardTabs from "./DashboardTabs";
-
-export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
@@ -23,10 +23,9 @@ export default async function DashboardPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg-color)", padding: "2rem" }}>
-      {/* 🔵 නිල් රවුමේ කොටස (Name + Avatar Dropdown) */}
-      <DashboardHeaderClient user={user} title="My Configs" />
+      {/* 🔴 Title එක අයින් කරපු අලුත් Header එක විතරයි මෙතන තියෙන්නේ */}
+      <DashboardHeaderClient user={user} />
       
-      {/* ඔයාගේ පරණ Tabs ටික */}
       <DashboardTabs user={user} />
     </main>
   );
