@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid token" }, { status: 400 });
     }
 
-    // 2. Find or Create User in MongoDB
+// 2. Find or Create User in MongoDB
     let user = await prisma.user.findUnique({
       where: { email: payload.email },
     });
@@ -31,10 +31,17 @@ export async function POST(request: Request) {
           email: payload.email,
           name: payload.name || "VPN User",
           image: payload.picture || null,
+          googleImage: payload.picture || null, // 🚀 අලුත් කෑල්ල
         },
       });
+    } else {
+      // යූසර් හිටියත් ලොග් වෙද්දී Google පින්තූරේ අප්ඩේට් කරගන්නවා
+      user = await prisma.user.update({
+        where: { email: payload.email },
+        data: { googleImage: payload.picture || null } // 🚀 අලුත් කෑල්ල
+      });
     }
-
+    
     // 3. Create Session JWT
     const sessionToken = await signJwt({
       id: user.id,
