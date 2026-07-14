@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// 1. Admin Verification
 export async function getAdminData() {
   try {
     const cookieStore = await cookies();
@@ -18,12 +17,10 @@ export async function getAdminData() {
     const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
     return { authorized: true, users };
   } catch (error) {
-    console.error("Admin verification error:", error);
     return { authorized: false, users: [] };
   }
 }
 
-// 2. Update User Admin (VPN Configs)
 export async function updateUserAdmin(userId: string, data: any) {
   try {
     const cookieStore = await cookies();
@@ -44,12 +41,11 @@ export async function updateUserAdmin(userId: string, data: any) {
     });
     return { success: true, user: updatedUser };
   } catch (error) {
-    console.error("Error updating user:", error);
     return { success: false, error: "Failed to update user" };
   }
 }
 
-// 3. Update Profile Avatar (අලුත් එක 🚀)
+// 🚀 අලුත් Avatar Update Function එක (Default එකට යන්නත් පුළුවන්)
 export async function updateUserAvatar(imageUrl: string) {
   try {
     const cookieStore = await cookies();
@@ -57,21 +53,20 @@ export async function updateUserAvatar(imageUrl: string) {
     if (!sessionCookie?.value) throw new Error("Unauthorized");
 
     const payload = await verifyJwt(sessionCookie.value);
-    // 💡 FIX: AI එක දුන්න payload.userId වෙනුවට මෙතන payload.id පාවිච්චි කළා
     if (!payload || !payload.id) throw new Error("Unauthorized");
 
-    if (!imageUrl.startsWith("/avatars/avatar") || !imageUrl.endsWith(".gif")) {
+    // Allow empty string to reset to Default/Initials, or valid GIF
+    if (imageUrl !== "" && (!imageUrl.startsWith("/avatars/avatar") || !imageUrl.endsWith(".gif"))) {
       throw new Error("Invalid avatar selection");
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: payload.id as string },
-      data: { image: imageUrl }
+      data: { image: imageUrl === "" ? null : imageUrl } // "" ආවොත් null කරලා පරණ Google/Initials ගේනවා
     });
 
     return { success: true, image: updatedUser.image };
   } catch (error) {
-    console.error("Avatar update error:", error);
     return { success: false, error: "Failed to update avatar" };
   }
 }
