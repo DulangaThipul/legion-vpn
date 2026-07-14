@@ -2,7 +2,11 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { updateUserAvatar } from "@/lib/authActions";
 import DashboardMatrix from "@/components/DashboardMatrix";
+
+const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${i + 1}.gif`);
 
 const pricingRules: Record<string, Record<string, number>> = {
   "Airtel Old Sim 260 Package VPN": { "100GB": 400, "200GB": 600, "Unlimited": 800 },
@@ -26,7 +30,8 @@ const packages = {
   ]
 };
 
-export default function DashboardLayout({ user: initialUser }: { user: any }) {
+export default function DashboardTabs({ user: initialUser }: { user: any }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("configs");
   const [selectedProvider, setSelectedProvider] = useState<"Airtel" | "Dialog" | "SLT" | null>(null);
   
@@ -34,13 +39,12 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
   const [modalPackage, setModalPackage] = useState<string | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
 
-  // Profile Mock State
+  // Profile & Avatar State
   const [user, setUser] = useState(initialUser);
   const [editName, setEditName] = useState(user.name || "");
   const [editEmail, setEditEmail] = useState(user.email || "");
   const [avatar, setAvatar] = useState<string | null>(user.image);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleConfirmOrder = () => {
     if (!modalPackage || !selectedQuota) return;
@@ -54,16 +58,24 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setUser({ ...user, name: editName, email: editEmail, image: avatar });
-    alert("Profile updated successfully (Mocked)");
+    alert("Profile info saved successfully!");
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const objectUrl = URL.createObjectURL(file);
-      setAvatar(objectUrl);
+  const handleAvatarSelect = async (gifPath: string) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    
+    // Optimistic UI Update (හිස් ලින්ක් එකක් ආවොත් Google පින්තූරෙ දානවා)
+    setAvatar(gifPath === "" ? (initialUser.googleImage || null) : gifPath);
+    
+    const res = await updateUserAvatar(gifPath);
+    if (res.success) {
+      router.refresh(); 
+    } else {
+      alert("Error updating avatar!");
+      setAvatar(initialUser.image); // Revert on fail
     }
+    setIsUpdating(false);
   };
 
   const tabs = [
@@ -89,15 +101,16 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
       
       <main style={{ padding: "3rem 1.5rem", maxWidth: "1000px", margin: "0 auto", position: "relative" }}>
         
-        {/* Header - MOBILE OPTIMIZED & LINK ADDED */}
-        <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
+        {/* 🔥 HEADER - මාතෘකාව ඉබේම වෙනස් වෙනවා */}
+        <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", position: "relative", zIndex: 50 }}>
           <h1 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "300", letterSpacing: "1px" }}>
             {tabs.find(t => t.id === activeTab)?.label}
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            {/* Hidden on mobile, visible on medium (desktop/tablet) */}
             <span className="hidden md:block" style={{ fontWeight: "600", fontSize: "1.1rem" }}>{user.name}</span>
-            <Link href="/dashboard/profile" style={{ display: "block", cursor: "pointer" }}>
+            
+            {/* උඩ Profile පින්තූරේ එබුවම කෙලින්ම Profile Tab එකට යනවා (Popup එන්නේ නෑ) */}
+            <div onClick={() => setActiveTab("profile")} style={{ display: "block", cursor: "pointer" }}>
               {avatar ? (
                 <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid #FFFFFF", objectFit: "cover", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"} />
               ) : (
@@ -105,7 +118,7 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
                   {user.name.charAt(0).toUpperCase()}
                 </div>
               )}
-            </Link>
+            </div>
           </div>
         </header>
 
@@ -407,129 +420,89 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* PROFILE TAB (We leave this for backward compatibility if needed) */}
+          {/* 🔥 PROFILE TAB (අලුත් GIF Grid එක මෙතනයි තියෙන්නේ) */}
           {activeTab === "profile" && (
             <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
-              <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
+              <h2 style={{ marginBottom: "2rem", textAlign: "center", color: "#FFFFFF" }}>Edit Profile</h2>
               
-              <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 
-                {/* Avatar Upload Drop Zone */}
+                {/* Current Avatar Display */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{
-                      width: "120px",
-                      height: "120px",
-                      borderRadius: "50%",
-                      border: "2px dashed rgba(255,255,255,0.4)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      position: "relative",
-                      overflow: "hidden",
-                      background: "rgba(0,0,0,0.5)",
-                      transition: "all 0.3s ease"
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.borderColor = "#FFFFFF"}
-                    onMouseOut={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"}
-                  >
+                  <div style={{ width: "120px", height: "120px", borderRadius: "50%", border: "2px solid #FFFFFF", background: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {avatar ? (
-                      <img src={avatar} alt="Avatar Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={avatar} alt="Current Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
-                      <span style={{ fontSize: "2rem", color: "var(--muted-text)" }}>+</span>
+                      <span style={{ fontSize: "2.5rem", color: "#FFF" }}>{user?.name?.charAt(0).toUpperCase()}</span>
                     )}
-                    <div style={{ 
-                      position: "absolute", 
-                      bottom: 0, width: "100%", 
-                      background: "rgba(0,0,0,0.6)", 
-                      textAlign: "center", 
-                      padding: "5px",
-                      fontSize: "0.75rem",
-                      color: "#FFFFFF"
-                    }}>
-                      Upload
-                    </div>
                   </div>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    ref={fileInputRef} 
-                    style={{ display: "none" }} 
-                    onChange={handleAvatarChange}
-                  />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Full Name</label>
-                  <input 
-                    type="text" 
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    style={{ 
-                      width: "100%", 
-                      padding: "1rem", 
-                      background: "rgba(0,0,0,0.5)", 
-                      border: "1px solid rgba(255,255,255,0.2)", 
-                      color: "#FFFFFF",
-                      borderRadius: "8px",
-                      fontSize: "1rem"
-                    }} 
-                  />
+                {/* 9-Grid GIF Selector */}
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <h3 style={{ textAlign: "center", color: "var(--muted-text)", marginBottom: "1.2rem", fontSize: "0.95rem" }}>Choose your Avatar</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(60px, 1fr))", gap: "1rem", justifyItems: "center" }}>
+                    {AVAILABLE_AVATARS.map((gifPath) => (
+                      <div 
+                        key={gifPath}
+                        onClick={() => handleAvatarSelect(gifPath)}
+                        style={{
+                          width: "60px", height: "60px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", position: "relative", overflow: "hidden",
+                          border: avatar === gifPath ? "3px solid #3b82f6" : "2px solid transparent",
+                          boxShadow: avatar === gifPath ? "0 0 20px rgba(59, 130, 246, 0.6)" : "none",
+                          transform: avatar === gifPath ? "scale(1.1)" : "scale(1)",
+                          transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)",
+                          opacity: isUpdating && avatar !== gifPath ? 0.5 : 1
+                        }}
+                      >
+                        <img src={gifPath} alt="Avatar option" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Restore Google Image Button */}
+                  <button 
+                    onClick={() => handleAvatarSelect("")} 
+                    style={{ width: "100%", marginTop: "1.5rem", padding: "0.8rem", background: "rgba(255,0,0,0.1)", color: "#ff4444", borderRadius: "8px", border: "1px solid rgba(255,0,0,0.2)", cursor: "pointer", fontWeight: "bold" }}
+                  >
+                    Restore Google Image
+                  </button>
                 </div>
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Email Address</label>
-                  <input 
-                    type="email" 
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    style={{ 
-                      width: "100%", 
-                      padding: "1rem", 
-                      background: "rgba(0,0,0,0.5)", 
-                      border: "1px solid rgba(255,255,255,0.2)", 
-                      color: "#FFFFFF",
-                      borderRadius: "8px",
-                      fontSize: "1rem"
-                    }} 
-                  />
-                </div>
-                <button type="submit" className="btn" style={{ 
-                  background: "#FFFFFF", 
-                  color: "#000000", 
-                  fontWeight: "bold",
-                  padding: "1rem",
-                  marginTop: "1rem",
-                  fontSize: "1.1rem",
-                  borderRadius: "30px"
-                }}>
-                  Save Changes
-                </button>
-              </form>
+
+                {/* Info Form */}
+                <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginTop: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Full Name</label>
+                    <input 
+                      type="text" 
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Email Address</label>
+                    <input 
+                      type="email" 
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} 
+                    />
+                  </div>
+                  <button type="submit" className="btn hover:scale-105 transition-transform" style={{ background: "#FFFFFF", color: "#000000", fontWeight: "bold", padding: "1rem", marginTop: "1rem", fontSize: "1.1rem", borderRadius: "30px" }}>
+                    Save Changes
+                  </button>
+                </form>
+              </div>
             </div>
           )}
 
         </div>
       </main>
 
-      {/* LIQUID GLASS BUBBLE TASKBAR (WHITE CYBERPUNK THEME) */}
+      {/* LIQUID GLASS BUBBLE TASKBAR */}
       <nav style={{
-        position: "fixed",
-        bottom: "2rem",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        alignItems: "center",
-        gap: "0.5rem",
-        padding: "0.6rem",
-        background: "rgba(5, 5, 5, 0.8)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255, 255, 255, 0.2)",
-        borderRadius: "50px",
-        zIndex: 100,
-        boxShadow: "0 0 25px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255,255,255,0.05)"
+        position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.6rem", background: "rgba(5, 5, 5, 0.8)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.2)", borderRadius: "50px", zIndex: 100, boxShadow: "0 0 25px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255,255,255,0.05)"
       }}>
         {tabs.map(tab => {
           if (tab.isLink) {
@@ -537,28 +510,9 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
               <Link 
                 key={tab.id} 
                 href={tab.href as string}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "50px",
-                  height: "50px",
-                  borderRadius: "50%",
-                  color: "rgba(255,255,255,0.4)",
-                  textDecoration: "none",
-                  transition: "all 0.3s ease",
-                  background: "transparent"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.color = "#FFFFFF";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.color = "rgba(255,255,255,0.4)";
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.textShadow = "none";
-                }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "50px", height: "50px", borderRadius: "50%", color: "rgba(255,255,255,0.4)", textDecoration: "none", transition: "all 0.3s ease", background: "transparent" }}
+                onMouseOver={(e) => { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; }}
+                onMouseOut={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.textShadow = "none"; }}
               >
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{tab.icon}</span>
               </Link>
@@ -571,45 +525,13 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: isActive ? "0.8rem" : "0",
-                padding: isActive ? "0 1.5rem 0 1rem" : "0",
-                height: "50px",
-                minWidth: isActive ? "auto" : "50px",
-                width: isActive ? "auto" : "50px",
-                justifyContent: "center",
-                background: isActive ? "#FFFFFF" : "transparent",
-                color: isActive ? "#000000" : "rgba(255,255,255,0.4)",
-                borderRadius: "25px",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", 
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                boxShadow: isActive ? "0 0 20px rgba(255, 255, 255, 0.6)" : "none"
+                display: "flex", alignItems: "center", gap: isActive ? "0.8rem" : "0", padding: isActive ? "0 1.5rem 0 1rem" : "0", height: "50px", minWidth: isActive ? "auto" : "50px", width: isActive ? "auto" : "50px", justifyContent: "center", background: isActive ? "#FFFFFF" : "transparent", color: isActive ? "#000000" : "rgba(255,255,255,0.4)", borderRadius: "25px", border: "none", cursor: "pointer", transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden", boxShadow: isActive ? "0 0 20px rgba(255, 255, 255, 0.6)" : "none"
               }}
-              onMouseOver={(e) => { 
-                if (!isActive) {
-                  e.currentTarget.style.color = "#FFFFFF"; 
-                  e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)";
-                }
-              }}
-              onMouseOut={(e) => { 
-                if (!isActive) {
-                  e.currentTarget.style.color = "rgba(255,255,255,0.4)"; 
-                  e.currentTarget.style.textShadow = "none";
-                }
-              }}
+              onMouseOver={(e) => { if (!isActive) { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; } }}
+              onMouseOut={(e) => { if (!isActive) { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.textShadow = "none"; } }}
             >
               <span style={{ display: "flex", alignItems: "center", justifyContent: "center", textShadow: "none" }}>{tab.icon}</span>
-              <span style={{ 
-                maxWidth: isActive ? "150px" : "0px", 
-                opacity: isActive ? 1 : 0, 
-                transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
-                fontWeight: "bold", // <-- TEXT EXPLICITLY BOLD
-                fontSize: "1rem"
-              }}>
+              <span style={{ maxWidth: isActive ? "150px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "1rem" }}>
                 {tab.label}
               </span>
             </button>
@@ -619,72 +541,25 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
 
       {/* DYNAMIC QUOTA MODAL */}
       {modalPackage && (
-        <div style={{
-          position: "fixed",
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.8)",
-          backdropFilter: "blur(10px)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 9999,
-          animation: "fadeIn 0.3s ease"
-        }}>
-          <div className="glass-panel" style={{ 
-            width: "100%", 
-            maxWidth: "500px", 
-            padding: "3rem", 
-            background: "#0a0a0a",
-            position: "relative"
-          }}>
-            <button 
-              onClick={() => setModalPackage(null)}
-              style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "#FFFFFF", fontSize: "1.5rem", cursor: "pointer" }}
-            >
-              ✕
-            </button>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, animation: "fadeIn 0.3s ease" }}>
+          <div className="glass-panel" style={{ width: "100%", maxWidth: "500px", padding: "3rem", background: "#0a0a0a", position: "relative" }}>
+            <button onClick={() => setModalPackage(null)} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "#FFFFFF", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
             <h2 style={{ marginBottom: "0.5rem", fontSize: "1.5rem" }}>Select Data Quota</h2>
             <p style={{ color: "var(--muted-text)", marginBottom: "2rem" }}>{modalPackage}</p>
-
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
               {Object.entries(pricingRules[modalPackage] || {}).map(([quota, price]) => (
                 <button
-                  key={quota}
-                  onClick={() => setSelectedQuota(quota)}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "1.5rem",
-                    background: selectedQuota === quota ? "rgba(255,255,255,0.1)" : "transparent",
-                    border: "1px solid",
-                    borderColor: selectedQuota === quota ? "#FFFFFF" : "rgba(255,255,255,0.2)",
-                    borderRadius: "8px",
-                    color: "#FFFFFF",
-                    fontSize: "1.1rem",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease"
-                  }}
+                  key={quota} onClick={() => setSelectedQuota(quota)}
+                  style={{ display: "flex", justifyContent: "space-between", padding: "1.5rem", background: selectedQuota === quota ? "rgba(255,255,255,0.1)" : "transparent", border: "1px solid", borderColor: selectedQuota === quota ? "#FFFFFF" : "rgba(255,255,255,0.2)", borderRadius: "8px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer", transition: "all 0.2s ease" }}
                 >
                   <span style={{ fontWeight: selectedQuota === quota ? "bold" : "normal" }}>{quota}</span>
                   <span style={{ fontWeight: "bold" }}>RS {price}</span>
                 </button>
               ))}
             </div>
-
             <button 
-              className="btn"
-              onClick={handleConfirmOrder}
-              disabled={!selectedQuota}
-              style={{ 
-                width: "100%", 
-                padding: "1rem", 
-                background: selectedQuota ? "#FFFFFF" : "rgba(255,255,255,0.2)", 
-                color: selectedQuota ? "#000000" : "rgba(255,255,255,0.5)",
-                fontWeight: "bold",
-                fontSize: "1.1rem",
-                cursor: selectedQuota ? "pointer" : "not-allowed",
-                borderRadius: "30px"
-              }}
+              className="btn" onClick={handleConfirmOrder} disabled={!selectedQuota}
+              style={{ width: "100%", padding: "1rem", background: selectedQuota ? "#FFFFFF" : "rgba(255,255,255,0.2)", color: selectedQuota ? "#000000" : "rgba(255,255,255,0.5)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "30px" }}
             >
               Confirm Order via WhatsApp
             </button>
@@ -693,13 +568,8 @@ export default function DashboardLayout({ user: initialUser }: { user: any }) {
       )}
 
       <style>{`
-        @keyframes fadeInUp {
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </div>
   );
