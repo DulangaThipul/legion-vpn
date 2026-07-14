@@ -12,6 +12,8 @@ model User {
   email            String    @unique
   name             String
   image            String?
+  googleImage      String?
+}
   
   // VPN Details
   vpnStatus        String    @default("Inactive") // "Active" or "Inactive"
