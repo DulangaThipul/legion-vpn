@@ -50,7 +50,8 @@ function MatrixParticles() {
 
 export default function DashboardMatrix() {
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: -1, pointerEvents: "none" }}>
+    // 🚀 ඔයා ඉල්ලපු අලුත් Wrapper එක මෙතනට දැම්මා (100% width/height එක්ක)
+    <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, pointerEvents: "none" }}>
       <Canvas camera={{ position: [0, 0, 20], fov: 60 }} dpr={[1, 1.5]}>
         <color attach="background" args={["#030303"]} />
         <MatrixParticles />
