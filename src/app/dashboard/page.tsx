@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import DashboardTabs from "./DashboardTabs";
-import AntigravityWrapper from "@/components/AntigravityWrapper"; // 🚀 Antigravity Wrapper එක
 
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
