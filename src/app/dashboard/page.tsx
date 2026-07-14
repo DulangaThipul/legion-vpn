@@ -1,5 +1,6 @@
-import DashboardTabs from "./DashboardTabs";
+export const dynamic = "force-dynamic";
 
+import DashboardTabs from "./DashboardTabs";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,10 +12,13 @@ export default async function DashboardPage() {
   if (!sessionCookie?.value) redirect("/");
 
   const payload = await verifyJwt(sessionCookie.value);
-  if (!payload || !payload.userId) redirect("/");
+  
+  // 💡 FIX: payload.userId වෙනුවට payload.id ලෙස වෙනස් කරන ලදී
+  if (!payload || !payload.id) redirect("/"); 
 
   const user = await prisma.user.findUnique({ 
-    where: { id: payload.userId as string } 
+    // 💡 FIX: මෙතනත් payload.id ලෙස වෙනස් කරන ලදී
+    where: { id: payload.id as string } 
   });
   
   if (!user) redirect("/");
