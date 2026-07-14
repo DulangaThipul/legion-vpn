@@ -45,7 +45,7 @@ export async function updateUserAdmin(userId: string, data: any) {
   }
 }
 
-// 🚀 අලුත් Avatar Update Function එක (Default එකට යන්නත් පුළුවන්)
+// 🚀 අලුත් Avatar Update Function එක
 export async function updateUserAvatar(imageUrl: string) {
   try {
     const cookieStore = await cookies();
@@ -55,14 +55,20 @@ export async function updateUserAvatar(imageUrl: string) {
     const payload = await verifyJwt(sessionCookie.value);
     if (!payload || !payload.id) throw new Error("Unauthorized");
 
-    // Allow empty string to reset to Default/Initials, or valid GIF
-    if (imageUrl !== "" && (!imageUrl.startsWith("/avatars/avatar") || !imageUrl.endsWith(".gif"))) {
+    // යූසර්ගේ Google පින්තූරේ ගන්නවා
+    const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
+
+    let finalImage = imageUrl;
+    
+    if (imageUrl === "") {
+      finalImage = currentUser?.googleImage || ""; // හිස් ලින්ක් එකක් ආවොත් Google පින්තූරේ දානවා
+    } else if (!imageUrl.startsWith("/avatars/avatar") || !imageUrl.endsWith(".gif")) {
       throw new Error("Invalid avatar selection");
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: payload.id as string },
-      data: { image: imageUrl === "" ? null : imageUrl } // "" ආවොත් null කරලා පරණ Google/Initials ගේනවා
+      data: { image: finalImage === "" ? null : finalImage }
     });
 
     return { success: true, image: updatedUser.image };
