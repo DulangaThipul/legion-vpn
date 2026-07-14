@@ -13,10 +13,8 @@ model User {
   name             String
   image            String?
   googleImage      String?
-}
   
-  // VPN Details
-  vpnStatus        String    @default("Inactive") // "Active" or "Inactive"
+  vpnStatus        String    @default("Inactive")
   expiryDate       DateTime?
   vpnConfigKey     String?
   subscriptionLink String?
