@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
 function MatrixParticles() {
-  const count = 500; // Drastically reduced for performance
+  const count = 100; // Drastically reduced for performance
   const mesh = useRef<THREE.InstancedMesh>(null);
 
   const particles = useMemo(() => {
