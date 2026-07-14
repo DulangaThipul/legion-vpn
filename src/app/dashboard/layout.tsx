@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import DashboardHeader from "@/components/DashboardHeader";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -20,10 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-color)" }}>
-      {/* 🔮 Dashboard එකේ හැමතැනම පෙන්නන අලුත් Header එක */}
-      <DashboardHeader user={user} />
-      
-      {/* අනිත් පිටු වල කන්ටෙන්ට් එක (My Configs, Buy Configs etc.) මෙතනින් යටට වැටෙනවා */}
+      {/* 🔴 රතු රවුමේ තිබුණු Duplicate DashboardHeader එක මෙතනින් සම්පූර්ණයෙන්ම ඉවත් කළා */}
       <main>
         {children}
       </main>
