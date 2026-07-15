@@ -2,19 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
-// 🚀 පරණ ලෙඩ දෙන import එක වෙනුවට අලුත් ආරක්ෂිත තැනින් ගේනවා!
+import { useRouter } from "next/navigation"; // 🚀 අලුතින් ගෙනාවා (Refresh කරන්න)
 import { updateUserAdmin } from "@/lib/authActions";
 
 export default function AdminDashboardClient({ initialUsers }: { initialUsers: any[] }) {
   const [users, setUsers] = useState(initialUsers);
   const [toast, setToast] = useState<string | null>(null);
+  const router = useRouter(); // 🚀 අලුතින් දැම්මා
 
   const handleSave = async (userId: string, newConfig: string, newLink: string) => {
     try {
-      const response = await updateUserAdmin(userId, newConfig, newLink);
+      // 🚀 ලෙඩේ හැදුවා! Data යවන්නේ Object එකක් විදිහටයි
+      const response = await updateUserAdmin(userId, { 
+        vpnConfigKey: newConfig, 
+        subscriptionLink: newLink 
+      });
+      
       if (response.success) {
         setUsers(users.map(u => u.id === userId ? { ...u, vpnConfigKey: newConfig, subscriptionLink: newLink } : u));
         setToast("Changes saved to Database!");
+        router.refresh(); // 🚀 DB එකෙන් අලුත් දත්ත සැනින් Sync කරනවා
+      } else {
+        alert("Failed to save changes. Try again.");
       }
     } catch (error) {
       alert("Failed to save changes: " + (error as Error).message);
@@ -67,8 +76,8 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 }
 
 function UserAdminCard({ user, onSave }: { user: any, onSave: (id: string, config: string, link: string) => void }) {
-  const [config, setConfig] = useState(user.vpnConfigKey);
-  const [link, setLink] = useState(user.subscriptionLink);
+  const [config, setConfig] = useState(user.vpnConfigKey || "");
+  const [link, setLink] = useState(user.subscriptionLink || "");
 
   return (
     <div className="glass-panel animate-fade-in" style={{ 
