@@ -2,147 +2,163 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // 🚀 අලුතින් ගෙනාවා (Refresh කරන්න)
-import { updateUserAdmin } from "@/lib/authActions";
+import { useRouter } from "next/navigation";
+// import { updateAdvancedUserAdmin } from "@/lib/authActions"; // මේක අපි ඊළඟට හදනවා
 
 export default function AdminDashboardClient({ initialUsers }: { initialUsers: any[] }) {
   const [users, setUsers] = useState(initialUsers);
-  const [toast, setToast] = useState<string | null>(null);
-  const router = useRouter(); // 🚀 අලුතින් දැම්මා
+  const [search, setSearch] = useState("");
+  const router = useRouter();
 
-  const handleSave = async (userId: string, newConfig: string, newLink: string) => {
-    try {
-      // 🚀 ලෙඩේ හැදුවා! Data යවන්නේ Object එකක් විදිහටයි
-      const response = await updateUserAdmin(userId, { 
-        vpnConfigKey: newConfig, 
-        subscriptionLink: newLink 
-      });
-      
-      if (response.success) {
-        setUsers(users.map(u => u.id === userId ? { ...u, vpnConfigKey: newConfig, subscriptionLink: newLink } : u));
-        setToast("Changes saved to Database!");
-        router.refresh(); // 🚀 DB එකෙන් අලුත් දත්ත සැනින් Sync කරනවා
-      } else {
-        alert("Failed to save changes. Try again.");
-      }
-    } catch (error) {
-      alert("Failed to save changes: " + (error as Error).message);
-    }
-    setTimeout(() => setToast(null), 3000);
-  };
+  // Search Filter
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(search.toLowerCase()) || 
+    u.email.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <main style={{ padding: "3rem 1.5rem", maxWidth: "1200px", margin: "0 auto", position: "relative" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", flexWrap: "wrap", gap: "2rem" }}>
-        <h1 style={{ margin: 0, fontSize: "2.5rem", fontWeight: "300", display: "flex", alignItems: "center", gap: "1rem" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 10px rgba(255,255,255,0.8))" }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          Admin Command Center
+    <main style={{ padding: "3rem 1.5rem", maxWidth: "1200px", margin: "0 auto" }}>
+      
+      {/* Header Area */}
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1.5rem" }}>
+        <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "600", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
+          🛡️ Advanced Command Center
         </h1>
-        <Link href="/dashboard" style={{
-          color: "rgba(255,255,255,0.6)", textDecoration: "none", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "0.5rem", transition: "all 0.3s ease"
-        }}
-        onMouseOver={(e) => { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.5)"; }}
-        onMouseOut={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; e.currentTarget.style.textShadow = "none"; }}
-        >
-          ← Back to Dashboard
-        </Link>
+        <Link href="/dashboard" style={{ color: "#818cf8", textDecoration: "none", fontWeight: "bold" }}>← Back to Dashboard</Link>
       </header>
 
-      {toast && (
-        <div style={{
-          position: "fixed", top: "2rem", left: "50%", transform: "translateX(-50%)",
-          background: "#FFFFFF", color: "#000000", padding: "1rem 2rem", borderRadius: "30px",
-          fontWeight: "bold", boxShadow: "0 0 20px rgba(255,255,255,0.5)", zIndex: 1000,
-          animation: "fadeInDown 0.3s ease"
-        }}>
-          {toast}
-        </div>
-      )}
+      {/* Search Bar */}
+      <div style={{ marginBottom: "2rem" }}>
+        <input 
+          type="text" 
+          placeholder="Search users by name or email..." 
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: "100%", padding: "1rem 1.5rem", borderRadius: "12px", background: "rgba(15,15,20,0.8)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", fontSize: "1rem" }}
+        />
+      </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-        {users.map(user => (
-          <UserAdminCard key={user.id} user={user} onSave={handleSave} />
+      {/* Users List */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {filteredUsers.map(user => (
+          <UserAdvancedCard key={user.id} user={user} />
         ))}
       </div>
 
-      <style>{`
-        @keyframes fadeInDown {
-          from { opacity: 0; transform: translate(-50%, -20px); }
-          to { opacity: 1; transform: translate(-50%, 0); }
-        }
-      `}</style>
     </main>
   );
 }
 
-function UserAdminCard({ user, onSave }: { user: any, onSave: (id: string, config: string, link: string) => void }) {
-  const [config, setConfig] = useState(user.vpnConfigKey || "");
-  const [link, setLink] = useState(user.subscriptionLink || "");
+// 🚀 Individual User Card Component
+function UserAdvancedCard({ user }: { user: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const [alertMsg, setAlertMsg] = useState(user.alertMessage || "");
+  const [hiddenPkgs, setHiddenPkgs] = useState<string>(user.hiddenPackages?.join(", ") || "");
+
+  // Online Status Logic (Last 5 mins = Online)
+  const isOnline = new Date().getTime() - new Date(user.lastSeen || 0).getTime() < 5 * 60 * 1000;
+
+  const handleSave = async () => {
+    alert("Sending data to DB... (We will connect server action next!)");
+    // await updateAdvancedUserAdmin(user.id, { alertMessage: alertMsg, hiddenPackages: hiddenPkgs.split(",") });
+  };
 
   return (
-    <div className="glass-panel animate-fade-in" style={{ 
-      padding: "2rem", borderLeft: "4px solid #FFFFFF", display: "flex", gap: "3rem", flexWrap: "wrap",
-      background: "rgba(5,5,5,0.8)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(255,255,255,0.1)", borderRight: "1px solid rgba(255,255,255,0.1)", borderBottom: "1px solid rgba(255,255,255,0.1)"
+    <div style={{ 
+      background: "rgba(15,15,20,0.8)", 
+      border: `1px solid ${expanded ? "#6366f1" : "rgba(255,255,255,0.05)"}`, 
+      borderRadius: "16px", 
+      overflow: "hidden",
+      transition: "all 0.3s ease"
     }}>
-      <div style={{ flex: "1 1 250px", minWidth: "250px", borderRight: "1px solid rgba(255,255,255,0.1)", paddingRight: "2rem" }}>
-        <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.5rem" }}>{user.name}</h3>
-        <p style={{ margin: 0, color: "var(--muted-text)", fontSize: "1rem" }}>{user.email}</p>
-        <span style={{ 
-          display: "inline-block", marginTop: "1.5rem", padding: "0.4rem 1rem", 
-          background: "rgba(255,255,255,0.1)", borderRadius: "30px", fontSize: "0.8rem", 
-          border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", fontFamily: "'Courier New', Courier, monospace"
-        }}>
-          {user.id}
-        </span>
-      </div>
-
-      <div style={{ flex: "2 1 400px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        <div>
-          <label style={{ display: "block", marginBottom: "0.8rem", color: "var(--muted-text)", fontSize: "0.95rem" }}>VLESS Configuration Key</label>
-          <textarea 
-            value={config}
-            onChange={(e) => setConfig(e.target.value)}
-            style={{ 
-              width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "#FFFFFF", borderRadius: "8px", fontSize: "0.95rem", minHeight: "100px",
-              fontFamily: "'Courier New', Courier, monospace", resize: "vertical",
-              transition: "border 0.3s ease"
-            }}
-            onFocus={(e) => e.currentTarget.style.borderColor = "#FFFFFF"}
-            onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
-            placeholder="Paste VLESS Key here..."
-          />
-        </div>
-        <div>
-          <label style={{ display: "block", marginBottom: "0.8rem", color: "var(--muted-text)", fontSize: "0.95rem" }}>Subscription / Usage Link</label>
-          <input 
-            type="text" 
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            style={{ 
-              width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem",
-              transition: "border 0.3s ease"
-            }}
-            onFocus={(e) => e.currentTarget.style.borderColor = "#FFFFFF"}
-            onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
-            placeholder="https://legionvpn.com/my-usage/..."
-          />
+      
+      {/* 🟢 CARD HEADER (Click to Expand) */}
+      <div 
+        onClick={() => setExpanded(!expanded)}
+        style={{ padding: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: expanded ? "rgba(99,102,241,0.05)" : "transparent" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {/* Avatar & Online Dot */}
+          <div style={{ position: "relative" }}>
+            <img src={user.image || `https://ui-avatars.com/api/?name=${user.name}`} alt={user.name} style={{ width: "50px", height: "50px", borderRadius: "50%", objectFit: "cover" }} />
+            <div style={{ position: "absolute", bottom: 0, right: 0, width: "12px", height: "12px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#ef4444", border: "2px solid #1a1a2e" }} />
+          </div>
+          <div>
+            <h3 style={{ margin: "0 0 0.2rem 0", fontSize: "1.2rem", color: "#FFF" }}>{user.name}</h3>
+            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>{user.email}</p>
+          </div>
         </div>
         
-        <button 
-          onClick={() => onSave(user.id, config, link)}
-          style={{ 
-            alignSelf: "flex-end", padding: "0.8rem 2.5rem", background: "#FFFFFF", color: "#000000",
-            fontWeight: "bold", fontSize: "1.1rem", border: "none", borderRadius: "30px", cursor: "pointer",
-            transition: "all 0.3s ease", boxShadow: "0 0 15px rgba(255,255,255,0.2)", marginTop: "0.5rem"
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 0 25px rgba(255,255,255,0.6)"; e.currentTarget.style.transform = "scale(1.02)"; }}
-          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 0 15px rgba(255,255,255,0.2)"; e.currentTarget.style.transform = "scale(1)"; }}
-        >
-          Save Changes
-        </button>
+        {/* Badges (Mobile Friendly) */}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {user.alertMessage && <span style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "4px 8px", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "bold" }}>Has Alert</span>}
+          <div style={{ color: "var(--muted-text)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "0.3s" }}>▼</div>
+        </div>
       </div>
+
+      {/* 🟡 EXPANDED CONTENT AREA */}
+      {expanded && (
+        <div style={{ padding: "2rem", borderTop: "1px solid rgba(255,255,255,0.05)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem" }}>
+          
+          {/* SECTION 1: Warning & Alerts */}
+          <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <h4 style={{ margin: "0 0 1rem 0", color: "#ef4444", display: "flex", alignItems: "center", gap: "8px" }}>⚠️ Custom Alert / Warning</h4>
+            <p style={{ fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "1rem" }}>Show a red warning message on Kusal's dashboard (e.g. "Payment Due!").</p>
+            <textarea 
+              value={alertMsg}
+              onChange={(e) => setAlertMsg(e.target.value)}
+              placeholder="Type warning message here..."
+              style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", minHeight: "80px", marginBottom: "1rem" }}
+            />
+          </div>
+
+          {/* SECTION 2: Package Restrictions */}
+          <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <h4 style={{ margin: "0 0 1rem 0", color: "#FFF" }}>🚫 Hide Packages</h4>
+            <p style={{ fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "1rem" }}>Enter package names separated by commas to hide them from this user.</p>
+            <input 
+              type="text" 
+              value={hiddenPkgs}
+              onChange={(e) => setHiddenPkgs(e.target.value)}
+              placeholder="e.g. Dialog Router, SLT Fiber"
+              style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF" }}
+            />
+          </div>
+
+          {/* SECTION 3: Multiple VPN Configs (Preview) */}
+          <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.2)", gridColumn: "1 / -1" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h4 style={{ margin: 0, color: "#818cf8" }}>🔗 User's VPN Configs</h4>
+              <button style={{ background: "#6366f1", color: "#FFF", border: "none", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" }}>+ Add New Config</button>
+            </div>
+            
+            {/* Mock Display of Multiple Configs */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize: "0.75rem", color: "#22c55e", fontWeight: "bold" }}>ROUTER VPN</span>
+                <p style={{ margin: "5px 0", fontFamily: "monospace", color: "#FFF" }}>vless://6a71ee8a...</p>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize: "0.75rem", color: "#a855f7", fontWeight: "bold" }}>MOBILE VPN</span>
+                <p style={{ margin: "5px 0", fontFamily: "monospace", color: "#FFF" }}>vless://mobile-code...</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button for this User */}
+          <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+            <button 
+              onClick={handleSave}
+              style={{ background: "#FFF", color: "#000", padding: "1rem 3rem", borderRadius: "30px", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer", transition: "transform 0.2s" }}
+              onMouseOver={e => e.currentTarget.style.transform = "scale(1.05)"}
+              onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+            >
+              Save Changes for {user.name.split(" ")[0]}
+            </button>
+          </div>
+
+        </div>
+      )}
     </div>
   );
 }
