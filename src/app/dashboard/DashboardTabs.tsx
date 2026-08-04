@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar } from "@/lib/authActions";
@@ -30,14 +30,23 @@ const packages = {
   ]
 };
 
+// 🚀 අලුතින් එකතු කරපු Test Packages ලිස්ට් එක (CloudNet එකේ විදිහටම)
+const testPackages = [
+  { provider: "DIALOG ROUTER", name: "Dialog Zoom Unlimited Rs.724", desc: "3GB Data You Can Use For Testing..." },
+  { provider: "SLT ROUTER/FIBER", name: "SLT Zoom 30GB/Rs.195 & 100GB/Rs.490", desc: "3GB Data You Can Use For Testing..." },
+  { provider: "SLT ROUTER/FIBER", name: "SLT Unlimited Entertainment/Netflix Unlimited - Rs.1990", desc: "This is Unlimited Plan" },
+  { provider: "AIRTEL", name: "Airtel TikTok Unlimited - Rs.297/1 week , Rs.997/1 month", desc: "This is Unlimited Plan" }
+];
+
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
-  // 🚀 Default tab එක දැන් "dashboard" (Overview)
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedProvider, setSelectedProvider] = useState<"Airtel" | "Dialog" | "SLT" | null>(null);
-  
   const [modalPackage, setModalPackage] = useState<string | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
+  
+  // 🚀 Test Plans පෙන්නන්න හදපු අලුත් State එක
+  const [showTestPlans, setShowTestPlans] = useState(false);
 
   const [user, setUser] = useState(initialUser);
   const [editName, setEditName] = useState(user.name || "");
@@ -49,8 +58,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (!modalPackage || !selectedQuota) return;
     const price = pricingRules[modalPackage][selectedQuota];
     const message = `Hi, I want to purchase the ${modalPackage} with ${selectedQuota} Quota (RS ${price}).`;
-    const whatsappUrl = `https://wa.me/94753403800?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank");
+    window.open(`https://wa.me/94753403800?text=${encodeURIComponent(message)}`, "_blank");
     setModalPackage(null);
     setSelectedQuota(null);
   };
@@ -75,7 +83,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setIsUpdating(false);
   };
 
-  // 🚀 අලුත් Tabs ටික (Icons එක්ක)
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
     { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
@@ -119,67 +126,75 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </header>
 
         <div>
-          {/* 1. DASHBOARD OVERVIEW TAB (අලුත් එක) */}
+          {/* 1. DASHBOARD OVERVIEW TAB */}
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
-              {/* No Active VPN Plans Banner */}
-              <div className="glass-panel" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.6 }}>👻</div>
-                <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>No Active VPN Plans</h2>
-                <p style={{ color: "var(--muted-text)", marginBottom: "2rem" }}>You don't have any active subscriptions yet.</p>
-                <div style={{ background: "rgba(99, 102, 241, 0.1)", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "1rem 2rem", borderRadius: "12px", display: "inline-block", marginBottom: "2rem" }}>
-                  <p style={{ margin: 0, color: "#818cf8", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>🎁 Free Trial Available!</p>
-                  <p style={{ margin: "0.3rem 0 0 0", fontSize: "0.9rem", color: "rgba(255,255,255,0.6)" }}>Get 3GB / 1 days free. Visit the store to activate.</p>
+              
+              {!showTestPlans ? (
+                <div className="glass-panel animate-fade-in" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px", maxWidth: "800px", margin: "0 auto", width: "100%" }}>
+                  <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem", color: "#FFF" }}>No Active VPN Plans</h2>
+                  <p style={{ color: "var(--muted-text)", marginBottom: "2.5rem" }}>You don't have any active subscriptions yet.</p>
+                  
+                  <button onClick={() => setShowTestPlans(true)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "8px", fontWeight: "bold", border: "none", color: "#FFF", cursor: "pointer", transition: "transform 0.2s", boxShadow: "0 10px 20px rgba(99, 102, 241, 0.3)", fontSize: "1.1rem" }} onMouseOver={e => e.currentTarget.style.transform="scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform="scale(1)"}>
+                    Get a test plan →
+                  </button>
                 </div>
-                <br/>
-                <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "0.8rem 3rem", borderRadius: "8px", fontWeight: "bold", border: "none", color: "#FFF", cursor: "pointer", transition: "transform 0.2s", boxShadow: "0 10px 20px rgba(99, 102, 241, 0.3)" }} onMouseOver={e => e.currentTarget.style.transform="scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform="scale(1)"}>
-                  Get VPN Now →
-                </button>
-              </div>
+              ) : (
+                <div className="animate-fade-in">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
+                     <div>
+                       <h2 style={{ fontSize: "1.6rem", color: "#FFF", margin: "0 0 0.5rem 0" }}>Choose a Test Plan</h2>
+                       <p style={{ color: "var(--muted-text)", margin: 0, fontSize: "0.95rem" }}>Select a trial package to test our premium speeds.</p>
+                     </div>
+                     <button onClick={() => setShowTestPlans(false)} style={{ background: "rgba(255,255,255,0.05)", color: "#FFF", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1.5rem", borderRadius: "8px", cursor: "pointer", transition: "background 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+                       ← Back
+                     </button>
+                  </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-                {/* Account Overview Card */}
-                <div className="glass-panel" style={{ padding: "2rem", background: "rgba(15, 15, 20, 0.6)" }}>
-                  <h3 style={{ fontSize: "1.2rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}><span style={{ color: "#6366f1" }}>@</span> Account Overview</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-                    <div>
-                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>FULL NAME</p>
-                      <p style={{ margin: 0, fontWeight: "500" }}>{user.name}</p>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>USERNAME</p>
-                      <p style={{ margin: 0, fontWeight: "500" }}>@{user.name.split(' ')[0].toLowerCase()}</p>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>EMAIL</p>
-                      <p style={{ margin: 0, fontWeight: "500", wordBreak: "break-all", fontSize: "0.95rem" }}>{user.email}</p>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>WHATSAPP</p>
-                      <p style={{ margin: 0, fontWeight: "500", color: "var(--muted-text)" }}>—</p>
-                    </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+                    {testPackages.map((pkg, index) => (
+                      <div key={index} className="glass-panel" style={{ 
+                        display: "flex", flexDirection: "column", padding: "2rem", transition: "all 0.3s ease",
+                        background: "rgba(18, 18, 28, 0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", position: "relative"
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)"; e.currentTarget.style.transform = "translateY(-5px)"; }} 
+                      onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
+                           <span style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", padding: "4px 10px", borderRadius: "6px", fontSize: "0.75rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "5px", letterSpacing: "1px" }}>
+                              🧪 TEST
+                           </span>
+                           <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: "1.2rem" }}>FREE</span>
+                        </div>
+
+                        <div style={{ marginBottom: "1.5rem", flex: 1 }}>
+                          <p style={{ fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px", marginBottom: "0.5rem", textTransform: "uppercase" }}>{pkg.provider}</p>
+                          <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.3rem", lineHeight: 1.4, fontWeight: "600", color: "#FFF", minHeight: "55px" }}>{pkg.name}</h3>
+
+                          <div style={{ borderLeft: "3px solid #6366f1", paddingLeft: "1rem", marginBottom: "1.5rem" }}>
+                             <p style={{ color: "var(--muted-text)", fontSize: "0.95rem", lineHeight: 1.6, margin: 0 }}>{pkg.desc}</p>
+                          </div>
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", color: "#818cf8", fontSize: "0.85rem" }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                              {pkg.name.substring(0, 30)}...
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", color: "#818cf8", fontSize: "0.85rem" }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                              Auto
+                            </div>
+                          </div>
+                        </div>
+
+                        <button onClick={() => window.open(`https://wa.me/94753403800?text=${encodeURIComponent(`Hi, I would like to activate a FREE Trial for: ${pkg.name}`)}`, "_blank")} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #6366f1, #a855f7)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: "pointer", transition: "opacity 0.2s" }} onMouseOver={(e) => e.currentTarget.style.opacity = 0.9} onMouseOut={(e) => e.currentTarget.style.opacity = 1}>
+                          🚀 Activate Free Trial
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                {/* Quick Links Card */}
-                <div className="glass-panel" style={{ padding: "2rem", background: "rgba(15, 15, 20, 0.6)" }}>
-                  <h3 style={{ fontSize: "1.1rem", marginBottom: "1.5rem", color: "var(--muted-text)", letterSpacing: "1px" }}>QUICK LINKS</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    <button onClick={() => setActiveTab("tutorials")} style={{ display: "flex", justifyContent: "space-between", background: "transparent", border: "none", color: "#FFF", padding: "0.8rem 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "1rem" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>📱 Download VPN Apps</span>
-                      <span style={{ color: "var(--muted-text)" }}>→</span>
-                    </button>
-                    <button onClick={() => setActiveTab("tutorials")} style={{ display: "flex", justifyContent: "space-between", background: "transparent", border: "none", color: "#FFF", padding: "0.8rem 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "1rem" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>📖 Setup Tutorials</span>
-                      <span style={{ color: "var(--muted-text)" }}>→</span>
-                    </button>
-                    <button onClick={() => setActiveTab("tickets")} style={{ display: "flex", justifyContent: "space-between", background: "transparent", border: "none", color: "#FFF", padding: "0.8rem 0", cursor: "pointer", fontSize: "1rem" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>🎧 Open Support Ticket</span>
-                      <span style={{ color: "var(--muted-text)" }}>→</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -193,10 +208,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                   <p style={{ color: "var(--muted-text)", lineHeight: 1.8, fontSize: "1.05rem", margin: 0 }}>
-                    Legion VPN bypasses localized ISP restrictions (Airtel/Dialog/SLT) by routing your traffic through an encrypted AES-256 VLESS/Reality Secure Tunnel. This masks your SNI (Server Name Indication) packet data, turning restricted host payloads into unsecured white-listed traffic.
+                    Legion VPN bypasses localized ISP restrictions (Airtel/Dialog/SLT) by routing your traffic through an encrypted AES-256 VLESS/Reality Secure Tunnel.
                   </p>
                   <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.8, fontSize: "0.95rem", margin: 0, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "1.5rem" }}>
-                    Legion VPN මගින් ඔබගේ අන්තර්ජාල සේවා සපයන්නාගේ (Airtel/Dialog/SLT) සීමාවන් මගහැර, ඔබගේ දත්ත AES-256 VLESS/Reality Secure Tunnel එකක් හරහා සංකේතනය කර යවයි.
+                    Legion VPN මගින් ඔබගේ අන්තර්ජාල සේවා සපයන්නාගේ (Airtel/Dialog/SLT) සීමාවන් මගහැර, ඔබගේ දත්ත සංකේතනය කර යවයි.
                   </p>
                 </div>
               </div>
@@ -208,22 +223,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     className="btn" 
                     onClick={() => user.subscriptionLink ? window.open(user.subscriptionLink, "_blank") : alert("Usage link not available.")}
                     style={{ background: "rgba(99, 102, 241, 0.1)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "0.5rem 1.5rem", fontSize: "0.9rem", borderRadius: "8px", cursor: "pointer", transition: "all 0.3s ease" }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = "#6366f1"; e.currentTarget.style.color = "#FFF"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = "rgba(99, 102, 241, 0.1)"; e.currentTarget.style.color = "#818cf8"; }}
                   >
                     📊 View Usage
                   </button>
                 </div>
                 <div style={{ background: "#050505", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", gap: "1.5rem", wordBreak: "break-all" }}>
-                  <code style={{ color: "#FFFFFF", fontSize: "1rem", fontFamily: "'Courier New', Courier, monospace" }}>
+                  <code style={{ color: "#FFFFFF", fontSize: "1rem", fontFamily: "'Courier New', Courier, monospace", whiteSpace: "pre-wrap" }}>
                     {user.vpnConfigKey || "No config assigned yet. Please purchase a package from the Store."}
                   </code>
                   {user.vpnConfigKey && (
                     <button 
                       className="btn" 
-                      style={{ alignSelf: "flex-start", background: "#FFFFFF", color: "#000000", fontWeight: "bold", border: "none", padding: "0.8rem 2.5rem", fontSize: "1rem", cursor: "pointer", borderRadius: "8px", transition: "transform 0.2s ease" }}
-                      onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-                      onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      style={{ alignSelf: "flex-start", background: "#FFFFFF", color: "#000000", fontWeight: "bold", border: "none", padding: "0.8rem 2.5rem", fontSize: "1rem", cursor: "pointer", borderRadius: "8px" }}
                       onClick={() => { navigator.clipboard.writeText(user.vpnConfigKey); alert("Copied to clipboard!"); }}
                     >
                       Copy Key
@@ -270,8 +281,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2.5rem", transition: "all 0.3s ease",
                       background: "rgba(18, 18, 28, 0.8)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", position: "relative"
                     }}
-                    onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)"; e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.4)"; }} 
-                    onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                    onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)"; e.currentTarget.style.transform = "translateY(-5px)"; }} 
+                    onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}>
                       
                       <div style={{ marginBottom: "1.5rem" }}>
                         <span style={{ display: "inline-block", padding: "0.3rem 0.8rem", background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "1.5rem" }}>
@@ -282,14 +293,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <p style={{ color: "var(--muted-text)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
                           This is an optimized plan. Once your data quota is used up, you will need to reactivate the data package.
                         </p>
-                        
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", color: "#6366f1", fontSize: "0.85rem", marginBottom: "1rem" }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                          Auto Delivery Configs
-                        </div>
                       </div>
 
-                      <button onClick={() => { setModalPackage(pkg.name); setSelectedQuota(null); }} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: "pointer", transition: "transform 0.2s", marginTop: "auto" }} onMouseOver={(e) => e.currentTarget.style.opacity = 0.9} onMouseOut={(e) => e.currentTarget.style.opacity = 1}>
+                      <button onClick={() => { setModalPackage(pkg.name); setSelectedQuota(null); }} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: "pointer", transition: "transform 0.2s", marginTop: "auto" }}>
                         🛒 Buy Now
                       </button>
                     </div>
@@ -299,7 +305,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 4. TUTORIALS & APPS TAB (අලුත් එක) */}
+          {/* 4. TUTORIALS & APPS TAB */}
           {activeTab === "tutorials" && (
             <div className="animate-fade-in flex flex-col gap-8">
               <div>
@@ -312,14 +318,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ flex: 1 }}>
                       <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>NetMod PC & Android</h4>
                       <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>How to use with VLESS code</p>
-                      <button style={{ marginTop: "1rem", background: "rgba(99, 102, 241, 0.1)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "0.4rem 0", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", width: "100%", fontWeight: "bold" }}>Watch Video</button>
-                    </div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", background: "rgba(15, 15, 20, 0.6)" }}>
-                    <div style={{ width: "50px", height: "50px", background: "rgba(239, 68, 68, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444", flexShrink: 0 }}>▶</div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>V2Box Mobile (iOS)</h4>
-                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>How to setup on iPhone</p>
                       <button style={{ marginTop: "1rem", background: "rgba(99, 102, 241, 0.1)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "0.4rem 0", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", width: "100%", fontWeight: "bold" }}>Watch Video</button>
                     </div>
                   </div>
@@ -339,33 +337,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <button onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna", "_blank")} style={{ marginTop: "1rem", background: "transparent", color: "#818cf8", border: "none", padding: "0", fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "bold" }}>📥 Download App</button>
                     </div>
                   </div>
-                  <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", background: "rgba(15, 15, 20, 0.6)" }}>
-                    <div style={{ width: "50px", height: "50px", background: "rgba(34, 197, 94, 0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#22c55e", fontSize: "1.5rem", flexShrink: 0 }}>⏵</div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>V2Box</h4>
-                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>Easy to use client (iOS)</p>
-                      <button onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")} style={{ marginTop: "1rem", background: "transparent", color: "#818cf8", border: "none", padding: "0", fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "bold" }}>📥 Download App</button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 5. SUPPORT TICKETS TAB (අලුත් එක) */}
+          {/* 5. SUPPORT TICKETS TAB */}
           {activeTab === "tickets" && (
             <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
               <div className="glass-panel" style={{ width: "100%", padding: "3rem", textAlign: "center", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px" }}>
                 <h2 style={{ fontSize: "1.8rem", marginBottom: "1rem" }}>Support Tickets</h2>
-                <p style={{ color: "var(--muted-text)", marginBottom: "2rem", maxWidth: "500px", margin: "0 auto 2rem auto" }}>Need help with your VPN configuration or package? Open a support ticket and our team will assist you.</p>
-                <button style={{ background: "#FFF", color: "#000", fontWeight: "bold", padding: "0.8rem 2.5rem", borderRadius: "30px", border: "none", cursor: "pointer", transition: "transform 0.2s" }} onMouseOver={e => e.currentTarget.style.transform="scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform="scale(1)"}>
-                  + Create New Ticket
-                </button>
-              </div>
-              <div className="glass-panel" style={{ width: "100%", padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.5 }}>🎫</div>
-                <h3 style={{ marginBottom: "0.5rem", fontSize: "1.3rem" }}>No Tickets Found</h3>
-                <p style={{ color: "var(--muted-text)", fontSize: "0.95rem" }}>You haven't opened any support tickets yet.</p>
+                <p style={{ color: "var(--muted-text)", marginBottom: "2rem", maxWidth: "500px", margin: "0 auto 2rem auto" }}>Need help with your VPN configuration or package? Open a support ticket.</p>
+                <button style={{ background: "#FFF", color: "#000", fontWeight: "bold", padding: "0.8rem 2.5rem", borderRadius: "30px", border: "none", cursor: "pointer" }}>+ Create New Ticket</button>
               </div>
             </div>
           )}
@@ -395,7 +378,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </div>
                     ))}
                   </div>
-                  <button onClick={() => handleAvatarSelect("")} style={{ width: "100%", marginTop: "1.5rem", padding: "0.8rem", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderRadius: "8px", border: "1px solid rgba(239, 68, 68, 0.3)", cursor: "pointer", fontWeight: "bold" }}>Restore Google Image</button>
                 </div>
 
                 <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginTop: "1rem" }}>
@@ -409,7 +391,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       </main>
 
-      {/* 🚀 LIQUID GLASS BUBBLE TASKBAR (OPTIMIZED FOR 6 TABS) */}
+      {/* LIQUID GLASS BUBBLE TASKBAR */}
       <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.5rem", background: "rgba(5, 5, 10, 0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "50px", zIndex: 100, boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.05)" }}>
         {tabs.map(tab => {
           if (tab.isLink) {
@@ -429,7 +411,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         })}
       </nav>
 
-      {/* DYNAMIC QUOTA MODAL */}
+      {/* DYNAMIC QUOTA MODAL FOR STORE */}
       {modalPackage && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, animation: "fadeIn 0.3s ease" }}>
           <div className="glass-panel" style={{ width: "100%", maxWidth: "500px", padding: "2.5rem", background: "#0a0a0f", position: "relative", border: "1px solid rgba(99, 102, 241, 0.3)", borderRadius: "16px" }}>
@@ -449,7 +431,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* 🔥 MEDIA QUERIES FOR MOBILE OPTIMIZATION */}
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -457,7 +438,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         @media (max-width: 768px) {
           .desktop-name { display: none !important; }
           .dashboard-title { font-size: 1.5rem !important; }
-          .taskbar-label { display: none !important; } /* Hide text on very small screens to fit 6 icons */
+          .taskbar-label { display: none !important; } 
         }
         @media (min-width: 769px) {
           .dashboard-title { font-size: 2rem !important; }
