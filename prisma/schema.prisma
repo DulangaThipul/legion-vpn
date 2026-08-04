@@ -14,6 +14,14 @@ model User {
   image            String?
   googleImage      String?
   
+  
+  lastSeen         DateTime  @default(now()) 
+  alertMessage     String?   
+  hiddenPackages   String[]  
+  pastNames        String[]  
+
+  vpns             VpnConfig[] 
+
   vpnStatus        String    @default("Inactive")
   expiryDate       DateTime?
   vpnConfigKey     String?
@@ -22,6 +30,19 @@ model User {
   reviews          Review[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+}
+
+model VpnConfig {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  
+  name       String   // උදා: "Dialog Router VPN", "Airtel Mobile VPN"
+  configKey  String   // VLESS Code එක
+  usageLink  String?  // Link එක
+  status     String   @default("Active") // "Active" or "Expired"
+  
+  createdAt  DateTime @default(now())
 }
 
 model Review {
