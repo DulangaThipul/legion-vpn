@@ -26,13 +26,14 @@ const packages = {
   ],
   SLT: [
     { name: "SLT 4G/Fiber Router 490 Zoom 100GB Package" },
-    { name: "SLT Fiber 1990 Unlimited (650+ Mbps+)" }
+    { name: "SLT Fiber 1990 Unlimited" }
   ]
 };
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("configs");
+  // 🚀 Default tab එක දැන් "dashboard" (Overview)
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedProvider, setSelectedProvider] = useState<"Airtel" | "Dialog" | "SLT" | null>(null);
   
   const [modalPackage, setModalPackage] = useState<string | null>(null);
@@ -62,7 +63,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const handleAvatarSelect = async (gifPath: string) => {
     if (isUpdating) return;
     setIsUpdating(true);
-    
     setAvatar(gifPath === "" ? (initialUser.googleImage || null) : gifPath);
     
     const res = await updateUserAvatar(gifPath);
@@ -75,97 +75,153 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setIsUpdating(false);
   };
 
+  // 🚀 අලුත් Tabs ටික (Icons එක්ක)
   const tabs = [
-    { id: "configs", label: "My Configs", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> },
-    { id: "buy", label: "Buy Config", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg> },
-    { id: "profile", label: "Profile", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> },
-    { id: "home", label: "Home", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>, isLink: true, href: "/" }
+    { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
+    { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
+    { id: "buy", label: "Store", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg> },
+    { id: "tutorials", label: "Tutorials", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> },
+    { id: "tickets", label: "Tickets", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> },
+    { id: "profile", label: "Profile", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> }
   ];
 
   if (user.email === "dulangathipul@gmail.com") {
-    tabs.push({ 
-      id: "admin", label: "Admin Panel", 
-      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, 
-      isLink: true, href: "/dashboard/admin" 
-    });
+    tabs.push({ id: "admin", label: "Admin", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, isLink: true, href: "/dashboard/admin" });
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative", zIndex: 1 }}>
       <DashboardMatrix />
       
-      <main style={{ padding: "3rem 1.5rem", maxWidth: "1000px", margin: "0 auto", position: "relative" }}>
+      <main style={{ padding: "3rem 1.5rem", maxWidth: "1100px", margin: "0 auto", position: "relative" }}>
         
-        {/* 🔥 HEADER - MOBILE OPTIMIZED */}
+        {/* HEADER */}
         <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", position: "relative", zIndex: 50 }}>
-          
-          {/* Dashboard Title - Now responsive and won't wrap */}
-          <h1 className="dashboard-title" style={{ margin: 0, fontWeight: "300", letterSpacing: "1px", whiteSpace: "nowrap" }}>
+          <h1 className="dashboard-title" style={{ margin: 0, fontWeight: "600", letterSpacing: "0.5px", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "10px" }}>
+            {tabs.find(t => t.id === activeTab)?.icon} 
             {tabs.find(t => t.id === activeTab)?.label}
           </h1>
           
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            
-            {/* User Name - Only visible on PC/Desktop */}
-            <span className="desktop-name" style={{ fontWeight: "600", fontSize: "1.1rem" }}>
-              {user.name}
+            <span className="desktop-name" style={{ fontWeight: "600", fontSize: "1rem", color: "var(--muted-text)" }}>
+              {user.name} <br/><span style={{ fontSize: "0.75rem", color: "#6366f1" }}>Premium User</span>
             </span>
-            
-            {/* Profile Avatar (Always visible) */}
             <div onClick={() => setActiveTab("profile")} style={{ display: "block", cursor: "pointer", flexShrink: 0 }}>
               {avatar ? (
-                <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid #FFFFFF", objectFit: "cover", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"} />
+                <img src={avatar} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", objectFit: "cover", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"} />
               ) : (
-                <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "#333", border: "2px solid #FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}>
+                <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "#333", border: "2px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.3s ease" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.1)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}>
                   {user.name.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
-            
           </div>
         </header>
 
         <div>
-          {/* MY CONFIGS TAB */}
+          {/* 1. DASHBOARD OVERVIEW TAB (අලුත් එක) */}
+          {activeTab === "dashboard" && (
+            <div className="flex flex-col gap-6 animate-fade-in">
+              {/* No Active VPN Plans Banner */}
+              <div className="glass-panel" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.6 }}>👻</div>
+                <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>No Active VPN Plans</h2>
+                <p style={{ color: "var(--muted-text)", marginBottom: "2rem" }}>You don't have any active subscriptions yet.</p>
+                <div style={{ background: "rgba(99, 102, 241, 0.1)", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "1rem 2rem", borderRadius: "12px", display: "inline-block", marginBottom: "2rem" }}>
+                  <p style={{ margin: 0, color: "#818cf8", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>🎁 Free Trial Available!</p>
+                  <p style={{ margin: "0.3rem 0 0 0", fontSize: "0.9rem", color: "rgba(255,255,255,0.6)" }}>Get 3GB / 1 days free. Visit the store to activate.</p>
+                </div>
+                <br/>
+                <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "0.8rem 3rem", borderRadius: "8px", fontWeight: "bold", border: "none", color: "#FFF", cursor: "pointer", transition: "transform 0.2s", boxShadow: "0 10px 20px rgba(99, 102, 241, 0.3)" }} onMouseOver={e => e.currentTarget.style.transform="scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform="scale(1)"}>
+                  Get VPN Now →
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+                {/* Account Overview Card */}
+                <div className="glass-panel" style={{ padding: "2rem", background: "rgba(15, 15, 20, 0.6)" }}>
+                  <h3 style={{ fontSize: "1.2rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}><span style={{ color: "#6366f1" }}>@</span> Account Overview</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                    <div>
+                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>FULL NAME</p>
+                      <p style={{ margin: 0, fontWeight: "500" }}>{user.name}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>USERNAME</p>
+                      <p style={{ margin: 0, fontWeight: "500" }}>@{user.name.split(' ')[0].toLowerCase()}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>EMAIL</p>
+                      <p style={{ margin: 0, fontWeight: "500", wordBreak: "break-all", fontSize: "0.95rem" }}>{user.email}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 0.3rem 0", fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "1px" }}>WHATSAPP</p>
+                      <p style={{ margin: 0, fontWeight: "500", color: "var(--muted-text)" }}>—</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Links Card */}
+                <div className="glass-panel" style={{ padding: "2rem", background: "rgba(15, 15, 20, 0.6)" }}>
+                  <h3 style={{ fontSize: "1.1rem", marginBottom: "1.5rem", color: "var(--muted-text)", letterSpacing: "1px" }}>QUICK LINKS</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <button onClick={() => setActiveTab("tutorials")} style={{ display: "flex", justifyContent: "space-between", background: "transparent", border: "none", color: "#FFF", padding: "0.8rem 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "1rem" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>📱 Download VPN Apps</span>
+                      <span style={{ color: "var(--muted-text)" }}>→</span>
+                    </button>
+                    <button onClick={() => setActiveTab("tutorials")} style={{ display: "flex", justifyContent: "space-between", background: "transparent", border: "none", color: "#FFF", padding: "0.8rem 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "1rem" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>📖 Setup Tutorials</span>
+                      <span style={{ color: "var(--muted-text)" }}>→</span>
+                    </button>
+                    <button onClick={() => setActiveTab("tickets")} style={{ display: "flex", justifyContent: "space-between", background: "transparent", border: "none", color: "#FFF", padding: "0.8rem 0", cursor: "pointer", fontSize: "1rem" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>🎧 Open Support Ticket</span>
+                      <span style={{ color: "var(--muted-text)" }}>→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2. MY VPNs / CONFIGS TAB */}
           {activeTab === "configs" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-              
-              <div className="glass-panel" style={{ padding: "3rem", borderLeft: "4px solid #FFFFFF", position: "relative", overflow: "hidden", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
-                <div style={{ position: "absolute", top: 0, right: 0, width: "200px", height: "200px", background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%)", pointerEvents: "none" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeInUp 0.3s ease" }}>
+              <div className="glass-panel" style={{ padding: "3rem", borderLeft: "4px solid #6366f1", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, right: 0, width: "200px", height: "200px", background: "radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 60%)", pointerEvents: "none" }} />
                 <h2 style={{ marginBottom: "1.5rem", fontSize: "1.8rem", display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ color: "#FFFFFF", textShadow: "0 0 15px rgba(255,255,255,1)" }}>●</span> How the Legion Network Works
+                  <span style={{ color: "#6366f1", textShadow: "0 0 15px rgba(99, 102, 241, 0.8)" }}>●</span> How the Legion Network Works
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                  <p style={{ color: "var(--muted-text)", lineHeight: 1.8, fontSize: "1.1rem", margin: 0 }}>
-                    Legion VPN bypasses localized ISP restrictions (Airtel/Dialog/SLT) by routing your traffic through an encrypted AES-256 VLESS/Reality Secure Tunnel. This masks your SNI (Server Name Indication) packet data, turning restricted host payloads into unsecured white-listed traffic, and tunnels it straight to our premium Singapore Core Infrastructure before fetching your unthrottled internet requests.
+                  <p style={{ color: "var(--muted-text)", lineHeight: 1.8, fontSize: "1.05rem", margin: 0 }}>
+                    Legion VPN bypasses localized ISP restrictions (Airtel/Dialog/SLT) by routing your traffic through an encrypted AES-256 VLESS/Reality Secure Tunnel. This masks your SNI (Server Name Indication) packet data, turning restricted host payloads into unsecured white-listed traffic.
                   </p>
-                  <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.8, fontSize: "1rem", margin: 0, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "1.5rem" }}>
-                    Legion VPN මගින් ඔබගේ අන්තර්ජාල සේවා සපයන්නාගේ (Airtel/Dialog/SLT) සීමාවන් මගහැර, ඔබගේ දත්ත AES-256 VLESS/Reality Secure Tunnel එකක් හරහා සංකේතනය කර යවයි. මෙහිදී ඔබගේ SNI දත්ත වසන් කර, සීමා කරන ලද වෙබ් අඩවි දත්ත, ආරක්ෂිත white-listed දත්ත බවට පත් කර, අපගේ Premium සිංගප්පූරු සේවාදායකය වෙත යවා වේගවත් අන්තර්ජාල පහසුකම් ලබා දෙයි.
+                  <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.8, fontSize: "0.95rem", margin: 0, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "1.5rem" }}>
+                    Legion VPN මගින් ඔබගේ අන්තර්ජාල සේවා සපයන්නාගේ (Airtel/Dialog/SLT) සීමාවන් මගහැර, ඔබගේ දත්ත AES-256 VLESS/Reality Secure Tunnel එකක් හරහා සංකේතනය කර යවයි.
                   </p>
                 </div>
               </div>
 
-              <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", position: "relative", animation: "fadeInUp 0.5s ease forwards 0.1s", opacity: 0 }}>
+              <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", position: "relative" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
                   <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Your Unique VLESS Configuration Key</h2>
                   <button 
                     className="btn" 
                     onClick={() => user.subscriptionLink ? window.open(user.subscriptionLink, "_blank") : alert("Usage link not available.")}
-                    style={{ background: "rgba(255,255,255,0.1)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.3)", padding: "0.5rem 1.5rem", fontSize: "0.9rem", borderRadius: "20px", cursor: "pointer", transition: "all 0.3s ease" }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.color = "#000000"; e.currentTarget.style.boxShadow = "0 0 15px rgba(255,255,255,0.8)"; e.currentTarget.style.transform = "scale(1.05)"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "scale(1)"; }}
+                    style={{ background: "rgba(99, 102, 241, 0.1)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "0.5rem 1.5rem", fontSize: "0.9rem", borderRadius: "8px", cursor: "pointer", transition: "all 0.3s ease" }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = "#6366f1"; e.currentTarget.style.color = "#FFF"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = "rgba(99, 102, 241, 0.1)"; e.currentTarget.style.color = "#818cf8"; }}
                   >
                     📊 View Usage
                   </button>
                 </div>
                 <div style={{ background: "#050505", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", gap: "1.5rem", wordBreak: "break-all" }}>
-                  <code style={{ color: "#FFFFFF", fontSize: "1.1rem", fontFamily: "'Courier New', Courier, monospace" }}>
-                    {user.vpnConfigKey || "No config assigned yet. Please purchase a package."}
+                  <code style={{ color: "#FFFFFF", fontSize: "1rem", fontFamily: "'Courier New', Courier, monospace" }}>
+                    {user.vpnConfigKey || "No config assigned yet. Please purchase a package from the Store."}
                   </code>
                   {user.vpnConfigKey && (
                     <button 
                       className="btn" 
-                      style={{ alignSelf: "flex-start", background: "#FFFFFF", color: "#000000", fontWeight: "bold", border: "none", padding: "0.8rem 2.5rem", fontSize: "1rem", cursor: "pointer", transition: "transform 0.2s ease" }}
+                      style={{ alignSelf: "flex-start", background: "#FFFFFF", color: "#000000", fontWeight: "bold", border: "none", padding: "0.8rem 2.5rem", fontSize: "1rem", cursor: "pointer", borderRadius: "8px", transition: "transform 0.2s ease" }}
                       onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
                       onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
                       onClick={() => { navigator.clipboard.writeText(user.vpnConfigKey); alert("Copied to clipboard!"); }}
@@ -175,76 +231,67 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                 </div>
               </div>
-
-              <div className="glass-panel" style={{ padding: "3rem", animation: "fadeInUp 0.5s ease forwards 0.2s", opacity: 0 }}>
-                <h2 style={{ marginBottom: "2.5rem", fontSize: "1.8rem" }}>Client Configuration Workflows</h2>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2.5rem" }}>
-                  
-                  {/* NetMod Guide */}
-                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "2.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "#FFFFFF" }} />
-                    <h3 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", color: "#FFFFFF" }}>Android & Windows PC<br/><span style={{ fontSize: "1rem", color: "var(--muted-text)", fontWeight: "normal" }}>(NetMod HTTP)</span></h3>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginBottom: "2rem", color: "var(--muted-text)", lineHeight: 1.6 }}>
-                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>1.</span> Click the Download button to grab NetMod.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>NetMod ඇප් එක පහළින් Download කරගන්න.</div></div>
-                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>2.</span> Copy your VLESS Configuration Key.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>VLESS කන්ෆිග් කී එක කොපි කරගන්න.</div></div>
-                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>3.</span> Open NetMod &gt; Import Config from Clipboard &gt; Start.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>ඇප් එක open කරලා, Import Config දීලා Connect කරන්න.</div></div>
-                    </div>
-                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna&hl=en&pli=1", "_blank")}>Download Android</button>
-                      <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ flex: 1, padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://sourceforge.net/projects/netmodhttp/", "_blank")}>Download PC</button>
-                    </div>
-                  </div>
-
-                  {/* V2Box Guide */}
-                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "2.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "#FFFFFF" }} />
-                    <h3 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", color: "#FFFFFF" }}>iOS / iPhone<br/><span style={{ fontSize: "1rem", color: "var(--muted-text)", fontWeight: "normal" }}>(V2Box Client)</span></h3>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginBottom: "2rem", color: "var(--muted-text)", lineHeight: 1.6 }}>
-                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>1.</span> Download V2Box from the App Store.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>V2Box ඇප් එක Download කරගන්න.</div></div>
-                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>2.</span> Copy your VLESS configuration key.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>VLESS කන්ෆිග් කී එක කොපි කරගන්න.</div></div>
-                      <div><div style={{ display: "flex", gap: "0.5rem" }}><span style={{ color: "#FFFFFF", fontWeight: "bold" }}>3.</span> Open V2Box &gt; '+' sign &gt; Import v2ray config from clipboard.</div><div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", marginLeft: "1.2rem" }}>ඇප් එකට ගිහින් '+' ඔබලා Import කරලා Connect කරන්න.</div></div>
-                    </div>
-                    <button className="btn btn-outline hover:scale-105 transition-transform duration-300" style={{ width: "100%", padding: "0.8rem", fontSize: "0.95rem" }} onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")}>Download iOS</button>
-                  </div>
-
-                </div>
-              </div>
             </div>
           )}
 
-          {/* BUY CONFIG TAB */}
+          {/* 3. STORE (BUY VPN) TAB */}
           {activeTab === "buy" && (
             <div className="animate-fade-in">
               <div style={{ display: "flex", gap: "1rem", marginBottom: "3rem", flexWrap: "wrap", justifyContent: "center" }}>
                 {(["Airtel", "Dialog", "SLT"] as const).map(provider => (
-                  <button key={provider} onClick={() => setSelectedProvider(provider)} className="btn hover:scale-105" style={{ minWidth: "130px", fontSize: "1.1rem", background: selectedProvider === provider ? "#FFFFFF" : "transparent", color: selectedProvider === provider ? "#000000" : "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: "30px", boxShadow: selectedProvider === provider ? "0 0 15px rgba(255,255,255,0.5)" : "none", transition: "all 0.3s ease" }}>
-                    {provider}
+                  <button
+                    key={provider}
+                    onClick={() => setSelectedProvider(provider)}
+                    className="btn hover:scale-105"
+                    style={{ 
+                      minWidth: "140px", fontSize: "1rem", fontWeight: "bold",
+                      background: selectedProvider === provider ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.03)",
+                      color: selectedProvider === provider ? "#818cf8" : "var(--muted-text)",
+                      border: `1px solid ${selectedProvider === provider ? "rgba(99, 102, 241, 0.4)" : "rgba(255,255,255,0.1)"}`,
+                      borderRadius: "12px", padding: "0.8rem 1.5rem", transition: "all 0.3s ease"
+                    }}
+                  >
+                    {provider} Plans
                   </button>
                 ))}
               </div>
 
               {!selectedProvider && (
-                <div className="animate-fade-in glass-panel" style={{ padding: "2rem", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.02)", textAlign: "center", maxWidth: "800px", margin: "0 auto" }}>
-                  <p style={{ color: "var(--muted-text)", lineHeight: 1.6, marginBottom: "1.5rem", fontSize: "1.05rem" }}>If you are using a mobile SIM, internet speeds vary depending on your device and location, making it difficult to maintain a stable connection speed; please note that this is not an issue caused by us at LEGION VPN.</p>
-                  <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0, fontSize: "0.95rem" }}>ඔයා use කරන්නෙ Mobile Sim එකක් නම් packages වල internet speed එක ඔයාගෙ Device එක අනුව සහ ස්තානය අනුව වෙනස් වෙන නිසා Mobile Sim එකකින් stable connection speed එකක් තියාගන්න අමාරු වෙනවා. එය LEGION VPN වන අපගේ දෝශයක් නොවන බව කරුණාවෙන් දන්වා සිටිමු.</p>
+                <div className="animate-fade-in glass-panel" style={{ padding: "2rem", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(15, 15, 20, 0.6)", textAlign: "center", maxWidth: "800px", margin: "0 auto", borderRadius: "16px" }}>
+                  <p style={{ color: "var(--muted-text)", lineHeight: 1.6, marginBottom: "1.5rem", fontSize: "1rem" }}>If you are using a mobile SIM, internet speeds vary depending on your device and location, making it difficult to maintain a stable connection speed; please note that this is not an issue caused by us at LEGION VPN.</p>
+                  <p style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0, fontSize: "0.9rem" }}>ඔයා use කරන්නෙ Mobile Sim එකක් නම් packages වල internet speed එක ඔයාගෙ Device එක අනුව සහ ස්තානය අනුව වෙනස් වෙන නිසා Mobile Sim එකකින් stable connection speed එකක් තියාගන්න අමාරු වෙනවා. එය අපගේ දෝශයක් නොවන බව කරුණාවෙන් දන්වා සිටිමු.</p>
                 </div>
               )}
 
               {selectedProvider && (
-                <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem" }}>
+                <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem" }}>
                   {packages[selectedProvider].map((pkg, index) => (
-                    <div key={index} className="glass-panel" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2.5rem", transition: "all 0.3s ease", animation: `fadeInUp 0.5s ease forwards ${index * 0.1}s`, opacity: 0, transform: "translateY(20px)", border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden" }} onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.8)"; e.currentTarget.style.transform = "translateY(-5px) scale(1.02)"; e.currentTarget.style.boxShadow = "0 15px 40px rgba(255,255,255,0.1)"; }} onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; e.currentTarget.style.boxShadow = "none"; }}>
-                      <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "2px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)" }} />
-                      <div style={{ marginBottom: "2rem" }}>
-                        <span style={{ display: "inline-block", padding: "0.4rem 1rem", background: "rgba(255,255,255,0.1)", borderRadius: "30px", fontSize: "0.75rem", fontWeight: "bold", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "1.5rem", border: "1px solid rgba(255,255,255,0.2)" }}>Premium Access</span>
-                        <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.5rem", lineHeight: 1.4, fontWeight: "500" }}>{pkg.name}</h3>
-                        <ul style={{ padding: 0, margin: 0, listStyle: "none", color: "var(--muted-text)", fontSize: "1rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}><span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> Unthrottled High Speed</li>
-                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}><span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> Secure XTLS-Reality Tunnel</li>
-                          <li style={{ display: "flex", alignItems: "center", gap: "12px" }}><span style={{ color: "#000000", background: "#FFFFFF", borderRadius: "50%", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>✓</span> Gaming Optimized Ping</li>
-                        </ul>
+                    <div key={index} className="glass-panel" style={{ 
+                      display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2.5rem", transition: "all 0.3s ease",
+                      background: "rgba(18, 18, 28, 0.8)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", position: "relative"
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)"; e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.4)"; }} 
+                    onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                      
+                      <div style={{ marginBottom: "1.5rem" }}>
+                        <span style={{ display: "inline-block", padding: "0.3rem 0.8rem", background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "1.5rem" }}>
+                          {selectedProvider} ROUTER
+                        </span>
+                        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.4rem", lineHeight: 1.4, fontWeight: "600", minHeight: "60px" }}>{pkg.name}</h3>
+                        
+                        <p style={{ color: "var(--muted-text)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                          This is an optimized plan. Once your data quota is used up, you will need to reactivate the data package.
+                        </p>
+                        
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", color: "#6366f1", fontSize: "0.85rem", marginBottom: "1rem" }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                          Auto Delivery Configs
+                        </div>
                       </div>
-                      <button onClick={() => { setModalPackage(pkg.name); setSelectedQuota(null); }} style={{ width: "100%", padding: "1.2rem", borderRadius: "30px", background: "#FFFFFF", color: "#000000", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer", transition: "all 0.3s ease", boxShadow: "0 0 20px rgba(255,255,255,0.2)", marginTop: "auto" }} onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 0 30px rgba(255,255,255,0.6)"; e.currentTarget.style.transform = "scale(1.03)"; }} onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 0 20px rgba(255,255,255,0.2)"; e.currentTarget.style.transform = "scale(1)"; }}>Select Package →</button>
+
+                      <button onClick={() => { setModalPackage(pkg.name); setSelectedQuota(null); }} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: "pointer", transition: "transform 0.2s", marginTop: "auto" }} onMouseOver={(e) => e.currentTarget.style.opacity = 0.9} onMouseOut={(e) => e.currentTarget.style.opacity = 1}>
+                        🛒 Buy Now
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -252,38 +299,109 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* PROFILE TAB */}
+          {/* 4. TUTORIALS & APPS TAB (අලුත් එක) */}
+          {activeTab === "tutorials" && (
+            <div className="animate-fade-in flex flex-col gap-8">
+              <div>
+                <h2 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.8rem" }}>
+                   <span style={{ color: "#ef4444" }}>▶</span> Setup Guides & Video Tutorials
+                </h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                  <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", background: "rgba(15, 15, 20, 0.6)" }}>
+                    <div style={{ width: "50px", height: "50px", background: "rgba(239, 68, 68, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444", flexShrink: 0 }}>▶</div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>NetMod PC & Android</h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>How to use with VLESS code</p>
+                      <button style={{ marginTop: "1rem", background: "rgba(99, 102, 241, 0.1)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "0.4rem 0", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", width: "100%", fontWeight: "bold" }}>Watch Video</button>
+                    </div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", background: "rgba(15, 15, 20, 0.6)" }}>
+                    <div style={{ width: "50px", height: "50px", background: "rgba(239, 68, 68, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444", flexShrink: 0 }}>▶</div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>V2Box Mobile (iOS)</h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>How to setup on iPhone</p>
+                      <button style={{ marginTop: "1rem", background: "rgba(99, 102, 241, 0.1)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)", padding: "0.4rem 0", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", width: "100%", fontWeight: "bold" }}>Watch Video</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.8rem", marginTop: "2rem" }}>
+                   <span style={{ color: "#22c55e" }}>🤖</span> Download VPN Apps
+                </h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                  <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", background: "rgba(15, 15, 20, 0.6)" }}>
+                    <div style={{ width: "50px", height: "50px", background: "rgba(34, 197, 94, 0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#22c55e", fontSize: "1.5rem", flexShrink: 0 }}>⏵</div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>NetMod</h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>Highly Recommended (Android/PC)</p>
+                      <button onClick={() => window.open("https://play.google.com/store/apps/details?id=com.netmod.syna", "_blank")} style={{ marginTop: "1rem", background: "transparent", color: "#818cf8", border: "none", padding: "0", fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "bold" }}>📥 Download App</button>
+                    </div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", background: "rgba(15, 15, 20, 0.6)" }}>
+                    <div style={{ width: "50px", height: "50px", background: "rgba(34, 197, 94, 0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#22c55e", fontSize: "1.5rem", flexShrink: 0 }}>⏵</div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.1rem" }}>V2Box</h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>Easy to use client (iOS)</p>
+                      <button onClick={() => window.open("https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690", "_blank")} style={{ marginTop: "1rem", background: "transparent", color: "#818cf8", border: "none", padding: "0", fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "bold" }}>📥 Download App</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. SUPPORT TICKETS TAB (අලුත් එක) */}
+          {activeTab === "tickets" && (
+            <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
+              <div className="glass-panel" style={{ width: "100%", padding: "3rem", textAlign: "center", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px" }}>
+                <h2 style={{ fontSize: "1.8rem", marginBottom: "1rem" }}>Support Tickets</h2>
+                <p style={{ color: "var(--muted-text)", marginBottom: "2rem", maxWidth: "500px", margin: "0 auto 2rem auto" }}>Need help with your VPN configuration or package? Open a support ticket and our team will assist you.</p>
+                <button style={{ background: "#FFF", color: "#000", fontWeight: "bold", padding: "0.8rem 2.5rem", borderRadius: "30px", border: "none", cursor: "pointer", transition: "transform 0.2s" }} onMouseOver={e => e.currentTarget.style.transform="scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform="scale(1)"}>
+                  + Create New Ticket
+                </button>
+              </div>
+              <div className="glass-panel" style={{ width: "100%", padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.5 }}>🎫</div>
+                <h3 style={{ marginBottom: "0.5rem", fontSize: "1.3rem" }}>No Tickets Found</h3>
+                <p style={{ color: "var(--muted-text)", fontSize: "0.95rem" }}>You haven't opened any support tickets yet.</p>
+              </div>
+            </div>
+          )}
+
+          {/* 6. PROFILE TAB */}
           {activeTab === "profile" && (
-            <div className="glass-panel hover:scale-[1.01] transition-transform duration-300" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", animation: "fadeInUp 0.5s ease forwards", opacity: 0 }}>
+            <div className="glass-panel animate-fade-in" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15, 15, 20, 0.6)" }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center", color: "#FFFFFF" }}>Edit Profile</h2>
               
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
-                  <div style={{ width: "120px", height: "120px", borderRadius: "50%", border: "2px solid #FFFFFF", background: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: "120px", height: "120px", borderRadius: "50%", border: "3px solid #6366f1", background: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {avatar ? (
                       <img src={avatar} alt="Current Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
-                      <span style={{ fontSize: "2.5rem", color: "#FFF" }}>{user?.name?.charAt(0).toUpperCase()}</span>
+                      <span style={{ fontSize: "3rem", color: "#FFF" }}>{user?.name?.charAt(0).toUpperCase()}</span>
                     )}
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(0,0,0,0.4)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <h3 style={{ textAlign: "center", color: "var(--muted-text)", marginBottom: "1.2rem", fontSize: "0.95rem" }}>Choose your Avatar</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(60px, 1fr))", gap: "1rem", justifyItems: "center" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(50px, 1fr))", gap: "1rem", justifyItems: "center" }}>
                     {AVAILABLE_AVATARS.map((gifPath) => (
-                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "60px", height: "60px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", position: "relative", overflow: "hidden", border: avatar === gifPath ? "3px solid #3b82f6" : "2px solid transparent", boxShadow: avatar === gifPath ? "0 0 20px rgba(59, 130, 246, 0.6)" : "none", transform: avatar === gifPath ? "scale(1.1)" : "scale(1)", transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", opacity: isUpdating && avatar !== gifPath ? 0.5 : 1 }}>
+                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", position: "relative", overflow: "hidden", border: avatar === gifPath ? "3px solid #6366f1" : "2px solid transparent", transition: "all 0.3s ease", opacity: isUpdating && avatar !== gifPath ? 0.5 : 1 }}>
                         <img src={gifPath} alt="Avatar option" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       </div>
                     ))}
                   </div>
-                  <button onClick={() => handleAvatarSelect("")} style={{ width: "100%", marginTop: "1.5rem", padding: "0.8rem", background: "rgba(255,0,0,0.1)", color: "#ff4444", borderRadius: "8px", border: "1px solid rgba(255,0,0,0.2)", cursor: "pointer", fontWeight: "bold" }}>Restore Google Image</button>
+                  <button onClick={() => handleAvatarSelect("")} style={{ width: "100%", marginTop: "1.5rem", padding: "0.8rem", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderRadius: "8px", border: "1px solid rgba(239, 68, 68, 0.3)", cursor: "pointer", fontWeight: "bold" }}>Restore Google Image</button>
                 </div>
 
                 <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginTop: "1rem" }}>
-                  <div><label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Full Name</label><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} /></div>
-                  <div><label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)" }}>Email Address</label><input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} /></div>
-                  <button type="submit" className="btn hover:scale-105 transition-transform" style={{ background: "#FFFFFF", color: "#000000", fontWeight: "bold", padding: "1rem", marginTop: "1rem", fontSize: "1.1rem", borderRadius: "30px" }}>Save Changes</button>
+                  <div><label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)", fontSize: "0.9rem" }}>Full Name</label><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} /></div>
+                  <div><label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)", fontSize: "0.9rem" }}>Email Address</label><input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", fontSize: "1rem" }} /></div>
+                  <button type="submit" style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", padding: "1rem", marginTop: "1rem", fontSize: "1.1rem", borderRadius: "8px", border: "none", cursor: "pointer" }}>Save Changes</button>
                 </form>
               </div>
             </div>
@@ -291,21 +409,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       </main>
 
-      {/* LIQUID GLASS BUBBLE TASKBAR */}
-      <nav style={{ position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.6rem", background: "rgba(5, 5, 5, 0.8)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.2)", borderRadius: "50px", zIndex: 100, boxShadow: "0 0 25px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255,255,255,0.05)" }}>
+      {/* 🚀 LIQUID GLASS BUBBLE TASKBAR (OPTIMIZED FOR 6 TABS) */}
+      <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.5rem", background: "rgba(5, 5, 10, 0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "50px", zIndex: 100, boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.05)" }}>
         {tabs.map(tab => {
           if (tab.isLink) {
             return (
-              <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "50px", height: "50px", borderRadius: "50%", color: "rgba(255,255,255,0.4)", textDecoration: "none", transition: "all 0.3s ease", background: "transparent" }} onMouseOver={(e) => { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; }} onMouseOut={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.textShadow = "none"; }}>
+              <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none", transition: "all 0.3s ease" }}>
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{tab.icon}</span>
               </Link>
             );
           }
           const isActive = activeTab === tab.id;
           return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.8rem" : "0", padding: isActive ? "0 1.5rem 0 1rem" : "0", height: "50px", minWidth: isActive ? "auto" : "50px", width: isActive ? "auto" : "50px", justifyContent: "center", background: isActive ? "#FFFFFF" : "transparent", color: isActive ? "#000000" : "rgba(255,255,255,0.4)", borderRadius: "25px", border: "none", cursor: "pointer", transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden", boxShadow: isActive ? "0 0 20px rgba(255, 255, 255, 0.6)" : "none" }} onMouseOver={(e) => { if (!isActive) { e.currentTarget.style.color = "#FFFFFF"; e.currentTarget.style.textShadow = "0 0 10px rgba(255,255,255,0.8)"; } }} onMouseOut={(e) => { if (!isActive) { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.textShadow = "none"; } }}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", textShadow: "none" }}>{tab.icon}</span>
-              <span style={{ maxWidth: isActive ? "150px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "1rem" }}>{tab.label}</span>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.6rem" : "0", padding: isActive ? "0 1.2rem 0 1rem" : "0", height: "45px", minWidth: isActive ? "auto" : "45px", width: isActive ? "auto" : "45px", justifyContent: "center", background: isActive ? "rgba(99, 102, 241, 0.2)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "1px solid", borderColor: isActive ? "rgba(99, 102, 241, 0.3)" : "transparent", cursor: "pointer", transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden" }}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{tab.icon}</span>
+              <span className="taskbar-label" style={{ maxWidth: isActive ? "120px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "0.9rem" }}>{tab.label}</span>
             </button>
           );
         })}
@@ -314,43 +432,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       {/* DYNAMIC QUOTA MODAL */}
       {modalPackage && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, animation: "fadeIn 0.3s ease" }}>
-          <div className="glass-panel" style={{ width: "100%", maxWidth: "500px", padding: "3rem", background: "#0a0a0a", position: "relative" }}>
-            <button onClick={() => setModalPackage(null)} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "#FFFFFF", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
+          <div className="glass-panel" style={{ width: "100%", maxWidth: "500px", padding: "2.5rem", background: "#0a0a0f", position: "relative", border: "1px solid rgba(99, 102, 241, 0.3)", borderRadius: "16px" }}>
+            <button onClick={() => setModalPackage(null)} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "var(--muted-text)", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
             <h2 style={{ marginBottom: "0.5rem", fontSize: "1.5rem" }}>Select Data Quota</h2>
-            <p style={{ color: "var(--muted-text)", marginBottom: "2rem" }}>{modalPackage}</p>
+            <p style={{ color: "#6366f1", marginBottom: "2rem", fontWeight: "bold" }}>{modalPackage}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
               {Object.entries(pricingRules[modalPackage] || {}).map(([quota, price]) => (
-                <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ display: "flex", justifyContent: "space-between", padding: "1.5rem", background: selectedQuota === quota ? "rgba(255,255,255,0.1)" : "transparent", border: "1px solid", borderColor: selectedQuota === quota ? "#FFFFFF" : "rgba(255,255,255,0.2)", borderRadius: "8px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer", transition: "all 0.2s ease" }}>
+                <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ display: "flex", justifyContent: "space-between", padding: "1.2rem", background: selectedQuota === quota ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.02)", border: "1px solid", borderColor: selectedQuota === quota ? "#818cf8" : "rgba(255,255,255,0.1)", borderRadius: "12px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontWeight: selectedQuota === quota ? "bold" : "normal" }}>{quota}</span>
                   <span style={{ fontWeight: "bold" }}>RS {price}</span>
                 </button>
               ))}
             </div>
-            <button className="btn" onClick={handleConfirmOrder} disabled={!selectedQuota} style={{ width: "100%", padding: "1rem", background: selectedQuota ? "#FFFFFF" : "rgba(255,255,255,0.2)", color: selectedQuota ? "#000000" : "rgba(255,255,255,0.5)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "30px" }}>Confirm Order via WhatsApp</button>
+            <button className="btn" onClick={handleConfirmOrder} disabled={!selectedQuota} style={{ width: "100%", padding: "1rem", background: selectedQuota ? "linear-gradient(90deg, #4f46e5, #7c3aed)" : "rgba(255,255,255,0.1)", color: selectedQuota ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "8px", border: "none" }}>Confirm Order via WhatsApp</button>
           </div>
         </div>
       )}
 
       {/* 🔥 MEDIA QUERIES FOR MOBILE OPTIMIZATION */}
       <style>{`
-        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
-        /* Mobile Specific Styles */
         @media (max-width: 768px) {
-          .desktop-name {
-            display: none !important;
-          }
-          .dashboard-title {
-            font-size: 1.6rem !important; /* Make font smaller on mobile to prevent breaking */
-          }
+          .desktop-name { display: none !important; }
+          .dashboard-title { font-size: 1.5rem !important; }
+          .taskbar-label { display: none !important; } /* Hide text on very small screens to fit 6 icons */
         }
-        
-        /* Desktop Specific Styles */
         @media (min-width: 769px) {
-          .dashboard-title {
-            font-size: 2.2rem !important;
-          }
+          .dashboard-title { font-size: 2rem !important; }
         }
       `}</style>
     </div>
