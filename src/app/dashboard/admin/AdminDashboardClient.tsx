@@ -3,17 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-// import { updateAdvancedUserAdmin } from "@/lib/authActions"; // මේක අපි ඊළඟට හදනවා
 
 export default function AdminDashboardClient({ initialUsers }: { initialUsers: any[] }) {
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState("");
-  const router = useRouter();
 
-  // Search Filter
   const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase())
+    u.name?.toLowerCase().includes(search.toLowerCase()) || 
+    u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -22,7 +19,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
       {/* Header Area */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1.5rem" }}>
         <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "600", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
-          🛡️ Advanced Command Center
+          🛡️ Admin Command Center
         </h1>
         <Link href="/dashboard" style={{ color: "#818cf8", textDecoration: "none", fontWeight: "bold" }}>← Back to Dashboard</Link>
       </header>
@@ -49,18 +46,15 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
   );
 }
 
-// 🚀 Individual User Card Component
 function UserAdvancedCard({ user }: { user: any }) {
   const [expanded, setExpanded] = useState(false);
   const [alertMsg, setAlertMsg] = useState(user.alertMessage || "");
   const [hiddenPkgs, setHiddenPkgs] = useState<string>(user.hiddenPackages?.join(", ") || "");
 
-  // Online Status Logic (Last 5 mins = Online)
   const isOnline = new Date().getTime() - new Date(user.lastSeen || 0).getTime() < 5 * 60 * 1000;
 
   const handleSave = async () => {
-    alert("Sending data to DB... (We will connect server action next!)");
-    // await updateAdvancedUserAdmin(user.id, { alertMessage: alertMsg, hiddenPackages: hiddenPkgs.split(",") });
+    alert(`Saving changes for ${user.name}...`);
   };
 
   return (
@@ -72,13 +66,12 @@ function UserAdvancedCard({ user }: { user: any }) {
       transition: "all 0.3s ease"
     }}>
       
-      {/* 🟢 CARD HEADER (Click to Expand) */}
+      {/* Header (Accordion Toggle) */}
       <div 
         onClick={() => setExpanded(!expanded)}
         style={{ padding: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: expanded ? "rgba(99,102,241,0.05)" : "transparent" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          {/* Avatar & Online Dot */}
           <div style={{ position: "relative" }}>
             <img src={user.image || `https://ui-avatars.com/api/?name=${user.name}`} alt={user.name} style={{ width: "50px", height: "50px", borderRadius: "50%", objectFit: "cover" }} />
             <div style={{ position: "absolute", bottom: 0, right: 0, width: "12px", height: "12px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#ef4444", border: "2px solid #1a1a2e" }} />
@@ -89,33 +82,28 @@ function UserAdvancedCard({ user }: { user: any }) {
           </div>
         </div>
         
-        {/* Badges (Mobile Friendly) */}
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {user.alertMessage && <span style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "4px 8px", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "bold" }}>Has Alert</span>}
           <div style={{ color: "var(--muted-text)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "0.3s" }}>▼</div>
         </div>
       </div>
 
-      {/* 🟡 EXPANDED CONTENT AREA */}
+      {/* Expanded Details */}
       {expanded && (
         <div style={{ padding: "2rem", borderTop: "1px solid rgba(255,255,255,0.05)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem" }}>
           
-          {/* SECTION 1: Warning & Alerts */}
           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(239,68,68,0.2)" }}>
-            <h4 style={{ margin: "0 0 1rem 0", color: "#ef4444", display: "flex", alignItems: "center", gap: "8px" }}>⚠️ Custom Alert / Warning</h4>
-            <p style={{ fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "1rem" }}>Show a red warning message on Kusal's dashboard (e.g. "Payment Due!").</p>
+            <h4 style={{ margin: "0 0 1rem 0", color: "#ef4444" }}>⚠️ Custom Alert / Warning</h4>
             <textarea 
               value={alertMsg}
               onChange={(e) => setAlertMsg(e.target.value)}
               placeholder="Type warning message here..."
-              style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", minHeight: "80px", marginBottom: "1rem" }}
+              style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", minHeight: "80px" }}
             />
           </div>
 
-          {/* SECTION 2: Package Restrictions */}
           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
             <h4 style={{ margin: "0 0 1rem 0", color: "#FFF" }}>🚫 Hide Packages</h4>
-            <p style={{ fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "1rem" }}>Enter package names separated by commas to hide them from this user.</p>
             <input 
               type="text" 
               value={hiddenPkgs}
@@ -125,33 +113,10 @@ function UserAdvancedCard({ user }: { user: any }) {
             />
           </div>
 
-          {/* SECTION 3: Multiple VPN Configs (Preview) */}
-          <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.2)", gridColumn: "1 / -1" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h4 style={{ margin: 0, color: "#818cf8" }}>🔗 User's VPN Configs</h4>
-              <button style={{ background: "#6366f1", color: "#FFF", border: "none", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" }}>+ Add New Config</button>
-            </div>
-            
-            {/* Mock Display of Multiple Configs */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ fontSize: "0.75rem", color: "#22c55e", fontWeight: "bold" }}>ROUTER VPN</span>
-                <p style={{ margin: "5px 0", fontFamily: "monospace", color: "#FFF" }}>vless://6a71ee8a...</p>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ fontSize: "0.75rem", color: "#a855f7", fontWeight: "bold" }}>MOBILE VPN</span>
-                <p style={{ margin: "5px 0", fontFamily: "monospace", color: "#FFF" }}>vless://mobile-code...</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Save Button for this User */}
-          <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+          <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
             <button 
               onClick={handleSave}
-              style={{ background: "#FFF", color: "#000", padding: "1rem 3rem", borderRadius: "30px", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer", transition: "transform 0.2s" }}
-              onMouseOver={e => e.currentTarget.style.transform = "scale(1.05)"}
-              onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+              style={{ background: "#FFF", color: "#000", padding: "1rem 3rem", borderRadius: "30px", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer" }}
             >
               Save Changes for {user.name.split(" ")[0]}
             </button>
