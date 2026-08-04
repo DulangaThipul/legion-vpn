@@ -14,16 +14,6 @@ model User {
   image            String?
   googleImage      String?
   
-  // 🚀 අලුත් Advanced Features
-  lastSeen         DateTime  @default(now())
-  alertMessage     String?   
-  hiddenPackages   String[]  
-  pastNames        String[]  
-
-  // 🚀 Multiple VPNs එකතු කරන්න
-  vpns             VpnConfig[] 
-
-  // Backward Compatibility (පරණ data නැති නොවී තියාගන්න)
   vpnStatus        String    @default("Inactive")
   expiryDate       DateTime?
   vpnConfigKey     String?
@@ -32,19 +22,6 @@ model User {
   reviews          Review[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-}
-
-model VpnConfig {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String   @db.ObjectId
-  user       User     @relation(fields: [userId], references: [id])
-  
-  name       String   
-  configKey  String   
-  usageLink  String?  
-  status     String   @default("Active") 
-  
-  createdAt  DateTime @default(now())
 }
 
 model Review {
