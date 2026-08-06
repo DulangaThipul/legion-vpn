@@ -45,6 +45,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 🚀 Scraped Data State
   const [usageData, setUsageData] = useState<{dataUsed: string, limit: string} | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user.image);
@@ -56,9 +57,31 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
+  // Usage Data Fetcher
+  const fetchUsageData = () => {
+    if (!user.subscriptionLink) return;
+    
+    // Extract ID if they pasted a link, or just use the number if they typed "6125"
+    const match = user.subscriptionLink.match(/id=(\d+)/);
+    const vpnId = match ? match[1] : user.subscriptionLink.trim();
+
+    setLoadingUsage(true);
+    setUsageError(null);
+    fetch(`/api/usage?id=${vpnId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+           setUsageError(data.error);
+        } else if (data.dataUsed) {
+           setUsageData({ dataUsed: data.dataUsed, limit: data.limit });
+        }
+      })
+      .catch(err => setUsageError("Network Error"))
+      .finally(() => setLoadingUsage(false));
+  };
+
   useEffect(() => {
     if (activeTab === "dashboard" && hasActivePlan) {
-      // 1. IP / Connection Detector
       fetch("https://ipapi.co/json/")
         .then(res => res.json())
         .then(data => {
@@ -68,19 +91,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           setIsVpnConnected(!slISPs.some(sl => isp.includes(sl)));
         }).catch(() => {});
 
-      // 2. Fetch Live Usage Data from our API
-      if (user.subscriptionLink) {
-        setLoadingUsage(true);
-        fetch(`/api/usage?url=${encodeURIComponent(user.subscriptionLink)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.dataUsed && data.dataUsed !== "N/A") {
-              setUsageData(data);
-            }
-          })
-          .catch(err => console.error("Failed to fetch usage"))
-          .finally(() => setLoadingUsage(false));
-      }
+      // Initial Data Fetch
+      fetchUsageData();
     }
   }, [activeTab, hasActivePlan, user.subscriptionLink]);
 
@@ -135,7 +147,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               {!hasActivePlan ? (
-                /* FREE TRIAL UI */
                 !showTestPlans ? (
                   <div className="glass-panel" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
                     <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>Welcome to Legion VPN</h2>
@@ -241,29 +252,30 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>{user.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                         </div>
 
-                        {/* 📊 Card 3: SCRAPED DATA USAGE */}
+                        {/* 📊 Card 3: LIVE API USAGE */}
                         <div style={{ background: "rgba(30, 30, 40, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                           <div>
-                            <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>📊 DATA USED</p>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                               <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>📊 DATA USED</p>
+                               {loadingUsage && <span style={{ fontSize: "0.75rem", color: "#6366f1", animation: "pulse 1s infinite" }}>Fetching...</span>}
+                            </div>
                             
-                            {loadingUsage ? (
-                              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold", color: "rgba(255,255,255,0.5)", animation: "pulse 1.5s infinite" }}>Syncing Data...</h2>
+                            {usageError ? (
+                              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold", color: "#ef4444" }}>{usageError}</h2>
                             ) : usageData ? (
                               <>
-                                <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>{usageData.dataUsed}</h2>
+                                <h2 style={{ margin: 0, fontSize: "2.5rem", fontWeight: "bold", color: "#22c55e" }}>
+                                  {usageData.dataUsed.split(' ')[0]} <span style={{ fontSize: "1.2rem", color: "var(--muted-text)" }}>{usageData.dataUsed.split(' ')[1]}</span>
+                                </h2>
                                 <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.85rem", color: "var(--muted-text)" }}>{usageData.limit}</p>
                               </>
                             ) : (
-                              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold", color: "#ef4444" }}>Data Unavailable</h2>
+                              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold", color: "rgba(255,255,255,0.5)" }}>No Data</h2>
                             )}
                           </div>
-                          <button onClick={() => {
-                            if (user.subscriptionLink) {
-                               setLoadingUsage(true);
-                               fetch(`/api/usage?url=${encodeURIComponent(user.subscriptionLink)}`).then(res=>res.json()).then(data=>setUsageData(data)).finally(()=>setLoadingUsage(false));
-                            } else alert("Usage link not set by Admin.");
-                          }} style={{ marginTop: "1rem", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                            {usageData ? "Refresh Data ↻" : "Load Usage"}
+                          
+                          <button onClick={fetchUsageData} disabled={!user.subscriptionLink || loadingUsage} style={{ marginTop: "1.5rem", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: user.subscriptionLink ? "#FFF" : "rgba(255,255,255,0.2)", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: user.subscriptionLink ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+                            {!user.subscriptionLink ? "Link Not Set by Admin" : "↻ Refresh Data"}
                           </button>
                         </div>
 
