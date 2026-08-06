@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar } from "@/lib/authActions";
@@ -36,25 +36,48 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [modalPackage, setModalPackage] = useState<string | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
   const [showTestPlans, setShowTestPlans] = useState(false);
+  
+  // 🚀 Embedded Tools State
+  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | null>(null);
+  const [ipData, setIpData] = useState<any>(null);
+  const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
+  const [pingResult, setPingResult] = useState<number | null>(null);
 
   const [user, setUser] = useState(initialUser);
-  const [editName, setEditName] = useState(user.name || "");
-  const [editEmail, setEditEmail] = useState(user.email || "");
   const [avatar, setAvatar] = useState<string | null>(user.image);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 🚀 User ට Config එකක් තියෙනවද කියලා Check කරන ලොජික් එක
+  // 🚀 Real Date Countdown Logic (Database එකෙන්)
   const hasActivePlan = Boolean(user.vpnConfigKey && user.vpnConfigKey.length > 5);
+  const now = new Date().getTime();
+  const expiry = user.expiryDate ? new Date(user.expiryDate).getTime() : null;
+  const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
+  const isExpired = daysLeft !== null && daysLeft <= 0;
 
-  // Expiry Date එකෙන් දවස් කීයද කියලා බලනවා
-  const daysLeft = user.expiryDate ? Math.ceil((new Date(user.expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : null;
+  // 🚀 Live Connection Detector
+  useEffect(() => {
+    if (activeTab === "dashboard" && hasActivePlan) {
+      fetch("https://ipapi.co/json/")
+        .then(res => res.json())
+        .then(data => {
+          setIpData(data);
+          const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
+          const isp = (data.org || "").toLowerCase();
+          const isSL = slISPs.some(sl => isp.includes(sl));
+          setIsVpnConnected(!isSL); // SL ISP එකක් නෙවෙයි නම් VPN එක On කියලා අඳුරගන්නවා
+        }).catch(() => {});
+    }
+  }, [activeTab, hasActivePlan]);
 
-  const handleConfirmOrder = () => {
-    if (!modalPackage || !selectedQuota) return;
-    const price = pricingRules[modalPackage][selectedQuota];
-    window.open(`https://wa.me/94753403800?text=${encodeURIComponent(`Hi, I want to purchase the ${modalPackage} with ${selectedQuota} Quota (RS ${price}).`)}`, "_blank");
-    setModalPackage(null);
-    setSelectedQuota(null);
+  const runPingTest = async () => {
+    setPingResult(null);
+    const start = Date.now();
+    try {
+      await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: "no-cors", cache: "no-store" });
+      setPingResult(Date.now() - start);
+    } catch {
+      setPingResult(Date.now() - start);
+    }
   };
 
   const handleAvatarSelect = async (gifPath: string) => {
@@ -63,7 +86,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setAvatar(gifPath === "" ? (initialUser.googleImage || null) : gifPath);
     const res = await updateUserAvatar(gifPath);
     if (res.success) router.refresh();
-    else { alert("Error updating avatar!"); setAvatar(initialUser.image); }
     setIsUpdating(false);
   };
 
@@ -76,9 +98,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     { id: "profile", label: "Profile", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> }
   ];
 
-  if (user.email === "dulangathipul@gmail.com") {
-    tabs.push({ id: "admin", label: "Admin", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, isLink: true, href: "/dashboard/admin" });
-  }
+  if (user.email === "dulangathipul@gmail.com") tabs.push({ id: "admin", label: "Admin", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, isLink: true, href: "/dashboard/admin" });
 
   return (
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative", zIndex: 1 }}>
@@ -86,7 +106,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       
       <main style={{ padding: "3rem 1.5rem", maxWidth: "1100px", margin: "0 auto", position: "relative" }}>
         
-        {/* HEADER */}
         <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", position: "relative", zIndex: 50 }}>
           <h1 className="dashboard-title" style={{ margin: 0, fontWeight: "600", letterSpacing: "0.5px", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "10px" }}>
             {tabs.find(t => t.id === activeTab)?.icon} {tabs.find(t => t.id === activeTab)?.label}
@@ -106,155 +125,198 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               
-              {/* 🟢 1.1 CONFIG නැති අයට (FREE TRIAL UI) 🟢 */}
               {!hasActivePlan ? (
-                <>
-                  {!showTestPlans ? (
-                    <div className="glass-panel animate-fade-in" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
-                      <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem", color: "#FFF" }}>Welcome to Legion VPN</h2>
-                      <p style={{ color: "var(--muted-text)", marginBottom: "2.5rem" }}>You don't have any active subscriptions yet.</p>
-                      <button onClick={() => setShowTestPlans(true)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "8px", fontWeight: "bold", border: "none", color: "#FFF", cursor: "pointer", fontSize: "1.1rem" }}>
-                        Get a test plan →
-                      </button>
+                /* FREE TRIAL UI (NO CONFIG) */
+                !showTestPlans ? (
+                  <div className="glass-panel" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
+                    <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>Welcome to Legion VPN</h2>
+                    <p style={{ color: "var(--muted-text)", marginBottom: "2.5rem" }}>You don't have any active subscriptions yet.</p>
+                    <button onClick={() => setShowTestPlans(true)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "8px", fontWeight: "bold", border: "none", color: "#FFF", cursor: "pointer", fontSize: "1.1rem" }}>Get a test plan →</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                       <div><h2 style={{ fontSize: "1.6rem", margin: "0 0 0.5rem 0" }}>Choose a Test Plan</h2><p style={{ color: "var(--muted-text)", margin: 0 }}>Select a trial package to test our premium speeds.</p></div>
+                       <button onClick={() => setShowTestPlans(false)} style={{ background: "rgba(255,255,255,0.05)", color: "#FFF", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1.5rem", borderRadius: "8px", cursor: "pointer" }}>← Back</button>
                     </div>
-                  ) : (
-                    <div className="animate-fade-in">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                         <div>
-                           <h2 style={{ fontSize: "1.6rem", color: "#FFF", margin: "0 0 0.5rem 0" }}>Choose a Test Plan</h2>
-                           <p style={{ color: "var(--muted-text)", margin: 0, fontSize: "0.95rem" }}>Select a trial package to test our premium speeds.</p>
-                         </div>
-                         <button onClick={() => setShowTestPlans(false)} style={{ background: "rgba(255,255,255,0.05)", color: "#FFF", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1.5rem", borderRadius: "8px", cursor: "pointer" }}>← Back</button>
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-                        {testPackages.map((pkg, index) => (
-                          <div key={index} className="glass-panel" style={{ padding: "2rem", background: "rgba(18, 18, 28, 0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
-                               <span style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", padding: "4px 10px", borderRadius: "6px", fontSize: "0.75rem", fontWeight: "bold" }}>🧪 TEST</span>
-                               <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: "1.2rem" }}>FREE</span>
-                            </div>
-                            <div style={{ marginBottom: "1.5rem", flex: 1 }}>
-                              <p style={{ fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", marginBottom: "0.5rem" }}>{pkg.provider}</p>
-                              <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.3rem", color: "#FFF" }}>{pkg.name}</h3>
-                              <div style={{ borderLeft: "3px solid #6366f1", paddingLeft: "1rem", marginBottom: "1.5rem" }}>
-                                 <p style={{ color: "var(--muted-text)", fontSize: "0.95rem", margin: 0 }}>{pkg.desc}</p>
-                              </div>
-                            </div>
-                            <button onClick={() => window.open(`https://wa.me/94753403800?text=${encodeURIComponent(`Hi, I would like to activate a FREE Trial for: ${pkg.name}`)}`, "_blank")} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #6366f1, #a855f7)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>
-                              🚀 Activate Free Trial
-                            </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+                      {testPackages.map((pkg, index) => (
+                        <div key={index} className="glass-panel" style={{ padding: "2rem", background: "rgba(18, 18, 28, 0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                             <span style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", padding: "4px 10px", borderRadius: "6px", fontSize: "0.75rem", fontWeight: "bold" }}>🧪 TEST</span>
+                             <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: "1.2rem" }}>FREE</span>
                           </div>
-                        ))}
-                      </div>
+                          <div style={{ marginBottom: "1.5rem", flex: 1 }}>
+                            <p style={{ fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", marginBottom: "0.5rem" }}>{pkg.provider}</p>
+                            <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.3rem" }}>{pkg.name}</h3>
+                            <div style={{ borderLeft: "3px solid #6366f1", paddingLeft: "1rem" }}><p style={{ color: "var(--muted-text)", fontSize: "0.95rem", margin: 0 }}>{pkg.desc}</p></div>
+                          </div>
+                          <button onClick={() => window.open(`https://wa.me/94753403800?text=${encodeURIComponent(`Hi, I would like to activate a FREE Trial for: ${pkg.name}`)}`, "_blank")} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #6366f1, #a855f7)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>🚀 Activate Free Trial</button>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </>
+                  </div>
+                )
               ) : (
 
-              /* 🟢 1.2 CONFIG තියෙන අයට (ACTIVE DASHBOARD - CLOUDNET STYLE) 🟢 */
+              /* PREMIUM DASHBOARD WITH REAL COUNTDOWN & EMBEDDED TOOLS */
                 <div className="animate-fade-in flex flex-col gap-6">
                   
-                  {/* Global Alert / Payment Confirmed Notification */}
-                  <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "12px", padding: "1.2rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-                    <div style={{ background: "rgba(99,102,241,0.2)", padding: "10px", borderRadius: "10px", color: "#818cf8" }}>🔔</div>
-                    <div>
-                      <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF", fontSize: "1rem" }}>Welcome back, {user.name.split(" ")[0]}!</h4>
-                      <p style={{ margin: 0, color: "var(--muted-text)", fontSize: "0.85rem" }}>Your secure tunnel is ready. {user.alertMessage && <span style={{color: "#ef4444", fontWeight: "bold"}}>{user.alertMessage}</span>}</p>
-                    </div>
-                  </div>
-
-                  {/* 🚀 STATUS CARDS ROW (CloudNet Style) */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginTop: "1rem" }}>
-                    
-                    {/* Card 1: VPN STATUS */}
-                    <div style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden", boxShadow: "0 10px 20px rgba(16, 185, 129, 0.2)" }}>
-                      <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>📡 VPN STATUS</p>
-                      <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block", boxShadow: "0 0 10px #FFF" }}></span>
-                        {user.vpnStatus || "Active"}
-                      </h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>Secure Tunnel Connected</p>
-                    </div>
-
-                    {/* Card 2: EXPIRES IN */}
-                    <div style={{ background: (!daysLeft || daysLeft < 4) ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden", boxShadow: "0 10px 20px rgba(139, 92, 246, 0.2)" }}>
-                      <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>⏳ EXPIRES IN</p>
-                      <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>
-                        {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft}d` : "0d") : "∞"}
-                      </h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>
-                        {user.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}
-                      </p>
-                    </div>
-
-                    {/* Card 3: DATA USED & VIEW USAGE */}
-                    <div style={{ background: "rgba(30, 30, 40, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                      <div>
-                        <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>📊 DATA USAGE</p>
-                        <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>Track Data</h2>
+                  {activeTool ? (
+                    /* 🟢 EMBEDDED TOOLS VIEWS 🟢 */
+                    <div className="glass-panel" style={{ background: "rgba(15,15,20,0.8)", padding: "1rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", minHeight: "500px", display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", padding: "1rem" }}>
+                        <h2 style={{ margin: 0, color: "#FFF" }}>
+                          {activeTool === "speed" && "🚀 Live Speed Test"}
+                          {activeTool === "ip" && "🌍 Connection & IP Test"}
+                          {activeTool === "ping" && "⚡ Latency (Ping) Test"}
+                        </h2>
+                        <button onClick={() => setActiveTool(null)} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close Tool</button>
                       </div>
-                      <button 
-                        onClick={() => user.subscriptionLink ? window.open(user.subscriptionLink, "_blank") : alert("Usage link not available.")}
-                        style={{ marginTop: "1rem", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                        View Live Usage →
-                      </button>
+
+                      {activeTool === "speed" && (
+                        <div style={{ flex: 1, borderRadius: "12px", overflow: "hidden", background: "#fff" }}>
+                          <iframe src="https://openspeedtest.com/Get-widget.php" width="100%" height="100%" style={{ border: "none", minHeight: "600px" }}></iframe>
+                        </div>
+                      )}
+
+                      {activeTool === "ip" && (
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", padding: "1rem" }}>
+                          {ipData ? (
+                            <>
+                              <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                <p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>Your Current IP Address</p>
+                                <h1 style={{ margin: 0, color: "#22c55e", fontSize: "2.5rem" }}>{ipData.ip}</h1>
+                              </div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                  <p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>ISP / Network</p>
+                                  <h3 style={{ margin: 0, color: "#FFF" }}>{ipData.org}</h3>
+                                </div>
+                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                  <p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>Location</p>
+                                  <h3 style={{ margin: 0, color: "#FFF" }}>{ipData.city}, {ipData.country_name}</h3>
+                                </div>
+                              </div>
+                              <div style={{ marginTop: "1rem", padding: "1.5rem", background: isVpnConnected ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)", borderRadius: "12px", border: `1px solid ${isVpnConnected ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}` }}>
+                                {isVpnConnected ? (
+                                  <h3 style={{ margin: 0, color: "#22c55e" }}>🟢 Your Connection is Secured & Hidden by Legion VPN.</h3>
+                                ) : (
+                                  <h3 style={{ margin: 0, color: "#ef4444" }}>🔴 Your Original ISP is visible! Please connect your VPN app.</h3>
+                                )}
+                              </div>
+                            </>
+                          ) : <p>Loading IP Data...</p>}
+                        </div>
+                      )}
+
+                      {activeTool === "ping" && (
+                        <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem" }}>
+                          <h3 style={{ color: "var(--muted-text)", textAlign: "center" }}>Test connection stability to Cloudflare (1.1.1.1)</h3>
+                          {pingResult !== null && (
+                            <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px solid #6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", boxShadow: "0 0 30px rgba(99,102,241,0.2)" }}>
+                              <h1 style={{ margin: 0, fontSize: "3rem", color: "#FFF" }}>{pingResult}</h1>
+                              <p style={{ margin: 0, color: "#818cf8", fontWeight: "bold" }}>ms (Ping)</p>
+                            </div>
+                          )}
+                          <button onClick={runPingTest} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: "pointer" }}>Run Ping Test</button>
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      {/* REAL-TIME STATUS CARDS ROW */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem" }}>
+                        
+                        {/* 🟢 Card 1: LIVE CONNECTION STATUS (Smart Detector) */}
+                        <div style={{ background: isVpnConnected === true ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden", boxShadow: isVpnConnected ? "0 10px 20px rgba(16, 185, 129, 0.2)" : "0 10px 20px rgba(245, 158, 11, 0.2)" }}>
+                          <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>📡 LIVE CONNECTION</p>
+                          <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block", boxShadow: "0 0 10px #FFF", animation: isVpnConnected ? "pulse 2s infinite" : "none" }}></span>
+                            {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
+                          </h2>
+                          <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>
+                            {isVpnConnected ? `IP: ${ipData?.ip}` : "Your real ISP is visible!"}
+                          </p>
+                        </div>
 
-                  </div>
+                        {/* ⏳ Card 2: DB COUNTDOWN EXPIRES IN */}
+                        <div style={{ background: isExpired ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden", boxShadow: "0 10px 20px rgba(139, 92, 246, 0.2)" }}>
+                          <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>⏳ SUBSCRIPTION</p>
+                          <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>
+                            {daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}
+                          </h2>
+                          <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>
+                            {user.expiryDate ? `Valid till ${new Date(user.expiryDate).toLocaleDateString()}` : "No Expiry Date Set"}
+                          </p>
+                        </div>
 
-                  {/* 🚀 VPN TOOLS SECTION (අලුත් එක) */}
-                  <div style={{ marginTop: "2rem" }}>
-                    <h3 style={{ fontSize: "1.2rem", marginBottom: "1rem", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
-                      🛠️ Essential VPN Tools
-                    </h3>
-                    
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-                      
-                      {/* Tool 1: Speed Test */}
-                      <div className="glass-panel" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem" }}>
-                        <div style={{ width: "50px", height: "50px", background: "rgba(99,102,241,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🚀</div>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>Network Speed Test</h4>
-                          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Check your tunnel speed</p>
-                          <button onClick={() => window.open("https://fast.com", "_blank")} style={{ background: "#6366f1", color: "#FFF", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>Run Speedtest</button>
+                        {/* 📊 Card 3: ACCOUNT & USAGE */}
+                        <div style={{ background: "rgba(30, 30, 40, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                          <div>
+                            <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>🛡️ ACCOUNT STATUS</p>
+                            <h2 style={{ margin: 0, fontSize: "1.8rem", fontWeight: "bold", color: user.vpnStatus === "Suspended" ? "#ef4444" : "#FFF" }}>
+                              {user.vpnStatus || "Active"}
+                            </h2>
+                          </div>
+                          <button onClick={() => user.subscriptionLink ? window.open(user.subscriptionLink, "_blank") : alert("Usage link not available.")} style={{ marginTop: "1rem", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                            View Data Usage →
+                          </button>
+                        </div>
+
+                      </div>
+
+                      {/* 🛠️ IN-APP VPN TOOLS SECTION */}
+                      <div style={{ marginTop: "1rem" }}>
+                        <h3 style={{ fontSize: "1.2rem", marginBottom: "1rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                          
+                          {/* Speed Test Button */}
+                          <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setActiveTool("speed")}>
+                            <div style={{ width: "50px", height: "50px", background: "rgba(99,102,241,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🚀</div>
+                            <div style={{ flex: 1 }}>
+                              <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>Network Speed Test</h4>
+                              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Test your tunnel speed</p>
+                              <span style={{ color: "#818cf8", fontSize: "0.85rem", fontWeight: "bold" }}>Run Tool →</span>
+                            </div>
+                          </div>
+
+                          {/* IP Test Button */}
+                          <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setActiveTool("ip")}>
+                            <div style={{ width: "50px", height: "50px", background: "rgba(34,197,94,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🌍</div>
+                            <div style={{ flex: 1 }}>
+                              <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>IP & Location Check</h4>
+                              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Verify IP is hidden</p>
+                              <span style={{ color: "#22c55e", fontSize: "0.85rem", fontWeight: "bold" }}>Check Now →</span>
+                            </div>
+                          </div>
+
+                          {/* Ping Test Button */}
+                          <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setActiveTool("ping")}>
+                            <div style={{ width: "50px", height: "50px", background: "rgba(245,158,11,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>⚡</div>
+                            <div style={{ flex: 1 }}>
+                              <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>Latency (Ping)</h4>
+                              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Check game stability</p>
+                              <span style={{ color: "#f59e0b", fontSize: "0.85rem", fontWeight: "bold" }}>Test Ping →</span>
+                            </div>
+                          </div>
+
                         </div>
                       </div>
-
-                      {/* Tool 2: IP Checker */}
-                      <div className="glass-panel" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem" }}>
-                        <div style={{ width: "50px", height: "50px", background: "rgba(34,197,94,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🌍</div>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>IP & Leak Test</h4>
-                          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Verify IP is hidden</p>
-                          <button onClick={() => window.open("https://ipleak.net", "_blank")} style={{ background: "transparent", border: "1px solid #22c55e", color: "#22c55e", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>Check IP Status</button>
-                        </div>
-                      </div>
-
-                      {/* Tool 3: Copy Config Shortcut */}
-                      <div className="glass-panel" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem" }}>
-                        <div style={{ width: "50px", height: "50px", background: "rgba(245,158,11,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🔑</div>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>VLESS Config</h4>
-                          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Get your secure key</p>
-                          <button onClick={() => { setActiveTab("configs"); window.scrollTo({top:0, behavior:"smooth"}); }} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#FFF", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>View & Copy Code</button>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* අනිත් TABS (Configs, Store, Tutorials, etc.) කලින් විදිහටම තියෙනවා */}
+          {/* අනිත් TABS සේරම කලින් විදිහටම තියෙනවා (My VPNs, Store, Profile etc.) */}
           {activeTab === "configs" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeInUp 0.3s ease" }}>
-               {/* Config Key Section Only (No duplicates) */}
                <div className="glass-panel" style={{ padding: "3rem", position: "relative" }}>
                 <h2 style={{ fontSize: "1.5rem", marginBottom: "1.5rem", color: "#FFF" }}>Your VLESS Configuration Key</h2>
                 <div style={{ background: "#050505", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                  <code style={{ color: "#22c55e", fontSize: "1rem", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <code style={{ color: "#22c55e", fontSize: "1rem", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
                     {user.vpnConfigKey || "No config assigned yet."}
                   </code>
                   {hasActivePlan && (
@@ -267,9 +329,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* Buy Store Section */}
           {activeTab === "buy" && (
-            // (Store code from previous remains exactly same here)
              <div className="animate-fade-in">
              <div style={{ display: "flex", gap: "1rem", marginBottom: "3rem", flexWrap: "wrap", justifyContent: "center" }}>
                {(["Airtel", "Dialog", "SLT"] as const).map(provider => (
@@ -293,57 +353,52 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
              )}
            </div>
           )}
-          
+
+          {/* DYNAMIC QUOTA MODAL */}
+          {modalPackage && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
+              <div className="glass-panel" style={{ width: "100%", maxWidth: "500px", padding: "2.5rem", background: "#0a0a0f", position: "relative", border: "1px solid rgba(99, 102, 241, 0.3)", borderRadius: "16px" }}>
+                <button onClick={() => setModalPackage(null)} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "var(--muted-text)", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
+                <h2 style={{ marginBottom: "0.5rem", fontSize: "1.5rem" }}>Select Data Quota</h2>
+                <p style={{ color: "#6366f1", marginBottom: "2rem", fontWeight: "bold" }}>{modalPackage}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
+                  {Object.entries(pricingRules[modalPackage] || {}).map(([quota, price]) => (
+                    <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ display: "flex", justifyContent: "space-between", padding: "1.2rem", background: selectedQuota === quota ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.02)", border: "1px solid", borderColor: selectedQuota === quota ? "#818cf8" : "rgba(255,255,255,0.1)", borderRadius: "12px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer" }}>
+                      <span style={{ fontWeight: selectedQuota === quota ? "bold" : "normal" }}>{quota}</span>
+                      <span style={{ fontWeight: "bold" }}>RS {price}</span>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={handleConfirmOrder} disabled={!selectedQuota} style={{ width: "100%", padding: "1rem", background: selectedQuota ? "linear-gradient(90deg, #4f46e5, #7c3aed)" : "rgba(255,255,255,0.1)", color: selectedQuota ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "8px", border: "none" }}>Confirm Order via WhatsApp</button>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
 
       {/* LIQUID GLASS BUBBLE TASKBAR */}
-      <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.5rem", background: "rgba(5, 5, 10, 0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "50px", zIndex: 100, boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.05)" }}>
+      <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.5rem", background: "rgba(5, 5, 10, 0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "50px", zIndex: 100 }}>
         {tabs.map(tab => {
-          if (tab.isLink) {
-             return <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}><span>{tab.icon}</span></Link>;
-          }
+          if (tab.isLink) return <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}><span>{tab.icon}</span></Link>;
           const isActive = activeTab === tab.id;
           return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.6rem" : "0", padding: isActive ? "0 1.2rem 0 1rem" : "0", height: "45px", minWidth: isActive ? "auto" : "45px", width: isActive ? "auto" : "45px", justifyContent: "center", background: isActive ? "rgba(99, 102, 241, 0.2)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "1px solid", borderColor: isActive ? "rgba(99, 102, 241, 0.3)" : "transparent", cursor: "pointer", transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden" }}>
-              <span>{tab.icon}</span>
-              <span className="taskbar-label" style={{ maxWidth: isActive ? "120px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "0.9rem" }}>{tab.label}</span>
+            <button key={tab.id} onClick={() => {setActiveTab(tab.id); setActiveTool(null);}} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.6rem" : "0", padding: isActive ? "0 1.2rem 0 1rem" : "0", height: "45px", minWidth: isActive ? "auto" : "45px", width: isActive ? "auto" : "45px", justifyContent: "center", background: isActive ? "rgba(99, 102, 241, 0.2)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "1px solid", borderColor: isActive ? "rgba(99, 102, 241, 0.3)" : "transparent", cursor: "pointer", transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", whiteSpace: "nowrap", overflow: "hidden" }}>
+              <span>{tab.icon}</span><span className="taskbar-label" style={{ maxWidth: isActive ? "120px" : "0px", opacity: isActive ? 1 : 0, transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)", fontWeight: "bold", fontSize: "0.9rem" }}>{tab.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* DYNAMIC QUOTA MODAL */}
-      {modalPackage && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
-          <div className="glass-panel" style={{ width: "100%", maxWidth: "500px", padding: "2.5rem", background: "#0a0a0f", position: "relative", border: "1px solid rgba(99, 102, 241, 0.3)", borderRadius: "16px" }}>
-            <button onClick={() => setModalPackage(null)} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "var(--muted-text)", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
-            <h2 style={{ marginBottom: "0.5rem", fontSize: "1.5rem" }}>Select Data Quota</h2>
-            <p style={{ color: "#6366f1", marginBottom: "2rem", fontWeight: "bold" }}>{modalPackage}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
-              {Object.entries(pricingRules[modalPackage] || {}).map(([quota, price]) => (
-                <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ display: "flex", justifyContent: "space-between", padding: "1.2rem", background: selectedQuota === quota ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.02)", border: "1px solid", borderColor: selectedQuota === quota ? "#818cf8" : "rgba(255,255,255,0.1)", borderRadius: "12px", color: "#FFFFFF", fontSize: "1.1rem", cursor: "pointer" }}>
-                  <span style={{ fontWeight: selectedQuota === quota ? "bold" : "normal" }}>{quota}</span>
-                  <span style={{ fontWeight: "bold" }}>RS {price}</span>
-                </button>
-              ))}
-            </div>
-            <button onClick={handleConfirmOrder} disabled={!selectedQuota} style={{ width: "100%", padding: "1rem", background: selectedQuota ? "linear-gradient(90deg, #4f46e5, #7c3aed)" : "rgba(255,255,255,0.1)", color: selectedQuota ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "8px", border: "none" }}>Confirm Order via WhatsApp</button>
-          </div>
-        </div>
-      )}
-
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
         
         @media (max-width: 768px) {
           .desktop-name { display: none !important; }
           .dashboard-title { font-size: 1.5rem !important; }
           .taskbar-label { display: none !important; } 
-        }
-        @media (min-width: 769px) {
-          .dashboard-title { font-size: 2rem !important; }
         }
       `}</style>
     </div>
