@@ -37,47 +37,58 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
   const [showTestPlans, setShowTestPlans] = useState(false);
   
-  // 🚀 Embedded Tools State
   const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | null>(null);
   const [ipData, setIpData] = useState<any>(null);
   const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   const [pingResult, setPingResult] = useState<number | null>(null);
 
+  // 🚀 Scraped Data State
+  const [usageData, setUsageData] = useState<{dataUsed: string, limit: string} | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
+
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user.image);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 🚀 Real Date Countdown Logic (Database එකෙන්)
   const hasActivePlan = Boolean(user.vpnConfigKey && user.vpnConfigKey.length > 5);
   const now = new Date().getTime();
   const expiry = user.expiryDate ? new Date(user.expiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
-  // 🚀 Live Connection Detector
   useEffect(() => {
     if (activeTab === "dashboard" && hasActivePlan) {
+      // 1. IP / Connection Detector
       fetch("https://ipapi.co/json/")
         .then(res => res.json())
         .then(data => {
           setIpData(data);
           const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
           const isp = (data.org || "").toLowerCase();
-          const isSL = slISPs.some(sl => isp.includes(sl));
-          setIsVpnConnected(!isSL); // SL ISP එකක් නෙවෙයි නම් VPN එක On කියලා අඳුරගන්නවා
+          setIsVpnConnected(!slISPs.some(sl => isp.includes(sl)));
         }).catch(() => {});
+
+      // 2. Fetch Live Usage Data from our API
+      if (user.subscriptionLink) {
+        setLoadingUsage(true);
+        fetch(`/api/usage?url=${encodeURIComponent(user.subscriptionLink)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.dataUsed && data.dataUsed !== "N/A") {
+              setUsageData(data);
+            }
+          })
+          .catch(err => console.error("Failed to fetch usage"))
+          .finally(() => setLoadingUsage(false));
+      }
     }
-  }, [activeTab, hasActivePlan]);
+  }, [activeTab, hasActivePlan, user.subscriptionLink]);
 
   const runPingTest = async () => {
     setPingResult(null);
     const start = Date.now();
-    try {
-      await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: "no-cors", cache: "no-store" });
-      setPingResult(Date.now() - start);
-    } catch {
-      setPingResult(Date.now() - start);
-    }
+    try { await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: "no-cors", cache: "no-store" }); setPingResult(Date.now() - start); } 
+    catch { setPingResult(Date.now() - start); }
   };
 
   const handleAvatarSelect = async (gifPath: string) => {
@@ -121,12 +132,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </header>
 
         <div>
-          {/* 1. DASHBOARD OVERVIEW TAB */}
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
-              
               {!hasActivePlan ? (
-                /* FREE TRIAL UI (NO CONFIG) */
+                /* FREE TRIAL UI */
                 !showTestPlans ? (
                   <div className="glass-panel" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
                     <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>Welcome to Legion VPN</h2>
@@ -149,7 +158,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <div style={{ marginBottom: "1.5rem", flex: 1 }}>
                             <p style={{ fontSize: "0.75rem", color: "var(--muted-text)", fontWeight: "bold", marginBottom: "0.5rem" }}>{pkg.provider}</p>
                             <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.3rem" }}>{pkg.name}</h3>
-                            <div style={{ borderLeft: "3px solid #6366f1", paddingLeft: "1rem" }}><p style={{ color: "var(--muted-text)", fontSize: "0.95rem", margin: 0 }}>{pkg.desc}</p></div>
+                            <div style={{ borderLeft: "3px solid #6366f1", paddingLeft: "1rem" }}><p style={{ color: "var(--muted-text)", margin: 0 }}>{pkg.desc}</p></div>
                           </div>
                           <button onClick={() => window.open(`https://wa.me/94753403800?text=${encodeURIComponent(`Hi, I would like to activate a FREE Trial for: ${pkg.name}`)}`, "_blank")} style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "linear-gradient(90deg, #6366f1, #a855f7)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>🚀 Activate Free Trial</button>
                         </div>
@@ -159,11 +168,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 )
               ) : (
 
-              /* PREMIUM DASHBOARD WITH REAL COUNTDOWN & EMBEDDED TOOLS */
+              /* PREMIUM DASHBOARD */
                 <div className="animate-fade-in flex flex-col gap-6">
                   
                   {activeTool ? (
-                    /* 🟢 EMBEDDED TOOLS VIEWS 🟢 */
                     <div className="glass-panel" style={{ background: "rgba(15,15,20,0.8)", padding: "1rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", minHeight: "500px", display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", padding: "1rem" }}>
                         <h2 style={{ margin: 0, color: "#FFF" }}>
@@ -189,21 +197,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                 <h1 style={{ margin: 0, color: "#22c55e", fontSize: "2.5rem" }}>{ipData.ip}</h1>
                               </div>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                                  <p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>ISP / Network</p>
-                                  <h3 style={{ margin: 0, color: "#FFF" }}>{ipData.org}</h3>
-                                </div>
-                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                                  <p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>Location</p>
-                                  <h3 style={{ margin: 0, color: "#FFF" }}>{ipData.city}, {ipData.country_name}</h3>
-                                </div>
+                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}><p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>ISP / Network</p><h3 style={{ margin: 0, color: "#FFF" }}>{ipData.org}</h3></div>
+                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}><p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>Location</p><h3 style={{ margin: 0, color: "#FFF" }}>{ipData.city}, {ipData.country_name}</h3></div>
                               </div>
                               <div style={{ marginTop: "1rem", padding: "1.5rem", background: isVpnConnected ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)", borderRadius: "12px", border: `1px solid ${isVpnConnected ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}` }}>
-                                {isVpnConnected ? (
-                                  <h3 style={{ margin: 0, color: "#22c55e" }}>🟢 Your Connection is Secured & Hidden by Legion VPN.</h3>
-                                ) : (
-                                  <h3 style={{ margin: 0, color: "#ef4444" }}>🔴 Your Original ISP is visible! Please connect your VPN app.</h3>
-                                )}
+                                {isVpnConnected ? <h3 style={{ margin: 0, color: "#22c55e" }}>🟢 Your Connection is Secured & Hidden.</h3> : <h3 style={{ margin: 0, color: "#ef4444" }}>🔴 Your Original ISP is visible! Connect your VPN.</h3>}
                               </div>
                             </>
                           ) : <p>Loading IP Data...</p>}
@@ -215,8 +213,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <h3 style={{ color: "var(--muted-text)", textAlign: "center" }}>Test connection stability to Cloudflare (1.1.1.1)</h3>
                           {pingResult !== null && (
                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px solid #6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", boxShadow: "0 0 30px rgba(99,102,241,0.2)" }}>
-                              <h1 style={{ margin: 0, fontSize: "3rem", color: "#FFF" }}>{pingResult}</h1>
-                              <p style={{ margin: 0, color: "#818cf8", fontWeight: "bold" }}>ms (Ping)</p>
+                              <h1 style={{ margin: 0, fontSize: "3rem", color: "#FFF" }}>{pingResult}</h1><p style={{ margin: 0, color: "#818cf8", fontWeight: "bold" }}>ms (Ping)</p>
                             </div>
                           )}
                           <button onClick={runPingTest} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: "pointer" }}>Run Ping Test</button>
@@ -225,42 +222,48 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   ) : (
                     <>
-                      {/* REAL-TIME STATUS CARDS ROW */}
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem" }}>
                         
-                        {/* 🟢 Card 1: LIVE CONNECTION STATUS (Smart Detector) */}
-                        <div style={{ background: isVpnConnected === true ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden", boxShadow: isVpnConnected ? "0 10px 20px rgba(16, 185, 129, 0.2)" : "0 10px 20px rgba(245, 158, 11, 0.2)" }}>
+                        {/* 🟢 Card 1: LIVE CONNECTION */}
+                        <div style={{ background: isVpnConnected === true ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden" }}>
                           <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>📡 LIVE CONNECTION</p>
                           <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
                             <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block", boxShadow: "0 0 10px #FFF", animation: isVpnConnected ? "pulse 2s infinite" : "none" }}></span>
                             {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
                           </h2>
-                          <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>
-                            {isVpnConnected ? `IP: ${ipData?.ip}` : "Your real ISP is visible!"}
-                          </p>
+                          <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Your real ISP is visible!"}</p>
                         </div>
 
-                        {/* ⏳ Card 2: DB COUNTDOWN EXPIRES IN */}
-                        <div style={{ background: isExpired ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden", boxShadow: "0 10px 20px rgba(139, 92, 246, 0.2)" }}>
-                          <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>⏳ SUBSCRIPTION</p>
-                          <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>
-                            {daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}
-                          </h2>
-                          <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>
-                            {user.expiryDate ? `Valid till ${new Date(user.expiryDate).toLocaleDateString()}` : "No Expiry Date Set"}
-                          </p>
+                        {/* ⏳ Card 2: COUNTDOWN */}
+                        <div style={{ background: isExpired ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", position: "relative", overflow: "hidden" }}>
+                          <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>⏳ EXPIRES IN</p>
+                          <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft}d`}</h2>
+                          <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: 0.8 }}>{user.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                         </div>
 
-                        {/* 📊 Card 3: ACCOUNT & USAGE */}
+                        {/* 📊 Card 3: SCRAPED DATA USAGE */}
                         <div style={{ background: "rgba(30, 30, 40, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "1.5rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                           <div>
-                            <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>🛡️ ACCOUNT STATUS</p>
-                            <h2 style={{ margin: 0, fontSize: "1.8rem", fontWeight: "bold", color: user.vpnStatus === "Suspended" ? "#ef4444" : "#FFF" }}>
-                              {user.vpnStatus || "Active"}
-                            </h2>
+                            <p style={{ margin: "0 0 1rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>📊 DATA USED</p>
+                            
+                            {loadingUsage ? (
+                              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold", color: "rgba(255,255,255,0.5)", animation: "pulse 1.5s infinite" }}>Syncing Data...</h2>
+                            ) : usageData ? (
+                              <>
+                                <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>{usageData.dataUsed}</h2>
+                                <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.85rem", color: "var(--muted-text)" }}>{usageData.limit}</p>
+                              </>
+                            ) : (
+                              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold", color: "#ef4444" }}>Data Unavailable</h2>
+                            )}
                           </div>
-                          <button onClick={() => user.subscriptionLink ? window.open(user.subscriptionLink, "_blank") : alert("Usage link not available.")} style={{ marginTop: "1rem", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                            View Data Usage →
+                          <button onClick={() => {
+                            if (user.subscriptionLink) {
+                               setLoadingUsage(true);
+                               fetch(`/api/usage?url=${encodeURIComponent(user.subscriptionLink)}`).then(res=>res.json()).then(data=>setUsageData(data)).finally(()=>setLoadingUsage(false));
+                            } else alert("Usage link not set by Admin.");
+                          }} style={{ marginTop: "1rem", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                            {usageData ? "Refresh Data ↻" : "Load Usage"}
                           </button>
                         </div>
 
@@ -271,34 +274,19 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <h3 style={{ fontSize: "1.2rem", marginBottom: "1rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
                           
-                          {/* Speed Test Button */}
                           <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setActiveTool("speed")}>
                             <div style={{ width: "50px", height: "50px", background: "rgba(99,102,241,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🚀</div>
-                            <div style={{ flex: 1 }}>
-                              <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>Network Speed Test</h4>
-                              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Test your tunnel speed</p>
-                              <span style={{ color: "#818cf8", fontSize: "0.85rem", fontWeight: "bold" }}>Run Tool →</span>
-                            </div>
+                            <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.2rem 0" }}>Speed Test</h4><p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>Check tunnel speed</p></div>
                           </div>
 
-                          {/* IP Test Button */}
                           <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setActiveTool("ip")}>
                             <div style={{ width: "50px", height: "50px", background: "rgba(34,197,94,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🌍</div>
-                            <div style={{ flex: 1 }}>
-                              <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>IP & Location Check</h4>
-                              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Verify IP is hidden</p>
-                              <span style={{ color: "#22c55e", fontSize: "0.85rem", fontWeight: "bold" }}>Check Now →</span>
-                            </div>
+                            <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.2rem 0" }}>IP & Location</h4><p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>Verify IP is hidden</p></div>
                           </div>
 
-                          {/* Ping Test Button */}
                           <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1.2rem", cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setActiveTool("ping")}>
                             <div style={{ width: "50px", height: "50px", background: "rgba(245,158,11,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>⚡</div>
-                            <div style={{ flex: 1 }}>
-                              <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>Latency (Ping)</h4>
-                              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", marginBottom: "0.8rem" }}>Check game stability</p>
-                              <span style={{ color: "#f59e0b", fontSize: "0.85rem", fontWeight: "bold" }}>Test Ping →</span>
-                            </div>
+                            <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.2rem 0" }}>Latency (Ping)</h4><p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>Game stability test</p></div>
                           </div>
 
                         </div>
@@ -310,7 +298,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* අනිත් TABS සේරම කලින් විදිහටම තියෙනවා (My VPNs, Store, Profile etc.) */}
+          {/* අනිත් TABS සේරම කලින් විදිහටම තියෙනවා... */}
           {activeTab === "configs" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeInUp 0.3s ease" }}>
                <div className="glass-panel" style={{ padding: "3rem", position: "relative" }}>
