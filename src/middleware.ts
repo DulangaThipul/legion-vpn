@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 // 🚀 Maintenance Mode එක On/Off කිරීමට මෙතන true / false කරන්න
-const IS_MAINTENANCE_MODE = true; 
+const IS_MAINTENANCE_MODE = false; 
 
 // Admin Email එක
 const ADMIN_EMAIL = "dulangathipul@gmail.com";
