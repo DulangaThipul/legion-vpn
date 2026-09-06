@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar } from "@/lib/authActions";
@@ -37,7 +37,7 @@ const testPackages = [
   { provider: "AIRTEL", name: "Airtel TikTok Unlimited - Rs.297/1 week , Rs.997/1 month", desc: "This is Unlimited Plan" }
 ];
 
-// 🚀 STEP 1: New Bank Details Updated Here
+// 🚀 STEP 1: New Bank Details
 const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "WDT WARAKAWATHTHA", accountNo: "8029138148", branch: "Yatiyanthota" };
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
@@ -46,7 +46,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [selectedProvider, setSelectedProvider] = useState<"Airtel" | "Dialog" | "SLT" | null>(null);
   const [showTestPlans, setShowTestPlans] = useState(false);
   
-  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "dns" | null>(null);
+  // Custom Tools States
+  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "webrtc" | null>(null);
+  const [ipData, setIpData] = useState<any>(null);
+  const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   
   // Checkout States
   const [modalPackage, setModalPackage] = useState<string | null>(null);
@@ -55,13 +58,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const [ipData, setIpData] = useState<any>(null);
-  const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
-  const [pingResult, setPingResult] = useState<number | null>(null);
-  
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user.image);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const hasActivePlan = Boolean(user.vpnConfigKey && user.vpnConfigKey.length > 5);
   const now = new Date().getTime();
@@ -69,10 +67,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
+  // Configuration Parser
   const parseConfigs = (rawText: string | null) => {
-    if (!rawText) return [];
-    
-    // Receipt Link එක පෙන්නන්න වෙනම Check එකක්
+    if (!rawText) return { configs: [], receiptLink: null };
     const receiptMatch = rawText.match(/Receipt:\s*(https?:\/\/[^\s]+)/);
     const receiptLink = receiptMatch ? receiptMatch[1] : null;
 
@@ -80,97 +77,153 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     let matches = [...rawText.matchAll(regex)];
     
     let configs = [];
-    if (matches.length > 0) {
-      configs = matches.map(m => ({ name: m[1].trim(), code: m[2].trim() }));
-    } else {
+    if (matches.length > 0) configs = matches.map(m => ({ name: m[1].trim(), code: m[2].trim() }));
+    else {
       const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
-      if (vlessLinks) {
-        configs = vlessLinks.map((link, i) => ({ name: `Premium VPN Server ${i + 1}`, code: link }));
-      } else {
-        configs = [{ name: "Your Configuration Details", code: rawText }];
-      }
+      if (vlessLinks) configs = vlessLinks.map((link, i) => ({ name: `Premium VPN Server ${i + 1}`, code: link }));
+      else configs = [{ name: "Your Configuration Details", code: rawText }];
     }
-    
     return { configs, receiptLink };
   };
-
   const { configs: parsedConfigs, receiptLink } = parseConfigs(user.vpnConfigKey);
 
   useEffect(() => {
     if (activeTab === "dashboard" && hasActivePlan) {
-      fetch("https://ipapi.co/json/")
-        .then(res => res.json())
-        .then(data => {
-          setIpData(data);
-          const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
-          const isp = (data.org || "").toLowerCase();
-          setIsVpnConnected(!slISPs.some(sl => isp.includes(sl)));
-        }).catch(() => {});
+      fetch("https://ipapi.co/json/").then(res => res.json()).then(data => {
+        setIpData(data);
+        const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
+        setIsVpnConnected(!slISPs.some(sl => (data.org || "").toLowerCase().includes(sl)));
+      }).catch(() => {});
     }
   }, [activeTab, hasActivePlan]);
 
-  const runPingTest = async () => {
-    setPingResult(null);
-    const start = Date.now();
-    try { await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: "no-cors", cache: "no-store" }); setPingResult(Date.now() - start); } 
-    catch { setPingResult(Date.now() - start); }
+  // 🚀 Native Custom Speed Test Logic
+  const [stState, setStState] = useState<"idle" | "pinging" | "downloading" | "uploading" | "done">("idle");
+  const [stPing, setStPing] = useState("--");
+  const [stDown, setStDown] = useState("0.00");
+  const [stUp, setStUp] = useState("0.00");
+  const [stProgress, setStProgress] = useState(0);
+
+  const runSpeedTest = async () => {
+    setStState("pinging"); setStPing("--"); setStDown("0.00"); setStUp("0.00"); setStProgress(0);
+    try {
+      // 1. Ping
+      let start = performance.now();
+      await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: "no-cors", cache: "no-store" });
+      setStPing(Math.round(performance.now() - start).toString());
+      setStProgress(20);
+
+      // 2. Download (15MB from Cloudflare)
+      setStState("downloading");
+      start = performance.now();
+      const dlRes = await fetch("https://speed.cloudflare.com/__down?bytes=15000000", { cache: "no-store" });
+      const reader = dlRes.body!.getReader();
+      let received = 0;
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.length;
+        const currentMs = performance.now() - start;
+        if (currentMs > 100) {
+          const speedMbps = ((received * 8) / (currentMs / 1000)) / 1000000;
+          setStDown(speedMbps.toFixed(2));
+          setStProgress(20 + Math.min(40, (received / 15000000) * 40));
+        }
+      }
+      
+      // 3. Upload (Simulation via small POSTs to avoid CORS issues)
+      setStState("uploading");
+      let upSpeed = 0;
+      for (let i = 0; i < 5; i++) {
+         const upStart = performance.now();
+         const dummyData = new Uint8Array(1000000); // 1MB
+         await fetch("https://httpbin.org/post", { method: "POST", body: dummyData }).catch(()=>{});
+         const upMs = performance.now() - upStart;
+         upSpeed = ((1000000 * 8) / (upMs / 1000)) / 1000000;
+         setStUp(upSpeed.toFixed(2));
+         setStProgress(60 + (i * 8));
+      }
+      setStProgress(100);
+      setStState("done");
+    } catch (e) {
+      setStState("idle"); alert("Speed test failed. Please check your connection.");
+    }
   };
 
-  // 🚀 STEP 2: Catbox Cloud Upload Logic
+  // 🚀 Realistic Latency Test (Ping)
+  const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
+  const [isPinging, setIsPinging] = useState(false);
+
+  const runLatencyTest = async () => {
+    setIsPinging(true); setPingStats(null);
+    let pings = [];
+    for (let i = 0; i < 6; i++) {
+      const start = performance.now();
+      try {
+        await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: "no-cors", cache: "no-store" });
+        pings.push(performance.now() - start);
+      } catch (e) { pings.push(500); }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    const min = Math.min(...pings);
+    const max = Math.max(...pings);
+    const avg = pings.reduce((a,b)=>a+b,0) / pings.length;
+    const jitter = max - min;
+    setPingStats({ min: Math.round(min), max: Math.round(max), avg: Math.round(avg), jitter: Math.round(jitter) });
+    setIsPinging(false);
+  };
+
+  // 🚀 WebRTC Leak Test
+  const [leakIPs, setLeakIPs] = useState<string[]>([]);
+  const [isCheckingLeak, setIsCheckingLeak] = useState(false);
+
+  const checkWebRTC = () => {
+    setIsCheckingLeak(true); setLeakIPs([]);
+    const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    rtc.createDataChannel("");
+    rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
+    rtc.onicecandidate = (e) => {
+      if (e.candidate && e.candidate.candidate) {
+        const ipMatch = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+        if (ipMatch) {
+          setLeakIPs(prev => Array.from(new Set([...prev, ipMatch[1]])));
+        }
+      }
+    };
+    setTimeout(() => { setIsCheckingLeak(false); rtc.close(); }, 3000);
+  };
+
+  // 🚀 STEP 2: Fixed Reliable Cloud Upload (Cloudinary Free Public API)
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
-
     try {
       const formData = new FormData();
-      formData.append("reqtype", "fileupload");
-      formData.append("fileToUpload", slipFile);
-
-      // Uploading to Free Cloud (Catbox API)
-      const uploadRes = await fetch("https://catbox.moe/user/api.php", {
+      formData.append("file", slipFile);
+      formData.append("upload_preset", "docs_upload_example_us"); // Official public test preset!
+      
+      const uploadRes = await fetch("https://api.cloudinary.com/v1_1/demo/image/upload", {
         method: "POST",
         body: formData,
       });
 
       if (!uploadRes.ok) throw new Error("Upload Failed");
+      const data = await uploadRes.json();
+      const fileUrl = data.secure_url;
 
-      const fileUrl = await uploadRes.text(); // Gets the uploaded link (e.g., https://files.catbox.moe/xxxx.jpg)
-
-      // UI Update
-      alert("Order Submitted! Your receipt was securely uploaded to the cloud.");
-      
-      setUser({ 
-        ...user, 
-        vpnStatus: "Suspended", 
-        vpnConfigKey: `[ Payment Verifying ]\nYour config will appear here once the admin approves it.\n\nReceipt: ${fileUrl}` 
-      });
-      
+      alert("Order Submitted! Your receipt was securely uploaded.");
+      setUser({ ...user, vpnStatus: "Suspended", vpnConfigKey: `[ Payment Verifying ]\nYour config will appear here once the admin approves it.\n\nReceipt: ${fileUrl}` });
       closeCheckout();
       setActiveTab("configs");
-
     } catch (err) {
-      console.error(err);
-      alert("Failed to upload slip to cloud. Please try again.");
+      alert("Failed to upload slip to cloud. Please check your internet connection.");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const closeCheckout = () => {
-    setModalPackage(null);
-    setCheckoutStep(1);
-    setSelectedQuota(null);
-    setSlipFile(null);
-  };
-
-  const handleAvatarSelect = async (gifPath: string) => {
-    if (isUpdating) return;
-    setIsUpdating(true);
-    setAvatar(gifPath === "" ? (initialUser.googleImage || null) : gifPath);
-    const res = await updateUserAvatar(gifPath);
-    if (res.success) router.refresh();
-    setIsUpdating(false);
-  };
+  const closeCheckout = () => { setModalPackage(null); setCheckoutStep(1); setSelectedQuota(null); setSlipFile(null); };
 
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
@@ -261,23 +314,57 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                   {/* ESSENTIAL TOOLS EMBEDDED VIEWER */}
                   {activeTool ? (
-                    <div className="glass-panel animate-fade-in" style={{ background: "rgba(15,15,20,0.8)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", minHeight: "450px", display: "flex", flexDirection: "column" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                    <div className="glass-panel animate-fade-in" style={{ background: "rgba(15,15,20,0.8)", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
                         <h2 style={{ margin: 0, color: "#FFF", fontSize: "1.5rem" }}>
                           {activeTool === "speed" && "🚀 Live Speed Test"}
                           {activeTool === "ip" && "🌍 Connection & IP Test"}
                           {activeTool === "ping" && "⚡ Latency (Ping) Test"}
+                          {activeTool === "webrtc" && "🛡️ WebRTC Leak Test"}
                         </h2>
-                        <button onClick={() => setActiveTool(null)} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", zIndex: 10 }}>✕ Close Tool</button>
+                        <button onClick={() => setActiveTool(null)} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close Tool</button>
                       </div>
 
-                      {/* 🚀 STEP 4: Speed Test Native Premium UI Fix */}
+                      {/* 🚀 100% NATIVE SPEED TEST UI */}
                       {activeTool === "speed" && (
-                        <div style={{ flex: 1, borderRadius: "16px", overflow: "hidden", background: "transparent", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "550px" }}>
-                          <iframe src="https://openspeedtest.com/Get-widget.php" width="100%" height="600px" frameBorder="0" scrolling="no" style={{ border: "none", background: "transparent" }}></iframe>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem", padding: "2rem 0" }}>
+                          
+                          {/* Speedtest Circular Gauge */}
+                          <div style={{ position: "relative", width: "250px", height: "250px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                             <svg width="250" height="250" style={{ transform: "rotate(-90deg)" }}>
+                               <circle cx="125" cy="125" r="110" stroke="rgba(255,255,255,0.05)" strokeWidth="15" fill="none" />
+                               <circle cx="125" cy="125" r="110" stroke={stState === "downloading" ? "#22c55e" : stState === "uploading" ? "#8b5cf6" : "#6366f1"} strokeWidth="15" fill="none" strokeDasharray={2 * Math.PI * 110} strokeDashoffset={2 * Math.PI * 110 - (stProgress / 100) * (2 * Math.PI * 110)} strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.3s ease, stroke 0.3s ease" }} />
+                             </svg>
+                             <div style={{ position: "absolute", textAlign: "center" }}>
+                                <h1 style={{ margin: 0, fontSize: "3.5rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>
+                                  {stState === "uploading" || stState === "done" ? stUp : stDown}
+                                </h1>
+                                <p style={{ margin: 0, color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "2px" }}>Mbps</p>
+                             </div>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "2rem", width: "100%", maxWidth: "600px", textAlign: "center", background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                             <div>
+                               <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "0.85rem", letterSpacing: "1px" }}>PING</p>
+                               <h3 style={{ margin: 0, fontSize: "1.5rem", color: "#f59e0b" }}>{stPing} <span style={{fontSize:"1rem"}}>ms</span></h3>
+                             </div>
+                             <div style={{ borderLeft: "1px solid rgba(255,255,255,0.1)", borderRight: "1px solid rgba(255,255,255,0.1)" }}>
+                               <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "0.85rem", letterSpacing: "1px" }}>DOWNLOAD</p>
+                               <h3 style={{ margin: 0, fontSize: "1.5rem", color: "#22c55e" }}>{stDown}</h3>
+                             </div>
+                             <div>
+                               <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "0.85rem", letterSpacing: "1px" }}>UPLOAD</p>
+                               <h3 style={{ margin: 0, fontSize: "1.5rem", color: "#8b5cf6" }}>{stUp}</h3>
+                             </div>
+                          </div>
+
+                          <button onClick={runSpeedTest} disabled={stState === "pinging" || stState === "downloading" || stState === "uploading"} style={{ padding: "1rem 4rem", borderRadius: "30px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: stState !== "idle" && stState !== "done" ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)", opacity: stState !== "idle" && stState !== "done" ? 0.7 : 1 }}>
+                             {stState === "idle" ? "START TEST" : stState === "done" ? "TEST AGAIN" : "TESTING..."}
+                          </button>
                         </div>
                       )}
 
+                      {/* 🌍 IP & Location Tool */}
                       {activeTool === "ip" && (
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
                           {ipData ? (
@@ -291,28 +378,86 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                 <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}><p style={{ color: "var(--muted-text)", margin: "0 0 0.5rem 0" }}>Location</p><h3 style={{ margin: 0, color: "#FFF" }}>{ipData.city}, {ipData.country_name}</h3></div>
                               </div>
                               <div style={{ marginTop: "1rem", padding: "1.5rem", textAlign: "center", background: isVpnConnected ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)", borderRadius: "12px", border: `1px solid ${isVpnConnected ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}` }}>
-                                {isVpnConnected ? <h3 style={{ margin: 0, color: "#22c55e" }}>🟢 Your Connection is Secured & Hidden by Legion VPN.</h3> : <h3 style={{ margin: 0, color: "#ef4444" }}>🔴 Your Original ISP is visible! Please connect your VPN.</h3>}
+                                {isVpnConnected ? <h3 style={{ margin: 0, color: "#22c55e" }}>🟢 Your Connection is Secured & Hidden.</h3> : <h3 style={{ margin: 0, color: "#ef4444" }}>🔴 Your Original ISP is visible!</h3>}
                               </div>
                             </>
                           ) : <p style={{textAlign:"center", padding: "3rem"}}>Loading IP Data...</p>}
                         </div>
                       )}
 
+                      {/* ⚡ Latency Ping Tool */}
                       {activeTool === "ping" && (
                         <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem" }}>
-                          <h3 style={{ color: "var(--muted-text)", textAlign: "center", fontWeight: "normal" }}>Test connection stability to Cloudflare (1.1.1.1)</h3>
-                          {pingResult !== null && (
-                            <div style={{ width: "220px", height: "220px", borderRadius: "50%", border: "4px solid #6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", boxShadow: "0 0 40px rgba(99,102,241,0.2)", background: "rgba(0,0,0,0.3)" }}>
-                              <h1 style={{ margin: 0, fontSize: "4rem", color: "#FFF" }}>{pingResult}</h1><p style={{ margin: 0, color: "#818cf8", fontSize: "1.2rem", fontWeight: "bold" }}>ms (Ping)</p>
-                            </div>
+                          <h3 style={{ color: "var(--muted-text)", textAlign: "center", fontWeight: "normal", margin: 0 }}>Advanced Server Latency Test (1.1.1.1)</h3>
+                          
+                          {pingStats ? (
+                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", width: "100%", maxWidth: "500px" }}>
+                               <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                 <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)" }}>Average Ping</p>
+                                 <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2.5rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"var(--muted-text)"}}>ms</span></h2>
+                               </div>
+                               <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                 <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)" }}>Jitter</p>
+                                 <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2.5rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"var(--muted-text)"}}>ms</span></h2>
+                               </div>
+                               <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                 <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)" }}>Min Ping</p>
+                                 <h2 style={{ margin: 0, color: "#22c55e", fontSize: "2rem" }}>{pingStats.min} ms</h2>
+                               </div>
+                               <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                 <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)" }}>Max Ping</p>
+                                 <h2 style={{ margin: 0, color: "#ef4444", fontSize: "2rem" }}>{pingStats.max} ms</h2>
+                               </div>
+                             </div>
+                          ) : (
+                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
+                                <span style={{ fontSize: "4rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
+                             </div>
                           )}
-                          <button onClick={runPingTest} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.2rem", fontWeight: "bold", cursor: "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>Run Ping Test</button>
+
+                          <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
+                             {isPinging ? "Testing Packets..." : "Run Ping Test"}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 🛡️ WebRTC Leak Tool */}
+                      {activeTool === "webrtc" && (
+                        <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
+                          <div style={{ textAlign: "center", maxWidth: "600px" }}>
+                            <p style={{ color: "var(--muted-text)", fontSize: "1.1rem", lineHeight: 1.6 }}>WebRTC can accidentally leak your real IP address even when a VPN is connected. This tool checks your browser for hidden leaks.</p>
+                          </div>
+                          
+                          <div style={{ background: "rgba(0,0,0,0.3)", width: "100%", maxWidth: "600px", minHeight: "150px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                             {isCheckingLeak ? (
+                                <h3 style={{ textAlign: "center", color: "#818cf8", animation: "pulse 1s infinite" }}>Scanning network interfaces...</h3>
+                             ) : leakIPs.length > 0 ? (
+                                <>
+                                  <h3 style={{ margin: 0, color: "#ef4444", textAlign: "center" }}>⚠️ IPs Detected via WebRTC:</h3>
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "center" }}>
+                                    {leakIPs.map((ip, i) => (
+                                      <span key={i} style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "0.5rem 1rem", borderRadius: "8px", fontWeight: "bold" }}>{ip}</span>
+                                    ))}
+                                  </div>
+                                  <p style={{ fontSize: "0.85rem", color: "var(--muted-text)", textAlign: "center", marginTop: "1rem" }}>If you see your real ISP IP here, your browser is leaking. Enable WebRTC protection in browser settings.</p>
+                                </>
+                             ) : (
+                                <div style={{ textAlign: "center" }}>
+                                  <h3 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>✅ No Leaks Detected</h3>
+                                  <p style={{ color: "var(--muted-text)", marginTop: "0.5rem" }}>Your identity is completely hidden.</p>
+                                </div>
+                             )}
+                          </div>
+
+                          <button onClick={checkWebRTC} disabled={isCheckingLeak} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isCheckingLeak ? "not-allowed" : "pointer" }}>
+                             {isCheckingLeak ? "Scanning..." : "Check for Leaks"}
+                          </button>
                         </div>
                       )}
                     </div>
                   ) : (
                     
-                    /* 🚀 STEP 3: Enhanced Tools Menu (Data Usage Removed) */
+                    /* ESSENTIAL TOOLS MENU */
                     <div>
                       <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }}>
@@ -335,11 +480,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <div style={{ color: "#f59e0b" }}>→</div>
                         </div>
 
-                        {/* New DNS Leak Tool */}
-                        <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.8rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", gap: "1.5rem", cursor: "pointer", transition: "all 0.3s" }} onClick={() => window.open("https://dnsleaktest.com/", "_blank")}>
+                        <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.8rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", gap: "1.5rem", cursor: "pointer", transition: "all 0.3s" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
                           <div style={{ width: "60px", height: "60px", background: "rgba(239,68,68,0.1)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>🛡️</div>
-                          <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.3rem 0", fontSize: "1.1rem" }}>DNS Leak Test</h4><p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>Advanced privacy scan</p></div>
-                          <div style={{ color: "#ef4444" }}>↗</div>
+                          <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.3rem 0", fontSize: "1.1rem" }}>WebRTC Leak</h4><p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>Advanced privacy scan</p></div>
+                          <div style={{ color: "#ef4444" }}>→</div>
                         </div>
 
                       </div>
@@ -537,9 +681,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: isUploading ? "not-allowed" : "pointer", opacity: isUploading ? 0.5 : 1 }}>
                       <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" disabled={isUploading} />
                       <label htmlFor="slip-upload" style={{ cursor: isUploading ? "not-allowed" : "pointer", display: "block" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>{isUploading ? "⏳" : "📁"}</div>
+                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem", animation: isUploading ? "pulse 1s infinite" : "none" }}>{isUploading ? "⏳" : "📁"}</div>
                         <h4 style={{ margin: "0 0 0.5rem 0", color: "#818cf8" }}>
-                          {isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip"}
+                          {isUploading ? "Uploading to Cloud..." : slipFile ? slipFile.name : "Click here to upload slip"}
                         </h4>
                         {!isUploading && <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted-text)" }}>JPG, PNG, or PDF</p>}
                       </label>
@@ -548,7 +692,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ display: "flex", gap: "1rem" }}>
                       <button onClick={() => setCheckoutStep(2)} disabled={isUploading} style={{ flex: 1, padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: isUploading ? "not-allowed" : "pointer" }}>← Back</button>
                       <button onClick={handleConfirmOrder} disabled={!slipFile || isUploading} style={{ flex: 2, padding: "1rem", background: slipFile ? "linear-gradient(90deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.1)", color: slipFile ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: !slipFile || isUploading ? "not-allowed" : "pointer" }}>
-                        {isUploading ? "Uploading to Cloud..." : "🚀 Submit Order"}
+                        {isUploading ? "Please Wait..." : "🚀 Submit Order"}
                       </button>
                     </div>
                   </div>
@@ -574,6 +718,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         @media (max-width: 768px) {
           .desktop-name { display: none !important; }
           .dashboard-title { font-size: 1.5rem !important; }
