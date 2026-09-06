@@ -16,7 +16,6 @@ const pricingRules: Record<string, Record<string, number>> = {
   "SLT Fiber 1990 Unlimited": { "100GB": 1000, "200GB": 1200, "Unlimited": 1400 }
 };
 
-// 🚀 Store එකට අලුතින් Details සහ Features දැම්මා
 const packages = {
   Airtel: [
     { name: "Airtel Old Sim 260 Package VPN", desc: "Optimized for older Airtel SIMs.", features: ["Bonus USA Server included", "High-speed tunneling", "Stable P2P connection"] },
@@ -38,29 +37,28 @@ const testPackages = [
   { provider: "AIRTEL", name: "Airtel TikTok Unlimited - Rs.297/1 week , Rs.997/1 month", desc: "This is Unlimited Plan" }
 ];
 
-// 🚀 Fixed Bank Account (Referral Removed)
-const BANK_ACCOUNT = { bankName: "HNB", accountName: "BBJN Rupasinghe", accountNo: "124020206878", branch: "Mahiyangana" };
+// 🚀 STEP 1: New Bank Details Updated Here
+const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "WDT WARAKAWATHTHA", accountNo: "8029138148", branch: "Yatiyanthota" };
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedProvider, setSelectedProvider] = useState<"Airtel" | "Dialog" | "SLT" | null>(null);
   const [showTestPlans, setShowTestPlans] = useState(false);
-  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | null>(null);
+  
+  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "dns" | null>(null);
   
   // Checkout States
   const [modalPackage, setModalPackage] = useState<string | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [ipData, setIpData] = useState<any>(null);
   const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   const [pingResult, setPingResult] = useState<number | null>(null);
   
-  const [usageData, setUsageData] = useState<{dataUsed: string, limit: string} | null>(null);
-  const [loadingUsage, setLoadingUsage] = useState(false);
-
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user.image);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -71,37 +69,32 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
-  // 🚀 Smart Config Parser: VLESS කෝඩ් කීපයක් තිබ්බොත් ලස්සනට කඩලා ගන්නවා
   const parseConfigs = (rawText: string | null) => {
     if (!rawText) return [];
+    
+    // Receipt Link එක පෙන්නන්න වෙනම Check එකක්
+    const receiptMatch = rawText.match(/Receipt:\s*(https?:\/\/[^\s]+)/);
+    const receiptLink = receiptMatch ? receiptMatch[1] : null;
+
     const regex = /(?:📦\s*)?\[(.*?)\]\s*(vless:\/\/[^\s]+)/g;
     let matches = [...rawText.matchAll(regex)];
     
+    let configs = [];
     if (matches.length > 0) {
-      return matches.map(m => ({ name: m[1].trim(), code: m[2].trim() }));
+      configs = matches.map(m => ({ name: m[1].trim(), code: m[2].trim() }));
+    } else {
+      const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
+      if (vlessLinks) {
+        configs = vlessLinks.map((link, i) => ({ name: `Premium VPN Server ${i + 1}`, code: link }));
+      } else {
+        configs = [{ name: "Your Configuration Details", code: rawText }];
+      }
     }
     
-    // Fallback: Emoji / Brackets නැත්නම් නිකම්ම vless ලින්ක් ටික හොයනවා
-    const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
-    if (vlessLinks) {
-      return vlessLinks.map((link, i) => ({ name: `Premium VPN Server ${i + 1}`, code: link }));
-    }
-    return [{ name: "Your Configuration Key", code: rawText }];
+    return { configs, receiptLink };
   };
 
-  const parsedConfigs = parseConfigs(user.vpnConfigKey);
-
-  const fetchUsageData = () => {
-    if (!user.subscriptionLink) return;
-    const match = user.subscriptionLink.match(/id=(\d+)/);
-    const vpnId = match ? match[1] : user.subscriptionLink.trim();
-    setLoadingUsage(true);
-    fetch(`/api/usage?id=${vpnId}`)
-      .then(res => res.json())
-      .then(data => { if (data.dataUsed) setUsageData({ dataUsed: data.dataUsed, limit: data.limit }); })
-      .catch(() => {})
-      .finally(() => setLoadingUsage(false));
-  };
+  const { configs: parsedConfigs, receiptLink } = parseConfigs(user.vpnConfigKey);
 
   useEffect(() => {
     if (activeTab === "dashboard" && hasActivePlan) {
@@ -113,9 +106,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           const isp = (data.org || "").toLowerCase();
           setIsVpnConnected(!slISPs.some(sl => isp.includes(sl)));
         }).catch(() => {});
-      fetchUsageData();
     }
-  }, [activeTab, hasActivePlan, user.subscriptionLink]);
+  }, [activeTab, hasActivePlan]);
 
   const runPingTest = async () => {
     setPingResult(null);
@@ -124,11 +116,44 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     catch { setPingResult(Date.now() - start); }
   };
 
+  // 🚀 STEP 2: Catbox Cloud Upload Logic
   const handleConfirmOrder = async () => {
-    alert("Order Submitted! Your VPN Config is generated and pending Admin Review.");
-    setUser({ ...user, vpnStatus: "Suspended", vpnConfigKey: "Pending Review - Uploaded slip is being checked." });
-    closeCheckout();
-    setActiveTab("configs");
+    if (!slipFile) return;
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("reqtype", "fileupload");
+      formData.append("fileToUpload", slipFile);
+
+      // Uploading to Free Cloud (Catbox API)
+      const uploadRes = await fetch("https://catbox.moe/user/api.php", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Upload Failed");
+
+      const fileUrl = await uploadRes.text(); // Gets the uploaded link (e.g., https://files.catbox.moe/xxxx.jpg)
+
+      // UI Update
+      alert("Order Submitted! Your receipt was securely uploaded to the cloud.");
+      
+      setUser({ 
+        ...user, 
+        vpnStatus: "Suspended", 
+        vpnConfigKey: `[ Payment Verifying ]\nYour config will appear here once the admin approves it.\n\nReceipt: ${fileUrl}` 
+      });
+      
+      closeCheckout();
+      setActiveTab("configs");
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload slip to cloud. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const closeCheckout = () => {
@@ -147,7 +172,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setIsUpdating(false);
   };
 
-  // 🚀 Tutorials & Tickets Tabs අයින් කළා
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
     { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
@@ -179,12 +203,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
         <div>
           {/* =======================
-              STEP 1: MAIN DASHBOARD 
+              DASHBOARD TAB 
           ======================== */}
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               {!hasActivePlan ? (
-                /* FREE TRIAL UI */
                 !showTestPlans ? (
                   <div className="glass-panel" style={{ padding: "4rem 2rem", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", background: "rgba(10, 10, 15, 0.6)", borderRadius: "16px" }}>
                     <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>Welcome to Legion VPN</h2>
@@ -245,12 +268,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           {activeTool === "ip" && "🌍 Connection & IP Test"}
                           {activeTool === "ping" && "⚡ Latency (Ping) Test"}
                         </h2>
-                        <button onClick={() => setActiveTool(null)} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close Tool</button>
+                        <button onClick={() => setActiveTool(null)} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", zIndex: 10 }}>✕ Close Tool</button>
                       </div>
 
+                      {/* 🚀 STEP 4: Speed Test Native Premium UI Fix */}
                       {activeTool === "speed" && (
-                        <div style={{ flex: 1, borderRadius: "12px", overflow: "hidden", background: "#fff", minHeight: "500px" }}>
-                          <iframe src="https://openspeedtest.com/Get-widget.php" width="100%" height="100%" style={{ border: "none" }}></iframe>
+                        <div style={{ flex: 1, borderRadius: "16px", overflow: "hidden", background: "transparent", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "550px" }}>
+                          <iframe src="https://openspeedtest.com/Get-widget.php" width="100%" height="600px" frameBorder="0" scrolling="no" style={{ border: "none", background: "transparent" }}></iframe>
                         </div>
                       )}
 
@@ -287,10 +311,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       )}
                     </div>
                   ) : (
-                    /* ESSENTIAL TOOLS MENU (Shows if no tool is active) */
+                    
+                    /* 🚀 STEP 3: Enhanced Tools Menu (Data Usage Removed) */
                     <div>
                       <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }}>
                         
                         <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.8rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", gap: "1.5rem", cursor: "pointer", transition: "all 0.3s" }} onClick={() => setActiveTool("speed")}>
                           <div style={{ width: "60px", height: "60px", background: "rgba(99,102,241,0.1)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>🚀</div>
@@ -310,29 +335,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <div style={{ color: "#f59e0b" }}>→</div>
                         </div>
 
-                      </div>
-                    </div>
-                  )}
+                        {/* New DNS Leak Tool */}
+                        <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.8rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", gap: "1.5rem", cursor: "pointer", transition: "all 0.3s" }} onClick={() => window.open("https://dnsleaktest.com/", "_blank")}>
+                          <div style={{ width: "60px", height: "60px", background: "rgba(239,68,68,0.1)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>🛡️</div>
+                          <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.3rem 0", fontSize: "1.1rem" }}>DNS Leak Test</h4><p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>Advanced privacy scan</p></div>
+                          <div style={{ color: "#ef4444" }}>↗</div>
+                        </div>
 
-                  {/* DATA USAGE WIDGET */}
-                  {user.subscriptionLink && (
-                    <div className="glass-panel" style={{ background: "rgba(30, 30, 40, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2rem" }}>
-                      <div>
-                        <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", fontWeight: "bold", letterSpacing: "1px", color: "var(--muted-text)" }}>📊 YOUR DATA USAGE</p>
-                        {loadingUsage ? (
-                           <h2 style={{ margin: 0, fontSize: "2rem", color: "rgba(255,255,255,0.5)", animation: "pulse 1.5s infinite" }}>Syncing...</h2>
-                        ) : usageData ? (
-                          <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-                            <h2 style={{ margin: 0, fontSize: "2.5rem", fontWeight: "bold", color: "#22c55e" }}>{usageData.dataUsed}</h2>
-                            <span style={{ fontSize: "1rem", color: "var(--muted-text)" }}>/ {usageData.limit.replace("Limit: ", "")}</span>
-                          </div>
-                        ) : (
-                          <h2 style={{ margin: 0, fontSize: "1.5rem", color: "#ef4444" }}>Data Unavailable</h2>
-                        )}
                       </div>
-                      <button onClick={fetchUsageData} disabled={loadingUsage} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "1rem 2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" }}>
-                        ↻ Refresh Usage
-                      </button>
                     </div>
                   )}
 
@@ -342,15 +352,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              STEP 2: MY VPNs (Configs)
+              MY VPNs (Configs)
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
                <h2 style={{ fontSize: "1.8rem", margin: "0 0 1rem 0", color: "#FFF" }}>Your VPN Configurations</h2>
                
                {user.vpnStatus === "Suspended" && (
-                 <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.5rem", borderRadius: "12px", color: "#f59e0b", fontWeight: "bold", display: "flex", alignItems: "center", gap: "15px" }}>
-                   <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
+                 <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.5rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
+                   <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
+                     <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
+                   </div>
+                   {receiptLink && (
+                      <a href={receiptLink} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.9rem", marginLeft: "2.5rem" }}>
+                        View Uploaded Receipt ↗
+                      </a>
+                   )}
                  </div>
                )}
 
@@ -387,7 +404,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              STEP 3: STORE SECTION
+              STORE SECTION
           ======================== */}
           {activeTab === "buy" && (
              <div className="animate-fade-in">
@@ -406,10 +423,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                      <div style={{ marginBottom: "1.5rem" }}>
                        <span style={{ display: "inline-block", padding: "0.4rem 1rem", background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "1.5rem" }}>{selectedProvider} ROUTER</span>
                        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.5rem", lineHeight: 1.4, fontWeight: "600", minHeight: "60px" }}>{pkg.name}</h3>
-                       
                        <p style={{ color: "var(--muted-text)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "1.5rem" }}>{pkg.desc}</p>
-                       
-                       {/* Features List */}
                        <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", marginBottom: "2rem", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "1.5rem" }}>
                           {pkg.features.map((feat, i) => (
                             <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.9rem", color: "#d1d5db" }}>
@@ -427,17 +441,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              STEP 5: PROFILE TAB (FIXED)
+              PROFILE TAB 
           ======================== */}
           {activeTab === "profile" && (
             <div className="glass-panel animate-fade-in" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15, 15, 20, 0.6)" }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center", color: "#FFFFFF" }}>Edit Profile</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
                   <img src={avatar || `https://ui-avatars.com/api/?name=${user.name}`} alt="Current Avatar" style={{ width: "120px", height: "120px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover", boxShadow: "0 0 20px rgba(99,102,241,0.4)" }} />
                 </div>
-
                 <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <h3 style={{ textAlign: "center", color: "var(--muted-text)", marginBottom: "1.2rem", fontSize: "0.95rem" }}>Choose your Avatar</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(50px, 1fr))", gap: "1rem", justifyItems: "center" }}>
@@ -448,7 +460,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     ))}
                   </div>
                 </div>
-
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", marginTop: "1rem" }}>
                   <div>
                     <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)", fontSize: "0.9rem" }}>Full Name</label>
@@ -459,16 +470,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <input type="email" value={user.email} readOnly style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", outline: "none", opacity: 0.8 }} />
                   </div>
                 </div>
-
               </div>
             </div>
           )}
 
-          {/* 3-STEP CHECKOUT MODAL (REFERRAL REMOVED) */}
+          {/* 3-STEP CHECKOUT MODAL */}
           {modalPackage && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
               <div className="glass-panel" style={{ width: "100%", maxWidth: "600px", padding: "2.5rem", background: "#11111a", position: "relative", border: "1px solid rgba(99, 102, 241, 0.3)", borderRadius: "16px", maxHeight: "90vh", overflowY: "auto" }}>
-                <button onClick={closeCheckout} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "var(--muted-text)", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
+                <button onClick={closeCheckout} disabled={isUploading} style={{ position: "absolute", top: "1rem", right: "1.5rem", background: "none", border: "none", color: "var(--muted-text)", fontSize: "1.5rem", cursor: isUploading ? "not-allowed" : "pointer" }}>✕</button>
                 
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2rem", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "1rem" }}>
                   {[1, 2, 3].map(step => (
@@ -524,18 +534,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <h2 style={{ marginBottom: "0.5rem", fontSize: "1.5rem" }}>Upload Payment Slip</h2>
                     <p style={{ color: "var(--muted-text)", marginBottom: "1.5rem" }}>Upload your bank transfer receipt to auto-generate your config.</p>
                     
-                    <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: "pointer" }}>
-                      <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" />
-                      <label htmlFor="slip-upload" style={{ cursor: "pointer", display: "block" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📁</div>
-                        <h4 style={{ margin: "0 0 0.5rem 0", color: "#818cf8" }}>{slipFile ? slipFile.name : "Click here to upload slip"}</h4>
-                        <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted-text)" }}>JPG, PNG, or PDF</p>
+                    <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: isUploading ? "not-allowed" : "pointer", opacity: isUploading ? 0.5 : 1 }}>
+                      <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" disabled={isUploading} />
+                      <label htmlFor="slip-upload" style={{ cursor: isUploading ? "not-allowed" : "pointer", display: "block" }}>
+                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>{isUploading ? "⏳" : "📁"}</div>
+                        <h4 style={{ margin: "0 0 0.5rem 0", color: "#818cf8" }}>
+                          {isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip"}
+                        </h4>
+                        {!isUploading && <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted-text)" }}>JPG, PNG, or PDF</p>}
                       </label>
                     </div>
 
                     <div style={{ display: "flex", gap: "1rem" }}>
-                      <button onClick={() => setCheckoutStep(2)} style={{ flex: 1, padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: "pointer" }}>← Back</button>
-                      <button onClick={handleConfirmOrder} disabled={!slipFile} style={{ flex: 2, padding: "1rem", background: slipFile ? "linear-gradient(90deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.1)", color: slipFile ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: slipFile ? "pointer" : "not-allowed" }}>🚀 Submit Order</button>
+                      <button onClick={() => setCheckoutStep(2)} disabled={isUploading} style={{ flex: 1, padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: isUploading ? "not-allowed" : "pointer" }}>← Back</button>
+                      <button onClick={handleConfirmOrder} disabled={!slipFile || isUploading} style={{ flex: 2, padding: "1rem", background: slipFile ? "linear-gradient(90deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.1)", color: slipFile ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: !slipFile || isUploading ? "not-allowed" : "pointer" }}>
+                        {isUploading ? "Uploading to Cloud..." : "🚀 Submit Order"}
+                      </button>
                     </div>
                   </div>
                 )}
