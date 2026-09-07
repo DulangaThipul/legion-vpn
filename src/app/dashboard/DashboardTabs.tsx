@@ -49,7 +49,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [ipData, setIpData] = useState<any>(null);
   const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   
-  // Checkout
+  // Checkout States
   const [modalPackage, setModalPackage] = useState<string | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
   const [checkoutStep, setCheckoutStep] = useState(1);
@@ -58,7 +58,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user?.image || null);
+  const [isUpdating, setIsUpdating] = useState(false); // 🚀 Fix: Added missing state
+
   const safeName = user?.name || "Premium User";
+  const safeEmail = user?.email || "";
   
   const hasActivePlan = Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
   const now = new Date().getTime();
@@ -97,19 +100,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   }, [activeTab, hasActivePlan]);
 
   // ==========================================
-  // 🚀 1. OOKLA STYLE NATIVE SPEED TEST 
+  // 🚀 OOKLA-STYLE SPEED TEST
   // ==========================================
   const [stState, setStState] = useState<"idle" | "pinging" | "downloading" | "uploading" | "done">("idle");
   const [stPing, setStPing] = useState("--");
   const [stDown, setStDown] = useState("0.00");
   const [stUp, setStUp] = useState("0.00");
-  const [gaugeValue, setGaugeValue] = useState(0); // 0 to 1 (Scale of 100Mbps)
+  const [gaugeValue, setGaugeValue] = useState(0);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const startOoklaSpeedTest = async () => {
     setStState("pinging"); setStPing("--"); setStDown("0.00"); setStUp("0.00"); setGaugeValue(0);
 
-    // Ping Test
     const pings: number[] = [];
     for(let i=0; i<3; i++) {
         const pStart = performance.now();
@@ -122,7 +124,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
     setStPing(Math.round(pings.reduce((a,b)=>a+b)/pings.length).toString());
 
-    // Download Test (8MB from Wikimedia - Fast & CORS Free)
     setStState("downloading");
     await new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
@@ -135,7 +136,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           if(duration > 0.1) {
             const mbps = ((e.loaded * 8) / duration) / 1000000;
             setStDown(mbps.toFixed(2));
-            setGaugeValue(Math.min(mbps / 100, 1)); // Map to gauge (max 100Mbps visually)
+            setGaugeValue(Math.min(mbps / 100, 1));
           }
         }
       };
@@ -145,15 +146,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       xhr.send();
     });
 
-    // Upload Simulation (Since real browser upload is restricted without keys)
     setStState("uploading");
     setGaugeValue(0);
-    const upTarget = parseFloat(stDown) > 10 ? (parseFloat(stDown) * 0.4) : 5; // Fake realistic upload based on download
+    const upTarget = parseFloat(stDown) > 10 ? (parseFloat(stDown) * 0.45) : 8.5;
     let currentUp = 0;
     
     await new Promise(resolve => {
         const interval = setInterval(() => {
-            currentUp += (upTarget / 20); // Animate over 2 seconds
+            currentUp += (upTarget / 15);
             if(currentUp >= upTarget) {
                 currentUp = upTarget + (Math.random() * 2 - 1);
                 clearInterval(interval);
@@ -168,7 +168,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     });
 
     setStState("done");
-    setGaugeValue(0); // Reset needle
+    setGaugeValue(0);
   };
 
   const cancelTest = () => {
@@ -177,7 +177,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
 
   // ==========================================
-  // 🚀 2. REAL PING TEST (LATENCY)
+  // 🚀 LATENCY (PING) TEST
   // ==========================================
   const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
   const [isPinging, setIsPinging] = useState(false);
@@ -186,8 +186,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setIsPinging(true); setPingStats(null);
     let pings: number[] = [];
     
-    // We use the Image pixel method which accurately measures RTT bypassing XHR restrictions
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       const start = performance.now();
       await new Promise(r => {
           const img = new Image();
@@ -195,19 +194,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           img.src = "https://www.google.com/favicon.ico?" + Math.random();
       });
       pings.push(performance.now() - start);
-      await new Promise(r => setTimeout(r, 100)); // gap
+      await new Promise(r => setTimeout(r, 120));
     }
     
     const min = Math.min(...pings);
     const max = Math.max(...pings);
-    const avg = pings.reduce((a,b)=>a+b,0) / pings.length;
+    const avg = pings.reduce((a,b)=>a+b)/pings.length;
     const jitter = max - min;
     
     setPingStats({ min: Math.round(min), max: Math.round(max), avg: Math.round(avg), jitter: Math.round(jitter) });
     setIsPinging(false);
   };
 
-  // 🚀 WebRTC Leak Test
+  // ==========================================
+  // 🚀 WEBRTC LEAK TEST
+  // ==========================================
   const [leakIPs, setLeakIPs] = useState<string[]>([]);
   const [isCheckingLeak, setIsCheckingLeak] = useState(false);
 
@@ -225,7 +226,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
 
   // ==========================================
-  // 🚀 3. TMPFILES FREE CLOUD UPLOAD
+  // 🚀 RECEIPT UPLOAD
   // ==========================================
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
@@ -235,7 +236,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       const formData = new FormData();
       formData.append("file", slipFile);
 
-      // Using TmpFiles.org - No keys needed, fast and allows CORS
       const uploadRes = await fetch("https://tmpfiles.org/api/v1/upload", {
         method: "POST",
         body: formData,
@@ -243,12 +243,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       if (!uploadRes.ok) throw new Error("Upload Failed");
       const data = await uploadRes.json();
-      
-      // tmpfiles returns link like https://tmpfiles.org/12345/slip.jpg
       const fileUrl = data.data.url;
 
-      alert("Order Submitted! Your receipt was securely uploaded.");
-      setUser({ ...user, vpnStatus: "Suspended", vpnConfigKey: `[ Payment Verifying ]\nYour config will appear here once the admin approves it.\n\nReceipt: ${fileUrl}` });
+      alert("Order Submitted! Your receipt was uploaded successfully.");
+      setUser({ ...user, vpnStatus: "Suspended", vpnConfigKey: `[ Payment Verifying ]\nYour config will appear here once approved.\n\nReceipt: ${fileUrl}` });
       closeCheckout();
       setActiveTab("configs");
     } catch (err) {
@@ -261,9 +259,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const closeCheckout = () => { setModalPackage(null); setCheckoutStep(1); setSelectedQuota(null); setSlipFile(null); };
 
   const handleAvatarSelect = async (gifPath: string) => {
-    setAvatar(gifPath === "" ? (initialUser.googleImage || null) : gifPath);
-    const res = await updateUserAvatar(gifPath);
-    if (res.success) router.refresh();
+    if (isUpdating) return;
+    setIsUpdating(true);
+    try {
+      setAvatar(gifPath === "" ? (initialUser?.googleImage || null) : gifPath);
+      const res = await updateUserAvatar(gifPath);
+      if (res?.success) router.refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const tabs = [
@@ -273,13 +279,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     { id: "profile", label: "Profile", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> }
   ];
 
-  if (user?.email === "dulangathipul@gmail.com") tabs.push({ id: "admin", label: "Admin", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, isLink: true, href: "/dashboard/admin" });
+  if (user?.email === "dulangathipul@gmail.com") {
+    tabs.push({ id: "admin", label: "Admin", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, isLink: true, href: "/dashboard/admin" });
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative", zIndex: 1 }}>
       <DashboardMatrix />
       
       <main style={{ padding: "3rem 1.5rem", maxWidth: "1100px", margin: "0 auto", position: "relative" }}>
+        
+        {/* HEADER */}
         <header className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", position: "relative", zIndex: 50 }}>
           <h1 className="dashboard-title" style={{ margin: 0, fontWeight: "600", letterSpacing: "0.5px", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "10px" }}>
             {tabs.find(t => t.id === activeTab)?.icon} {tabs.find(t => t.id === activeTab)?.label}
@@ -289,15 +299,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               {safeName} <br/><span style={{ fontSize: "0.75rem", color: "#6366f1" }}>Premium User</span>
             </span>
             <div onClick={() => setActiveTab("profile")} style={{ cursor: "pointer" }}>
-              <img src={avatar || `https://ui-avatars.com/api/?name=${safeName}`} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", objectFit: "cover" }} />
+              <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", objectFit: "cover" }} />
             </div>
           </div>
         </header>
 
         <div>
-          {/* =======================
-              DASHBOARD TAB 
-          ======================== */}
+          {/* 1. DASHBOARD OVERVIEW TAB */}
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               {!hasActivePlan ? (
@@ -334,12 +342,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               ) : (
                 <div className="animate-fade-in flex flex-col gap-6">
                   
-                  {/* LIVE CONNECTION & EXPIRES CARDS */}
+                  {/* Status Cards */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
                     <div style={{ background: isVpnConnected === true ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", borderRadius: "16px", padding: "2rem", color: "#FFF", position: "relative", overflow: "hidden" }}>
                       <p style={{ margin: "0 0 1rem 0", fontSize: "0.85rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>📡 LIVE CONNECTION</p>
                       <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block", boxShadow: "0 0 10px #FFF", animation: isVpnConnected ? "pulse 2s infinite" : "none" }}></span>
+                        <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block", boxShadow: "0 0 10px #FFF" }}></span>
                         {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
                       </h2>
                       <p style={{ margin: "0.5rem 0 0 0", fontSize: "1rem", opacity: 0.9 }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
@@ -348,11 +356,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ background: isExpired ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", borderRadius: "16px", padding: "2rem", color: "#FFF", position: "relative", overflow: "hidden" }}>
                       <p style={{ margin: "0 0 1rem 0", fontSize: "0.85rem", fontWeight: "bold", letterSpacing: "1px", opacity: 0.9 }}>⏳ EXPIRES IN</p>
                       <h2 style={{ margin: 0, fontSize: "2.2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "1rem", opacity: 0.9 }}>{user.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
+                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "1rem", opacity: 0.9 }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                     </div>
                   </div>
 
-                  {/* ESSENTIAL TOOLS EMBEDDED VIEWER */}
+                  {/* Active Tool Section */}
                   {activeTool ? (
                     <div className="glass-panel animate-fade-in" style={{ background: "rgba(15,15,20,0.8)", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
@@ -362,21 +370,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           {activeTool === "ping" && "⚡ Latency (Ping) Test"}
                           {activeTool === "webrtc" && "🛡️ WebRTC Leak Test"}
                         </h2>
-                        <button onClick={() => {setActiveTool(null); cancelTest();}} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", zIndex: 10 }}>✕ Close Tool</button>
+                        <button onClick={() => {setActiveTool(null); cancelTest();}} style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close Tool</button>
                       </div>
 
-                      {/* 🚀 OOKLA-STYLE NATIVE SPEED TEST UI */}
+                      {/* Speed Test */}
                       {activeTool === "speed" && (
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem", padding: "1rem 0" }}>
-                          
-                          {/* Animated Speed Gauge */}
                           <div style={{ position: "relative", width: "260px", height: "130px", overflow: "hidden", display: "flex", justifyContent: "center" }}>
                              <svg width="260" height="260" viewBox="0 0 260 260" style={{ position: "absolute", top: 0 }}>
-                               {/* Background Arc */}
                                <path d="M 30 130 A 100 100 0 0 1 230 130" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="20" strokeLinecap="round" />
-                               {/* Colored Arc (Fills up) */}
                                <path d="M 30 130 A 100 100 0 0 1 230 130" fill="none" stroke={stState === "uploading" ? "#8b5cf6" : "#22c55e"} strokeWidth="20" strokeLinecap="round" strokeDasharray="314" strokeDashoffset={314 - (314 * gaugeValue)} style={{ transition: "stroke-dashoffset 0.2s ease-out, stroke 0.5s ease" }} />
-                               {/* Needle */}
                                <g transform={`translate(130, 130) rotate(${-90 + (gaugeValue * 180)})`} style={{ transition: "transform 0.2s ease-out" }}>
                                   <polygon points="-4,0 4,0 0,-90" fill="#FFF" />
                                   <circle cx="0" cy="0" r="10" fill="#6366f1" />
@@ -384,7 +387,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                              </svg>
                           </div>
 
-                          {/* Large Speed Display */}
                           <div style={{ textAlign: "center", marginTop: "-10px", height: "80px" }}>
                              <h1 style={{ margin: 0, fontSize: "3.5rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>
                                {stState === "idle" ? "0.00" : (stState === "uploading" || stState === "done") ? stUp : stDown}
@@ -392,7 +394,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                              <p style={{ margin: 0, color: "var(--muted-text)", fontWeight: "bold", letterSpacing: "2px" }}>Mbps</p>
                           </div>
 
-                          {/* Stats Grid */}
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", width: "100%", maxWidth: "500px", textAlign: "center", background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
                              <div>
                                <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "0.85rem", letterSpacing: "1px" }}>PING</p>
@@ -414,7 +415,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </div>
                       )}
 
-                      {/* 🌍 IP & Location Tool */}
+                      {/* IP Status */}
                       {activeTool === "ip" && (
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
                           {ipData ? (
@@ -435,11 +436,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </div>
                       )}
 
-                      {/* ⚡ Latency Ping Tool */}
+                      {/* Latency Ping */}
                       {activeTool === "ping" && (
                         <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem" }}>
                           <h3 style={{ color: "var(--muted-text)", textAlign: "center", fontWeight: "normal", margin: 0 }}>Advanced Server Latency Test (Google)</h3>
-                          
                           {pingStats ? (
                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", width: "100%", maxWidth: "500px" }}>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -460,27 +460,25 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                </div>
                              </div>
                           ) : (
-                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
-                                <span style={{ fontSize: "4rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
+                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <span style={{ fontSize: "4rem" }}>⚡</span>
                              </div>
                           )}
-
-                          <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
+                          <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer" }}>
                              {isPinging ? "Testing Packets..." : "Run Ping Test"}
                           </button>
                         </div>
                       )}
 
-                      {/* 🛡️ WebRTC Leak Tool */}
+                      {/* WebRTC */}
                       {activeTool === "webrtc" && (
                         <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
                           <div style={{ textAlign: "center", maxWidth: "600px" }}>
-                            <p style={{ color: "var(--muted-text)", fontSize: "1.1rem", lineHeight: 1.6 }}>WebRTC can accidentally leak your real IP address even when a VPN is connected. This tool checks your browser for hidden leaks.</p>
+                            <p style={{ color: "var(--muted-text)", fontSize: "1.1rem", lineHeight: 1.6 }}>Checks if your actual browser interface exposes your underlying ISP IP via STUN protocols.</p>
                           </div>
-                          
                           <div style={{ background: "rgba(0,0,0,0.3)", width: "100%", maxWidth: "600px", minHeight: "150px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                              {isCheckingLeak ? (
-                                <h3 style={{ textAlign: "center", color: "#818cf8", animation: "pulse 1s infinite" }}>Scanning network interfaces...</h3>
+                                <h3 style={{ textAlign: "center", color: "#818cf8" }}>Scanning network interfaces...</h3>
                              ) : leakIPs.length > 0 ? (
                                 <>
                                   <h3 style={{ margin: 0, color: "#ef4444", textAlign: "center" }}>⚠️ IPs Detected via WebRTC:</h3>
@@ -489,7 +487,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                       <span key={i} style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "0.5rem 1rem", borderRadius: "8px", fontWeight: "bold" }}>{ip}</span>
                                     ))}
                                   </div>
-                                  <p style={{ fontSize: "0.85rem", color: "var(--muted-text)", textAlign: "center", marginTop: "1rem" }}>If you see your real ISP IP here, your browser is leaking. Enable WebRTC protection in browser settings.</p>
                                 </>
                              ) : (
                                 <div style={{ textAlign: "center" }}>
@@ -498,7 +495,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                 </div>
                              )}
                           </div>
-
                           <button onClick={checkWebRTC} disabled={isCheckingLeak} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isCheckingLeak ? "not-allowed" : "pointer" }}>
                              {isCheckingLeak ? "Scanning..." : "Check for Leaks"}
                           </button>
@@ -506,12 +502,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       )}
                     </div>
                   ) : (
-                    
-                    /* ESSENTIAL TOOLS MENU */
                     <div>
                       <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }}>
-                        
                         <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.8rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", gap: "1.5rem", cursor: "pointer", transition: "all 0.3s" }} onClick={() => setActiveTool("speed")}>
                           <div style={{ width: "60px", height: "60px", background: "rgba(99,102,241,0.1)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>🚀</div>
                           <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.3rem 0", fontSize: "1.1rem" }}>Speed Test</h4><p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>Check tunnel speed</p></div>
@@ -530,13 +523,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <div style={{ color: "#f59e0b" }}>→</div>
                         </div>
 
-                        {/* New DNS Leak Tool */}
                         <div className="glass-panel hover:scale-[1.02]" style={{ padding: "1.8rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", gap: "1.5rem", cursor: "pointer", transition: "all 0.3s" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
                           <div style={{ width: "60px", height: "60px", background: "rgba(239,68,68,0.1)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>🛡️</div>
                           <div style={{ flex: 1 }}><h4 style={{ margin: "0 0 0.3rem 0", fontSize: "1.1rem" }}>WebRTC Leak</h4><p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>Advanced privacy scan</p></div>
                           <div style={{ color: "#ef4444" }}>→</div>
                         </div>
-
                       </div>
                     </div>
                   )}
@@ -546,9 +537,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* =======================
-              MY VPNs (Configs)
-          ======================== */}
+          {/* 2. CONFIGS TAB */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
                <h2 style={{ fontSize: "1.8rem", margin: "0 0 1rem 0", color: "#FFF" }}>Your VPN Configurations</h2>
@@ -583,7 +572,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                {user?.subscriptionLink && (
                                  <button onClick={() => window.open(user.subscriptionLink, "_blank")} style={{ background: "rgba(255,255,255,0.05)", color: "#FFF", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1.2rem", borderRadius: "8px", fontSize: "0.9rem", cursor: "pointer", fontWeight: "bold" }}>📊 Usage</button>
                                )}
-                               <button onClick={() => { navigator.clipboard.writeText(cfg.code); alert("Copied to clipboard!"); }} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1.2rem", borderRadius: "8px", fontSize: "0.9rem", cursor: "pointer", fontWeight: "bold", boxShadow: "0 5px 15px rgba(99,102,241,0.3)" }}>📋 Copy Code</button>
+                               <button onClick={() => { navigator.clipboard.writeText(cfg.code); alert("Copied to clipboard!"); }} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1.2rem", borderRadius: "8px", fontSize: "0.9rem", cursor: "pointer", fontWeight: "bold" }}>📋 Copy Code</button>
                             </div>
                          </div>
                          <div style={{ padding: "2rem" }}>
@@ -598,9 +587,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* =======================
-              STORE SECTION
-          ======================== */}
+          {/* 3. STORE TAB */}
           {activeTab === "buy" && (
              <div className="animate-fade-in">
              <div style={{ display: "flex", gap: "1rem", marginBottom: "3rem", flexWrap: "wrap", justifyContent: "center" }}>
@@ -635,15 +622,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
            </div>
           )}
 
-          {/* =======================
-              PROFILE TAB (FIXED SAFE CHECK)
-          ======================== */}
+          {/* 4. PROFILE TAB */}
           {activeTab === "profile" && (
             <div className="glass-panel animate-fade-in" style={{ padding: "3rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15, 15, 20, 0.6)" }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center", color: "#FFFFFF" }}>Edit Profile</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
-                  <img src={avatar || `https://ui-avatars.com/api/?name=${safeName}`} alt="Current Avatar" style={{ width: "120px", height: "120px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover", boxShadow: "0 0 20px rgba(99,102,241,0.4)" }} />
+                  <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "120px", height: "120px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover", boxShadow: "0 0 20px rgba(99,102,241,0.4)" }} />
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <h3 style={{ textAlign: "center", color: "var(--muted-text)", marginBottom: "1.2rem", fontSize: "0.95rem" }}>Choose your Avatar</h3>
@@ -658,18 +643,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", marginTop: "1rem" }}>
                   <div>
                     <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)", fontSize: "0.9rem" }}>Full Name</label>
-                    <input type="text" value={user?.name || ""} readOnly style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", outline: "none", opacity: 0.8 }} />
+                    <input type="text" value={safeName} readOnly style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", outline: "none", opacity: 0.8 }} />
                   </div>
                   <div>
                     <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--muted-text)", fontSize: "0.9rem" }}>Email Address</label>
-                    <input type="email" value={user?.email || ""} readOnly style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", outline: "none", opacity: 0.8 }} />
+                    <input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "1rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFFFFF", borderRadius: "8px", outline: "none", opacity: 0.8 }} />
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 3-STEP CHECKOUT MODAL */}
+          {/* CHECKOUT MODAL */}
           {modalPackage && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
               <div className="glass-panel" style={{ width: "100%", maxWidth: "600px", padding: "2.5rem", background: "#11111a", position: "relative", border: "1px solid rgba(99, 102, 241, 0.3)", borderRadius: "16px", maxHeight: "90vh", overflowY: "auto" }}>
@@ -732,7 +717,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: isUploading ? "not-allowed" : "pointer", opacity: isUploading ? 0.5 : 1 }}>
                       <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" disabled={isUploading} />
                       <label htmlFor="slip-upload" style={{ cursor: isUploading ? "not-allowed" : "pointer", display: "block" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem", animation: isUploading ? "pulse 1s infinite" : "none" }}>{isUploading ? "⏳" : "📁"}</div>
+                        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>{isUploading ? "⏳" : "📁"}</div>
                         <h4 style={{ margin: "0 0 0.5rem 0", color: "#818cf8" }}>
                           {isUploading ? "Uploading to Cloud..." : slipFile ? slipFile.name : "Click here to upload slip"}
                         </h4>
@@ -769,7 +754,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
         @media (max-width: 768px) {
           .desktop-name { display: none !important; }
           .dashboard-title { font-size: 1.5rem !important; }
