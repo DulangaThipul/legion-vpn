@@ -6,11 +6,16 @@ import { useRouter } from "next/navigation";
 import { updateUserAdmin } from "@/lib/authActions";
 
 const PACKAGE_LIST = [
-  "Airtel Old Sim 260 Package",
-  "Airtel New Sim Rs.297 (7D) / 997 Package",
-  "Dialog Router 724 Zoom Unlimited",
-  "SLT 4G/Fiber Router 490 Zoom 100GB",
-  "SLT Fiber 1990 Unlimited",
+  "Dialog Zoom Unlimited",
+  "Dialog Social (20 GB)",
+  "Dialog TikTok Unlimited",
+  "Airtel TikTok Unlimited",
+  "Airtel YouTube Unlimited",
+  "Airtel Zoom (30 GB)",
+  "Hutch Zoom (30 GB)",
+  "SLT Fiber Zoom",
+  "SLT Fiber Unlimited Entertainment",
+  "SLT Router Zoom",
   "Custom / Special Package"
 ];
 
@@ -160,7 +165,6 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string, updates: any) => void }) {
   const userId = user.id || user._id;
 
-  // Read Metadata
   let metaData = { alert: "", isPremium: false, payments: [] as any[], lastSeen: 0 };
   if (user?.subscriptionLink) {
     try {
@@ -170,22 +174,113 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     }
   }
 
-  const [newConfigName, setNewConfigName] = useState(PACKAGE_LIST[0]);
-  const [newConfigVless, setNewConfigVless] = useState("");
-  const [rawConfigs, setRawConfigs] = useState(user?.vpnConfigKey || "");
-  const [addDaysInput, setAddDaysInput] = useState<number | "">("");
-  const [msgEmoji, setMsgEmoji] = useState("⚠️");
-  const [msgText, setMsgText] = useState("");
-
-  // 🚀 REAL ONLINE/OFFLINE CALCULATION (Heartbeat within last 60 seconds)
-  const isOnline = metaData.lastSeen ? (Date.now() - metaData.lastSeen < 60000) : false;
+  // 🚀 REAL-TIME ONLINE / LAST SEEN TRACKER
+  const [onlineText, setOnlineText] = useState("Offline");
+  const [isClientOnline, setIsClientOnline] = useState(false);
 
   useEffect(() => {
-    setRawConfigs(user?.vpnConfigKey || "");
+    const updateTimeAgo = () => {
+      if (!metaData.lastSeen) {
+        setIsClientOnline(false);
+        setOnlineText("Offline (Never Active)");
+        return;
+      }
+      const diffSeconds = Math.floor((Date.now() - metaData.lastSeen) / 1000);
+      if (diffSeconds < 45) {
+        setIsClientOnline(true);
+        setOnlineText("Online Now");
+      } else {
+        setIsClientOnline(false);
+        const mins = Math.floor(diffSeconds / 60);
+        if (mins < 60) {
+          setOnlineText(`Offline (Seen ${mins}m ago)`);
+        } else {
+          setOnlineText(`Offline (${new Date(metaData.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+        }
+      }
+    };
+    updateTimeAgo();
+    const interval = setInterval(updateTimeAgo, 5000);
+    return () => clearInterval(interval);
+  }, [metaData.lastSeen]);
+
+  // 🚀 INTERACTIVE MULTI-CONFIG SECTIONS
+  interface ConfigItem {
+    id: string;
+    name: string;
+    code: string;
+  }
+
+  const parseRawConfigsToItems = (raw: string): ConfigItem[] => {
+    if (!raw) return [];
+    const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
+    const matches = [...raw.matchAll(regex)];
+    if (matches.length > 0) {
+      return matches.map((m, idx) => ({
+        id: `${idx}-${Date.now()}`,
+        name: m[1].trim(),
+        code: m[2].trim(),
+      }));
+    }
+    return [{ id: `0-${Date.now()}`, name: "Default Package", code: raw.trim() }];
+  };
+
+  const [configItems, setConfigItems] = useState<ConfigItem[]>(parseRawConfigsToItems(user?.vpnConfigKey || ""));
+
+  useEffect(() => {
+    setConfigItems(parseRawConfigsToItems(user?.vpnConfigKey || ""));
   }, [user?.vpnConfigKey, userId]);
 
+  const serializeConfigItems = (items: ConfigItem[]): string => {
+    return items.map(item => `📦 [ ${item.name} ]\n${item.code}`).join("\n\n");
+  };
+
+  // Add Empty Section
+  const handleAddNewConfigSection = () => {
+    const newItem: ConfigItem = {
+      id: `${Date.now()}`,
+      name: PACKAGE_LIST[0],
+      code: ""
+    };
+    const updated = [...configItems, newItem];
+    setConfigItems(updated);
+    onUpdate(userId, { vpnConfigKey: serializeConfigItems(updated), vpnStatus: "Active" });
+  };
+
+  // Remove Specific Section
+  const handleRemoveConfigSection = (idToRemove: string) => {
+    const updated = configItems.filter(item => item.id !== idToRemove);
+    setConfigItems(updated);
+    onUpdate(userId, { vpnConfigKey: serializeConfigItems(updated) });
+  };
+
+  // Update Individual Section
+  const handleConfigChange = (id: string, field: "name" | "code", val: string) => {
+    const updated = configItems.map(item => item.id === id ? { ...item, [field]: val } : item);
+    setConfigItems(updated);
+  };
+
+  const handleSaveConfigs = () => {
+    onUpdate(userId, { vpnConfigKey: serializeConfigItems(configItems), vpnStatus: "Active" });
+  };
+
+  // 🚀 DAYS ADD & DEDUCT
+  const [daysAmount, setDaysAmount] = useState<number | "">("");
   const expiryDate = safeParseDate(user?.expiryDate);
   const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
+
+  const handleModifyDays = (add: boolean) => {
+    if (!daysAmount || daysAmount <= 0) return;
+    const base = (expiryDate && daysLeft > 0) ? new Date(expiryDate) : new Date();
+    const multiplier = add ? 1 : -1;
+    base.setDate(base.getDate() + (Number(daysAmount) * multiplier));
+    onUpdate(userId, { expiryDate: base.toISOString(), vpnStatus: "Active" });
+    setDaysAmount("");
+  };
+
+  // Custom Message
+  const [msgEmoji, setMsgEmoji] = useState("⚠️");
+  const [msgText, setMsgText] = useState("");
 
   const saveMeta = (alertVal: string, isPremVal: boolean) => {
     const payload = JSON.stringify({ ...metaData, alert: alertVal, isPremium: isPremVal });
@@ -193,7 +288,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   };
 
   const togglePremium = () => saveMeta(metaData.alert, !metaData.isPremium);
-
   const handleBanUser = () => {
     if (confirm(`Are you sure you want to BAN ${user.name || "this user"}?`)) {
       onUpdate(userId, { vpnStatus: "Banned" });
@@ -201,36 +295,11 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   };
   const handleUnbanUser = () => onUpdate(userId, { vpnStatus: "Active" });
 
-  const handleAddDays = () => {
-    if (!addDaysInput || addDaysInput <= 0) return;
-    const base = (expiryDate && daysLeft > 0) ? new Date(expiryDate) : new Date();
-    base.setDate(base.getDate() + Number(addDaysInput));
-    onUpdate(userId, { expiryDate: base.toISOString(), vpnStatus: "Active" });
-    setAddDaysInput("");
-  };
-
-  // 🚀 ADD NEW CONFIG TO CLIENT BUTTON
-  const handleAddConfig = () => {
-    if (!newConfigVless.trim()) {
-      alert("Please paste a VLESS Key first!");
-      return;
-    }
-    const newBlock = `📦 [ ${newConfigName} ]\n${newConfigVless.trim()}\n\n`;
-    const updated = (rawConfigs ? rawConfigs + "\n" : "") + newBlock;
-    setRawConfigs(updated);
-    onUpdate(userId, { vpnConfigKey: updated, vpnStatus: "Active" });
-    setNewConfigVless("");
-  };
-
-  const handleSaveRawConfigs = () => onUpdate(userId, { vpnConfigKey: rawConfigs });
-
   const handleSendMessage = () => {
     if (!msgText.trim()) return;
-    const fullMsg = `${msgEmoji} ${msgText.trim()}`;
-    saveMeta(fullMsg, metaData.isPremium);
+    saveMeta(`${msgEmoji} ${msgText.trim()}`, metaData.isPremium);
     setMsgText("");
   };
-
   const handleClearMessage = () => saveMeta("", metaData.isPremium);
 
   const userPayments = metaData.payments || [];
@@ -249,12 +318,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             </h2>
             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af", fontSize: "0.9rem" }}>{user.email || "No email"}</p>
             
-            {/* 🚀 REAL-TIME ONLINE/OFFLINE BADGE */}
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: isOnline ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 10px", borderRadius: "20px" }}>
-              <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#9ca3af", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }}></span>
-              <span style={{ fontSize: "0.75rem", color: isOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>
-                {isOnline ? "Online Now" : metaData.lastSeen ? `Offline (Seen ${new Date(metaData.lastSeen).toLocaleTimeString()})` : "Offline"}
-              </span>
+            {/* Real-time Online/Offline Status */}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: isClientOnline ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", padding: "4px 12px", borderRadius: "20px" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isClientOnline ? "#22c55e" : "#9ca3af", boxShadow: isClientOnline ? "0 0 8px #22c55e" : "none" }}></span>
+              <span style={{ fontSize: "0.8rem", color: isClientOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>{onlineText}</span>
             </div>
           </div>
         </div>
@@ -276,30 +343,35 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* ⏳ COUNTDOWN + 💬 CUSTOM MESSAGE */}
+      {/* ⏳ COUNTDOWN (ADD & DEDUCT) + 💬 MESSAGE */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem" }}>
         
-        {/* Countdown */}
+        {/* Days Add & Deduct */}
         <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>⏳ Subscription Countdown</h3>
+          <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>⏳ Adjust Subscription Days</h3>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", background: "rgba(0,0,0,0.3)", padding: "0.8rem 1rem", borderRadius: "8px" }}>
             <div>
-              <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.75rem" }}>Status</p>
-              <h2 style={{ margin: "0.2rem 0 0 0", color: daysLeft > 0 ? "#22c55e" : "#ef4444", fontSize: "1.6rem" }}>{daysLeft > 0 ? `${daysLeft} Days` : "Expired"}</h2>
+              <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.75rem" }}>Current Status</p>
+              <h2 style={{ margin: "0.2rem 0 0 0", color: daysLeft > 0 ? "#22c55e" : "#ef4444", fontSize: "1.6rem" }}>{daysLeft > 0 ? `${daysLeft} Days Left` : "Expired"}</h2>
             </div>
             {expiryDate && <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.8rem" }}>Ends: {expiryDate.toLocaleDateString()}</p>}
           </div>
 
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
             <input 
               type="number" 
-              placeholder="Days (e.g. 30)" 
-              value={addDaysInput} 
-              onChange={(e) => setAddDaysInput(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder="Days (e.g. 10)" 
+              value={daysAmount} 
+              onChange={(e) => setDaysAmount(e.target.value === "" ? "" : Number(e.target.value))}
               style={{ flex: 1, padding: "0.7rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}
             />
-            <button onClick={handleAddDays} style={{ background: "#6366f1", color: "#FFF", border: "none", padding: "0 1.2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button onClick={() => handleModifyDays(true)} style={{ flex: 1, background: "#22c55e", color: "#000", border: "none", padding: "0.6rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
               + Add Days
+            </button>
+            <button onClick={() => handleModifyDays(false)} style={{ flex: 1, background: "#ef4444", color: "#FFF", border: "none", padding: "0.6rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+              - Deduct Days
             </button>
           </div>
         </div>
@@ -307,7 +379,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         {/* Message */}
         <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
           <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>💬 Send Live Pop-up Message</h3>
-          
           {metaData.alert ? (
             <div style={{ background: "rgba(245,158,11,0.1)", border: "1px dashed #f59e0b", padding: "0.6rem 0.8rem", borderRadius: "8px", marginBottom: "0.8rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <p style={{ margin: 0, fontSize: "0.85rem", color: "#FFF" }}>{metaData.alert}</p>
@@ -340,43 +411,59 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       </div>
 
-      {/* 📦 3. ADD NEW CONFIG TO CLIENT */}
-      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>📦 Add New Config to the Client</h3>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", alignItems: "start" }}>
-          <select value={newConfigName} onChange={(e) => setNewConfigName(e.target.value)} style={{ padding: "0.75rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}>
-            {PACKAGE_LIST.map(pkg => <option key={pkg} value={pkg}>{pkg}</option>)}
-          </select>
-
-          <textarea 
-            placeholder="Paste VLESS Key here (vless://...)" 
-            value={newConfigVless} 
-            onChange={(e) => setNewConfigVless(e.target.value)}
-            style={{ padding: "0.75rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none", minHeight: "45px", resize: "vertical" }}
-          />
-          <button onClick={handleAddConfig} style={{ background: "#22c55e", color: "#000", border: "none", padding: "0.75rem 1.4rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", height: "45px" }}>
-            + Add New Config to Client
+      {/* 📦 DYNAMIC MULTI-CONFIG SECTIONS (ADD / REMOVE) */}
+      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.5rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <div>
+            <h3 style={{ margin: 0, color: "#FFF", fontSize: "1.1rem" }}>📦 Assigned Configurations</h3>
+            <p style={{ margin: "0.2rem 0 0 0", color: "#9ca3af", fontSize: "0.8rem" }}>Add or remove individual config slots for this client.</p>
+          </div>
+          <button onClick={handleAddNewConfigSection} style={{ background: "#22c55e", color: "#000", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}>
+            + Add New Config Section
           </button>
         </div>
 
-        {/* Editable Raw Configs */}
-        <div style={{ marginTop: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-            <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.85rem" }}>Edit All Configs (Raw Data):</p>
-            <button onClick={handleSaveRawConfigs} style={{ background: "#4f46e5", color: "#FFF", border: "none", padding: "0.4rem 1rem", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "0.8rem" }}>
-              💾 Save All VLESS Configurations
+        {configItems.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "2rem", background: "rgba(0,0,0,0.3)", borderRadius: "10px", color: "#9ca3af" }}>
+            No configs assigned. Click "+ Add New Config Section" to grant VPN access.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {configItems.map((item, idx) => (
+              <div key={item.id} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1.2rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem", gap: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: "220px" }}>
+                    <span style={{ color: "#818cf8", fontWeight: "bold" }}>#{idx + 1}</span>
+                    <input 
+                      type="text" 
+                      value={item.name} 
+                      onChange={(e) => handleConfigChange(item.id, "name", e.target.value)}
+                      placeholder="Package / Server Name"
+                      style={{ flex: 1, padding: "0.5rem 0.8rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", fontSize: "0.85rem", outline: "none" }}
+                    />
+                  </div>
+                  <button onClick={() => handleRemoveConfigSection(item.id)} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" }}>
+                    🗑️ Remove Config
+                  </button>
+                </div>
+
+                <textarea 
+                  value={item.code} 
+                  onChange={(e) => handleConfigChange(item.id, "code", e.target.value)}
+                  placeholder="Paste VLESS Key here (vless://...)"
+                  style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#22c55e", fontFamily: "monospace", fontSize: "0.8rem", minHeight: "65px", outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+            ))}
+
+            <button onClick={handleSaveConfigs} style={{ alignSelf: "flex-end", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+              💾 Save All Changes
             </button>
           </div>
-          <textarea 
-            value={rawConfigs} 
-            onChange={(e) => setRawConfigs(e.target.value)}
-            style={{ width: "100%", padding: "0.9rem", borderRadius: "8px", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)", color: "#818cf8", minHeight: "140px", fontFamily: "monospace", fontSize: "0.85rem", whiteSpace: "pre-wrap", outline: "none", boxSizing: "border-box" }} 
-          />
-        </div>
+        )}
       </div>
 
-      {/* 🧾 8. PAYMENT SLIPS & HISTORY VIEWER */}
+      {/* 🧾 PAYMENT SLIPS & HISTORY */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>🧾 Payment Slips & History</h3>
         
@@ -398,7 +485,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                     <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                     {p?.receipt && (
                       <a href={p.receipt} target="_blank" rel="noreferrer" style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.4)", padding: "0.5rem 1rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.85rem", fontWeight: "bold" }}>
-                        📄 View Payment Slip ↗
+                        📄 View Slip ↗
                       </a>
                     )}
                   </div>
