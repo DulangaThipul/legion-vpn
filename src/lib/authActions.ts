@@ -52,7 +52,7 @@ export async function updateUserAdmin(userId: string, data: any) {
       data: updateData,
     });
 
-    // 🚀 CRITICAL: JSON.parse(JSON.stringify) prevents Next.js Date Serialization Error
+    // 🚀 Server Action එකෙන් Client Component එකට Date යැවීමේදී එන Crash එක වළක්වයි
     return { success: true, user: JSON.parse(JSON.stringify(updatedUser)) };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update user" };
