@@ -62,22 +62,40 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
   const [toastMsg, setToastMsg] = useState<{title: string, desc: string} | null>(null);
 
+  // 🚀 ADMIN OVERRIDE METADATA DECODER (ALERT & PREMIUM)
+  let adminAlert = user?.alertMessage || "";
+  let adminPremiumOverride: boolean | null = null;
+
+  if (user?.subscriptionLink) {
+    try {
+      const parsedMeta = JSON.parse(user.subscriptionLink);
+      if (parsedMeta.alert !== undefined) adminAlert = parsedMeta.alert;
+      if (typeof parsedMeta.isPremium === "boolean") adminPremiumOverride = parsedMeta.isPremium;
+    } catch {
+      if (!adminAlert && typeof user.subscriptionLink === "string" && !user.subscriptionLink.startsWith("http")) {
+        adminAlert = user.subscriptionLink;
+      }
+    }
+  }
+
+  // 🚀 Premium Verification Priority: Admin Setting takes priority, fallback to active plan / payments
+  const isVerified = adminPremiumOverride !== null
+    ? adminPremiumOverride
+    : (payments.length > 0 || Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5));
+
   const safeName = user?.name || "Premium User";
   const safeEmail = user?.email || "";
   
-  const isVerified = payments.length > 0 || Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
   const hasActivePlan = Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
   const now = new Date().getTime();
   const expiry = user?.expiryDate ? new Date(user.expiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
-  // 🚀 Dynamic Filter Calculations (Check if ISP has router/mobile plans)
   const availablePackages = ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
   const hasRouter = availablePackages.some(p => p.type === "router");
   const hasMobile = availablePackages.some(p => p.type === "mobile");
 
-  // Reset secondary filter if an ISP is selected that doesn't have that network type
   useEffect(() => {
     if (!hasRouter && activeNetworkType === "router") setActiveNetworkType("all");
     if (!hasMobile && activeNetworkType === "mobile") setActiveNetworkType("all");
@@ -136,7 +154,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
   const { configs: parsedConfigs, receiptLink } = parseConfigs(user?.vpnConfigKey);
 
-  // 🚀 FIXED: Reliable IP Fetching without Rate Limits
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -159,9 +176,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return () => clearInterval(intervalId);
   }, [activeTab, activeTool]);
 
-  // ==========================================
-  // SPEED TEST LOGIC
-  // ==========================================
+  // SPEED TEST ENGINE
   const [stState, setStState] = useState<"idle" | "finding" | "downloading" | "uploading" | "done">("idle");
   const [stPing, setStPing] = useState("--");
   const [stDown, setStDown] = useState("0.00");
@@ -173,7 +188,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const startSpeedTest = async () => {
     setStState("finding"); setStPing("--"); setStDown("0.00"); setStUp("0.00"); setGaugeValue(0);
-    
     await new Promise(r => setTimeout(r, 1200));
 
     const pings: number[] = [];
@@ -204,7 +218,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             speedHistory.push(mbps);
             if(speedHistory.length > 5) speedHistory.shift(); 
             const avgSpeed = speedHistory.reduce((a,b)=>a+b) / speedHistory.length;
-            
             setStDown(avgSpeed.toFixed(2));
             setGaugeValue(speedToGauge(avgSpeed));
           }
@@ -386,7 +399,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
       
-      {/* TOAST NOTIFICATION WITH SOUND */}
+      {/* 🚀 TOAST NOTIFICATION WITH SOUND */}
       {toastMsg && (
         <div style={{ position: "fixed", bottom: "100px", right: "20px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 1.5rem", borderRadius: "12px", zIndex: 9999, boxShadow: "0 10px 30px rgba(99,102,241,0.5)", animation: "fadeInUp 0.3s ease", display: "flex", gap: "15px", alignItems: "center" }}>
           <audio autoPlay src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=success-1-6297.mp3" />
@@ -395,6 +408,34 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{toastMsg.title}</h4>
             <p style={{ margin: 0, color: "#d1d5db", fontSize: "0.85rem" }}>{toastMsg.desc}</p>
           </div>
+        </div>
+      )}
+
+      {/* 🚀 LIVE ADMIN NOTIFICATION POPUP (DANGER / SUCCESS AUTO-DETECT) */}
+      {adminAlert && (
+        <div style={{ 
+          position: "fixed", 
+          top: "20px", 
+          left: "50%", 
+          transform: "translateX(-50%)", 
+          background: adminAlert.includes("❌") ? "rgba(239, 68, 68, 0.95)" : adminAlert.includes("⚠️") ? "rgba(245, 158, 11, 0.95)" : "rgba(34, 197, 94, 0.95)", 
+          backdropFilter: "blur(10px)",
+          padding: "1rem 2rem", 
+          borderRadius: "30px", 
+          zIndex: 9999, 
+          boxShadow: "0 10px 30px rgba(0,0,0,0.5)", 
+          fontWeight: "bold", 
+          display: "flex", 
+          gap: "10px", 
+          alignItems: "center", 
+          animation: "fadeInDown 0.3s ease", 
+          width: "90%", 
+          maxWidth: "450px", 
+          textAlign: "center", 
+          justifyContent: "center",
+          color: "#FFF"
+        }}>
+          {adminAlert}
         </div>
       )}
 
@@ -409,6 +450,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div className="mobile-hide-name" style={{ textAlign: "right" }}>
               <span style={{ fontWeight: "600", fontSize: "0.95rem", color: "#e5e7eb" }}>{safeName}</span>
               <br/>
+              {/* 🚀 LIVE VERIFIED BADGE & PREMIUM STATUS */}
               {isVerified ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#818cf8", fontWeight: "bold" }}>
                   Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={14} height={14} />
@@ -480,7 +522,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <button onClick={() => { setActiveTool(null); cancelTest(); }} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close</button>
                   </div>
 
-                  {/* 🚀 FIXED SPEEDTEST UI */}
+                  {/* SPEEDTEST */}
                   {activeTool === "speed" && (
                     <div style={{ background: "#08080c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", padding: "2rem 1.5rem", maxWidth: "680px", margin: "0 auto", position: "relative" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
@@ -649,7 +691,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                 </div>
               ) : (
-                /* 🚀 FIXED TOOLS MENU GRID */
+                /* TOOLS MENU GRID */
                 <div>
                   <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
@@ -704,11 +746,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB (RE-ORDERED)
+              2. STORE TAB
           ======================== */}
           {activeTab === "buy" && (
              <div className="animate-fade-in">
-               {/* 🚀 Primary Filter: ISP Logos */}
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
                  <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === "All" ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
                    All ISPs
@@ -721,14 +762,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  ))}
                </div>
 
-               {/* 🚀 Secondary Filter: Network Type */}
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
                  <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "transparent", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
                  {hasRouter && <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>}
                  {hasMobile && <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>}
                </div>
 
-               {/* SIM Warning */}
                {activeNetworkType === "mobile" && (
                  <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
                    <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
@@ -775,7 +814,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. MY VPNS TAB (RE-ORDERED)
+              3. MY VPNS TAB
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
@@ -888,7 +927,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              PROFILE TAB 
+              6. PROFILE TAB 
           ======================== */}
           {activeTab === "profile" && (
             <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -898,6 +937,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover" }} />
                   <h3 style={{ margin: "1rem 0 0.2rem 0", color: "#FFF", fontSize: "1.2rem" }}>{safeName}</h3>
+                  {/* 🚀 LIVE VERIFIED BADGE & STATUS */}
                   {isVerified ? (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.85rem", color: "#818cf8", fontWeight: "bold" }}>
                       Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={16} height={16} />
