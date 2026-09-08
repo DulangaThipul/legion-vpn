@@ -68,13 +68,13 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
       const response = await updateUserAdmin(userId, updates);
       if (response?.success) {
         setUsers(prev => prev.map(u => (u.id === userId || u._id === userId) ? { ...u, ...updates } : u));
-        showToast("✅ Successfully updated & saved to database!");
+        showToast("✅ Successfully saved to database!");
         router.refresh();
       } else {
-        alert("Update Error: " + (response?.error || "Could not save"));
+        alert("Error saving: " + response?.error);
       }
     } catch {
-      alert("Network Error: Could not connect to server");
+      alert("Network error: Failed to update database.");
     }
   };
 
@@ -114,7 +114,6 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
               const uid = u.id || u._id;
               const isSelected = selectedUserId === uid;
               
-              // Metadata reading
               let isPrem = false;
               if (u.subscriptionLink) {
                 try {
@@ -142,7 +141,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
           </div>
         </div>
 
-        {/* USER DETAILS */}
+        {/* DETAILS PANE */}
         <div style={{ background: "#0c0c14", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", padding: "2rem", overflowY: "auto" }}>
           {selectedUser ? (
             <UserDetailsPanel key={selectedUser.id || selectedUser._id} user={selectedUser} onUpdate={handleUpdateUser} />
@@ -161,8 +160,8 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string, updates: any) => void }) {
   const userId = user.id || user._id;
 
-  // 🚀 Read Metadata (alert, isPremium) safely from subscriptionLink
-  let metaData = { alert: "", isPremium: false };
+  // Read Metadata
+  let metaData = { alert: "", isPremium: false, payments: [] as any[], lastSeen: 0 };
   if (user?.subscriptionLink) {
     try {
       metaData = { ...metaData, ...JSON.parse(user.subscriptionLink) };
@@ -177,9 +176,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   const [addDaysInput, setAddDaysInput] = useState<number | "">("");
   const [msgEmoji, setMsgEmoji] = useState("⚠️");
   const [msgText, setMsgText] = useState("");
-  const [isOnline, setIsOnline] = useState(false);
 
-  // Sync raw configs if user changes
+  // 🚀 REAL ONLINE/OFFLINE CALCULATION (Heartbeat within last 60 seconds)
+  const isOnline = metaData.lastSeen ? (Date.now() - metaData.lastSeen < 60000) : false;
+
   useEffect(() => {
     setRawConfigs(user?.vpnConfigKey || "");
   }, [user?.vpnConfigKey, userId]);
@@ -187,22 +187,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   const expiryDate = safeParseDate(user?.expiryDate);
   const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
 
-  useEffect(() => {
-    setIsOnline(user?.isOnline ?? Math.random() > 0.5);
-  }, [user?.isOnline, userId]);
-
-  // Save Metadata Helper
   const saveMeta = (alertVal: string, isPremVal: boolean) => {
-    const payload = JSON.stringify({ alert: alertVal, isPremium: isPremVal });
+    const payload = JSON.stringify({ ...metaData, alert: alertVal, isPremium: isPremVal });
     onUpdate(userId, { subscriptionLink: payload });
   };
 
-  // 1. Toggle Premium
-  const togglePremium = () => {
-    saveMeta(metaData.alert, !metaData.isPremium);
-  };
+  const togglePremium = () => saveMeta(metaData.alert, !metaData.isPremium);
 
-  // 2. Ban / Unban
   const handleBanUser = () => {
     if (confirm(`Are you sure you want to BAN ${user.name || "this user"}?`)) {
       onUpdate(userId, { vpnStatus: "Banned" });
@@ -210,7 +201,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   };
   const handleUnbanUser = () => onUpdate(userId, { vpnStatus: "Active" });
 
-  // 3. Add Countdown Days
   const handleAddDays = () => {
     if (!addDaysInput || addDaysInput <= 0) return;
     const base = (expiryDate && daysLeft > 0) ? new Date(expiryDate) : new Date();
@@ -219,7 +209,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     setAddDaysInput("");
   };
 
-  // 4. Add Config
+  // 🚀 ADD NEW CONFIG TO CLIENT BUTTON
   const handleAddConfig = () => {
     if (!newConfigVless.trim()) {
       alert("Please paste a VLESS Key first!");
@@ -232,12 +222,8 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     setNewConfigVless("");
   };
 
-  // 5. Save Raw Configs Textarea
-  const handleSaveRawConfigs = () => {
-    onUpdate(userId, { vpnConfigKey: rawConfigs });
-  };
+  const handleSaveRawConfigs = () => onUpdate(userId, { vpnConfigKey: rawConfigs });
 
-  // 6. Send Custom Message
   const handleSendMessage = () => {
     if (!msgText.trim()) return;
     const fullMsg = `${msgEmoji} ${msgText.trim()}`;
@@ -245,9 +231,9 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     setMsgText("");
   };
 
-  const handleClearMessage = () => {
-    saveMeta("", metaData.isPremium);
-  };
+  const handleClearMessage = () => saveMeta("", metaData.isPremium);
+
+  const userPayments = metaData.payments || [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -263,15 +249,17 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             </h2>
             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af", fontSize: "0.9rem" }}>{user.email || "No email"}</p>
             
+            {/* 🚀 REAL-TIME ONLINE/OFFLINE BADGE */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: isOnline ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 10px", borderRadius: "20px" }}>
-              <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#9ca3af" }}></span>
-              <span style={{ fontSize: "0.75rem", color: isOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>{isOnline ? "Online Now" : "Offline"}</span>
+              <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#9ca3af", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }}></span>
+              <span style={{ fontSize: "0.75rem", color: isOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>
+                {isOnline ? "Online Now" : metaData.lastSeen ? `Offline (Seen ${new Date(metaData.lastSeen).toLocaleTimeString()})` : "Offline"}
+              </span>
             </div>
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", alignItems: "flex-end" }}>
-          {/* ⭐ PREMIUM TOGGLE BUTTON */}
           <button onClick={togglePremium} style={{ background: metaData.isPremium ? "linear-gradient(90deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.85rem" }}>
             {metaData.isPremium ? "⭐ Premium User (Active)" : "⚪ Set as Premium"}
           </button>
@@ -288,7 +276,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* ⏳ COUNTDOWN + 💬 POPUP MESSAGE */}
+      {/* ⏳ COUNTDOWN + 💬 CUSTOM MESSAGE */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem" }}>
         
         {/* Countdown */}
@@ -316,7 +304,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </div>
         </div>
 
-        {/* Custom Message */}
+        {/* Message */}
         <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
           <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>💬 Send Live Pop-up Message</h3>
           
@@ -330,7 +318,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           )}
 
           <div style={{ display: "flex", gap: "8px" }}>
-            <select value={msgEmoji} onChange={(e) => setMsgEmoji(e.target.value)} style={{ padding: "0.7rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none", cursor: "pointer" }}>
+            <select value={msgEmoji} onChange={(e) => setMsgEmoji(e.target.value)} style={{ padding: "0.7rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}>
               <option value="⚠️">⚠️ Warning</option>
               <option value="❌">❌ Danger</option>
               <option value="✅">✅ Success</option>
@@ -352,11 +340,11 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       </div>
 
-      {/* 📦 3. ASSIGN & EDIT CONFIGS */}
+      {/* 📦 3. ADD NEW CONFIG TO CLIENT */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>📦 Assign New Config</h3>
+        <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>📦 Add New Config to the Client</h3>
         
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: "10px", alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", alignItems: "start" }}>
           <select value={newConfigName} onChange={(e) => setNewConfigName(e.target.value)} style={{ padding: "0.75rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}>
             {PACKAGE_LIST.map(pkg => <option key={pkg} value={pkg}>{pkg}</option>)}
           </select>
@@ -368,11 +356,11 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             style={{ padding: "0.75rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none", minHeight: "45px", resize: "vertical" }}
           />
           <button onClick={handleAddConfig} style={{ background: "#22c55e", color: "#000", border: "none", padding: "0.75rem 1.4rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", height: "45px" }}>
-            + Add Config
+            + Add New Config to Client
           </button>
         </div>
 
-        {/* Editable Raw Configs with dedicated SAVE BUTTON */}
+        {/* Editable Raw Configs */}
         <div style={{ marginTop: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
             <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.85rem" }}>Edit All Configs (Raw Data):</p>
@@ -386,6 +374,39 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             style={{ width: "100%", padding: "0.9rem", borderRadius: "8px", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)", color: "#818cf8", minHeight: "140px", fontFamily: "monospace", fontSize: "0.85rem", whiteSpace: "pre-wrap", outline: "none", boxSizing: "border-box" }} 
           />
         </div>
+      </div>
+
+      {/* 🧾 8. PAYMENT SLIPS & HISTORY VIEWER */}
+      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>🧾 Payment Slips & History</h3>
+        
+        {userPayments.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "1.5rem", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
+            <p style={{ color: "#9ca3af", margin: 0, fontSize: "0.85rem" }}>No uploaded payment slips recorded for this client yet.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+            {userPayments.map((p: any, idx: number) => {
+              const pDate = safeParseDate(p?.date);
+              return (
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "0.9rem 1.2rem", borderRadius: "8px", flexWrap: "wrap", gap: "10px" }}>
+                  <div>
+                    <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>{p?.package || "VPN Plan"}</h4>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>{pDate ? pDate.toLocaleString() : "Date recorded"}</p>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
+                    {p?.receipt && (
+                      <a href={p.receipt} target="_blank" rel="noreferrer" style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.4)", padding: "0.5rem 1rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.85rem", fontWeight: "bold" }}>
+                        📄 View Payment Slip ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
     </div>
