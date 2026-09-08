@@ -174,7 +174,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     }
   }
 
-  // 🚀 REAL-TIME ONLINE / LAST SEEN TRACKER (5-second reactive evaluation)
+  // Real-time Online Tracker
   const [onlineText, setOnlineText] = useState("Offline");
   const [isClientOnline, setIsClientOnline] = useState(false);
 
@@ -204,7 +204,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     return () => clearInterval(interval);
   }, [metaData.lastSeen]);
 
-  // 🚀 DYNAMIC MULTI-CONFIG SECTIONS
+  // Dynamic Multi-Config Sections
   interface ConfigItem {
     id: string;
     name: string;
@@ -261,7 +261,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { vpnConfigKey: serializeConfigItems(configItems), vpnStatus: "Active" });
   };
 
-  // 🚀 DAYS ADD & DEDUCT
+  // Days Adjustment
   const [daysAmount, setDaysAmount] = useState<number | "">("");
   const expiryDate = safeParseDate(user?.expiryDate);
   const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
@@ -298,6 +298,22 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     setMsgText("");
   };
   const handleClearMessage = () => saveMeta("", metaData.isPremium);
+
+  // 🚀 VERIFY PAYMENT HANDLER
+  const handleVerifyPayment = (paymentIdentifier: any) => {
+    const updatedPayments = (metaData.payments || []).map((p: any) => {
+      if (p.id === paymentIdentifier || p.date === paymentIdentifier) {
+        return { ...p, status: "Verified" };
+      }
+      return p;
+    });
+
+    const updatedMeta = { ...metaData, payments: updatedPayments };
+    onUpdate(userId, {
+      subscriptionLink: JSON.stringify(updatedMeta),
+      vpnStatus: "Active" // Auto-activate user upon verifying payment
+    });
+  };
 
   const userPayments = metaData.payments || [];
 
@@ -339,7 +355,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* ⏳ COUNTDOWN (ADD & DEDUCT) + 💬 MESSAGE */}
+      {/* ⏳ COUNTDOWN + 💬 MESSAGE */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem" }}>
         
         {/* Days Adjustment */}
@@ -407,7 +423,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       </div>
 
-      {/* 📦 DYNAMIC MULTI-CONFIG SECTIONS (ADD / REMOVE) */}
+      {/* 📦 DYNAMIC MULTI-CONFIG SECTIONS */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.5rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div>
@@ -459,7 +475,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         )}
       </div>
 
-      {/* 🧾 PAYMENT SLIPS & HISTORY */}
+      {/* 🧾 PAYMENT SLIPS & VERIFICATION (WITH VERIFY BUTTON) */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>🧾 Payment Slips & History</h3>
         
@@ -471,18 +487,34 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
             {userPayments.map((p: any, idx: number) => {
               const pDate = safeParseDate(p?.date);
+              const isVerified = p?.status === "Verified";
+
               return (
-                <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "0.9rem 1.2rem", borderRadius: "8px", flexWrap: "wrap", gap: "10px" }}>
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1rem 1.2rem", borderRadius: "10px", flexWrap: "wrap", gap: "10px" }}>
                   <div>
                     <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>{p?.package || "VPN Plan"}</h4>
                     <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>{pDate ? pDate.toLocaleString() : "Date recorded"}</p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
                     <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                     {p?.receipt && (
-                      <a href={p.receipt} target="_blank" rel="noreferrer" style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.4)", padding: "0.5rem 1rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.85rem", fontWeight: "bold" }}>
+                      <a href={p.receipt} target="_blank" rel="noreferrer" style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.4)", padding: "0.45rem 0.9rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.8rem", fontWeight: "bold" }}>
                         📄 View Slip ↗
                       </a>
+                    )}
+                    
+                    {/* 🚀 VERIFY PAYMENT BUTTON */}
+                    {isVerified ? (
+                      <span style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", padding: "0.45rem 0.9rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold" }}>
+                        ✅ Verified
+                      </span>
+                    ) : (
+                      <button 
+                        onClick={() => handleVerifyPayment(p?.id || p?.date)} 
+                        style={{ background: "linear-gradient(90deg, #22c55e, #16a34a)", color: "#000", border: "none", padding: "0.45rem 1rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer", boxShadow: "0 2px 8px rgba(34,197,94,0.3)" }}
+                      >
+                        ✓ Verify Payment
+                      </button>
                     )}
                   </div>
                 </div>
