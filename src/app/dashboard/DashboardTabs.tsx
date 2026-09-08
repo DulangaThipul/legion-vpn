@@ -40,8 +40,6 @@ const MOBILE_CONFIG_PRICES: Record<string, number> = { "100 GB Config": 250, "20
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
-  
-  // Store Filters
   const [activeIsp, setActiveIsp] = useState<string>("All");
   const [activeNetworkType, setActiveNetworkType] = useState<"all" | "router" | "mobile">("all");
   
@@ -73,6 +71,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const expiry = user?.expiryDate ? new Date(user.expiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
+
+  // 🚀 Dynamic Filter Calculations (Check if ISP has router/mobile plans)
+  const availablePackages = ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
+  const hasRouter = availablePackages.some(p => p.type === "router");
+  const hasMobile = availablePackages.some(p => p.type === "mobile");
+
+  // Reset secondary filter if an ISP is selected that doesn't have that network type
+  useEffect(() => {
+    if (!hasRouter && activeNetworkType === "router") setActiveNetworkType("all");
+    if (!hasMobile && activeNetworkType === "mobile") setActiveNetworkType("all");
+  }, [activeIsp, hasRouter, hasMobile, activeNetworkType]);
 
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem("legion_welcome");
@@ -127,23 +136,28 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
   const { configs: parsedConfigs, receiptLink } = parseConfigs(user?.vpnConfigKey);
 
-  // 🚀 Live Connection Polling & Universal IP Fetch
+  // 🚀 FIXED: Reliable IP Fetching without Rate Limits
   useEffect(() => {
-    const checkConnection = () => {
-      fetch("https://ipapi.co/json/").then(res => res.json()).then(data => {
-        setIpData(data);
-        const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
-        setIsVpnConnected(!slISPs.some(sl => (data.org || "").toLowerCase().includes(sl)));
-      }).catch(() => {});
+    const checkConnection = async () => {
+      try {
+        const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
+        if (!res.ok) return;
+        const data = await res.json();
+        const orgName = data.organization_name || data.organization || "Unknown ISP";
+        setIpData({ ip: data.ip, org: orgName, city: data.city, country_name: data.country });
+        
+        const slISPs = ["dialog", "sri lanka telecom", "slt", "mobitel", "airtel", "hutchison", "lanka bell"];
+        setIsVpnConnected(!slISPs.some(sl => orgName.toLowerCase().includes(sl)));
+      } catch (err) {}
     };
     
     checkConnection(); 
     let intervalId: NodeJS.Timeout;
-    if (activeTab === "dashboard") {
+    if (activeTab === "dashboard" || activeTool === "ip" || activeTool === "speed") {
       intervalId = setInterval(checkConnection, 4000); 
     }
     return () => clearInterval(intervalId);
-  }, [activeTab]);
+  }, [activeTab, activeTool]);
 
   // ==========================================
   // SPEED TEST LOGIC
@@ -384,13 +398,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* CUSTOM ADMIN NOTIFICATION POPUP */}
-      {user?.alertMessage && (
-        <div style={{ position: "fixed", top: "20px", left: "50%", transform: "translateX(-50%)", background: user.alertMessage.includes("❌") ? "#ef4444" : "#22c55e", padding: "1rem 2rem", borderRadius: "30px", zIndex: 9999, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", fontWeight: "bold", display: "flex", gap: "10px", alignItems: "center", animation: "fadeInDown 0.3s ease", width: "90%", maxWidth: "400px", textAlign: "center", justifyContent: "center" }}>
-          {user.alertMessage}
-        </div>
-      )}
-
       <main style={{ padding: "2.5rem 1rem", maxWidth: "1150px", margin: "0 auto", position: "relative", zIndex: 10 }}>
         
         {/* HEADER */}
@@ -423,7 +430,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
 
-              {/* 🚀 BANNERS SECTION (STEP 5) */}
+              {/* BANNERS */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginBottom: "1rem" }}>
                 <div onClick={() => window.open("https://wa.me/+441163504152?text=I%20need%20a%20Free%20Test%20Plan", "_blank")} style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(20,184,166,0.05) 100%)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem", transition: "transform 0.2s" }} className="hover-scale-card">
                   <div style={{ fontSize: "2.5rem" }}>🎁</div>
@@ -578,39 +585,39 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                   {/* Latency Ping */}
                   {activeTool === "ping" && (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "1rem 0" }}>
-                      <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: 0 }}>Advanced Server Latency Test (Google)</h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center" }}>
+                      <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: "0 0 1rem 0" }}>Google DNS Latency Test (8.8.8.8)</h3>
                       {pingStats ? (
-                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", width: "100%", maxWidth: "500px" }}>
+                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", width: "100%", maxWidth: "500px", margin: "0 auto" }}>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                              <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Average Ping</p>
-                             <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2.5rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
+                             <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                            </div>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                              <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Jitter</p>
-                             <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2.5rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
+                             <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                            </div>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                              <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Min Ping</p>
-                             <h2 style={{ margin: 0, color: "#22c55e", fontSize: "2rem" }}>{pingStats.min} ms</h2>
+                             <h2 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>{pingStats.min} ms</h2>
                            </div>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                              <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Max Ping</p>
-                             <h2 style={{ margin: 0, color: "#ef4444", fontSize: "2rem" }}>{pingStats.max} ms</h2>
+                             <h2 style={{ margin: 0, color: "#ef4444", fontSize: "1.5rem" }}>{pingStats.max} ms</h2>
                            </div>
                          </div>
                       ) : (
-                         <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
-                            <span style={{ fontSize: "4rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
+                         <div style={{ width: "150px", height: "150px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
+                            <span style={{ fontSize: "3rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
                          </div>
                       )}
-                      <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
-                         {isPinging ? "Testing Packets..." : "Run Ping Test"}
+                      <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", marginTop: "1rem" }}>
+                         {isPinging ? "Testing..." : "Run Ping Test"}
                       </button>
                     </div>
                   )}
 
-                  {/* WebRTC */}
+                  {/* WebRTC Leak */}
                   {activeTool === "webrtc" && (
                     <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
                       <div style={{ textAlign: "center", maxWidth: "600px" }}>
@@ -642,12 +649,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                 </div>
               ) : (
-                /* 🚀 STEP 4: Beautiful Essential VPN Tools Alignments */
+                /* 🚀 FIXED TOOLS MENU GRID */
                 <div>
                   <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.2rem" }}>
-                    
-                    <div className="glass-panel hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🚀</div>
                         <div>
@@ -658,7 +664,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#6366f1", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="glass-panel hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🌍</div>
                         <div>
@@ -669,18 +675,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#22c55e", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="glass-panel hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>⚡</div>
                         <div>
                           <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>Latency Test</h4>
-                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Game stability check</p>
+                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Game stability</p>
                         </div>
                       </div>
                       <div style={{ color: "#f59e0b", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="glass-panel hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🛡️</div>
                         <div>
@@ -698,10 +704,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB (WITH DOUBLE FILTERS)
+              2. STORE TAB (RE-ORDERED)
           ======================== */}
           {activeTab === "buy" && (
-             <div>
+             <div className="animate-fade-in">
                {/* 🚀 Primary Filter: ISP Logos */}
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
                  <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === "All" ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
@@ -718,15 +724,28 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                {/* 🚀 Secondary Filter: Network Type */}
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
                  <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "transparent", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
-                 <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>
-                 <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>
+                 {hasRouter && <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>}
+                 {hasMobile && <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>}
                </div>
+
+               {/* SIM Warning */}
+               {activeNetworkType === "mobile" && (
+                 <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                   <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
+                   <div>
+                     <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
+                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                       SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
+                     </p>
+                   </div>
+                 </div>
+               )}
 
                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
                  {ALL_PACKAGES
                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
                    .map((pkg) => (
-                   <div key={pkg.id} style={{ background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
+                   <div key={pkg.id} style={{ position: "relative", zIndex: 10, background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
                      <div style={{ flex: 1 }}>
                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
                          <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
@@ -746,7 +765,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                        <p style={{ color: "#818cf8", fontSize: "0.8rem", fontWeight: "bold", margin: 0 }}>💡 {pkg.devices}</p>
                      </div>
 
-                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer", transition: "transform 0.2s" }} className="hover:scale-[1.02]">
+                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer", position: "relative", zIndex: 20 }} className="hover-scale-card">
                        Select & Configure VPN →
                      </button>
                    </div>
@@ -756,7 +775,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. MY VPNS TAB 
+              3. MY VPNS TAB (RE-ORDERED)
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
@@ -823,9 +842,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                        </div>
                        <div style={{ textAlign: "right" }}>
                          <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p.amount}</h3>
-                         <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end" }}>
+                         <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "5px" }}>
                            <span style={{ fontSize: "0.75rem", background: p.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p.status}</span>
-                           <a href={p.receipt} target="_blank" rel="noreferrer" download style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "10px", transition: "0.2s" }} className="hover:bg-white/20">⬇️ Download</a>
+                           <a href={p.receipt} target="_blank" rel="noreferrer" download style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "10px", transition: "0.2s" }} className="hover:bg-white/20">⬇️ Download Slip</a>
                          </div>
                        </div>
                     </div>
@@ -869,7 +888,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              6. PROFILE TAB 
+              PROFILE TAB 
           ======================== */}
           {activeTab === "profile" && (
             <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -888,7 +907,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                   
                   {initialUser?.googleImage && avatar !== initialUser.googleImage && (
-                    <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem" }}>
+                    <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem", transition: "0.2s" }} className="hover:bg-white/10">
                       Restore Google Image
                     </button>
                   )}
@@ -898,7 +917,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <h4 style={{ textAlign: "center", color: "#9ca3af", margin: "0 0 1rem 0", fontSize: "0.9rem" }}>Choose Preset Avatar</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(45px, 1fr))", gap: "0.8rem", justifyItems: "center" }}>
                     {AVAILABLE_AVATARS.map((gifPath) => (
-                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", border: avatar === gifPath ? "3px solid #6366f1" : "3px solid transparent", overflow: "hidden" }}>
+                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", border: avatar === gifPath ? "3px solid #6366f1" : "3px solid transparent", overflow: "hidden", transition: "transform 0.2s" }} className="hover:scale-110">
                         <img src={gifPath} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       </div>
                     ))}
@@ -906,6 +925,23 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
 
                 <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label><input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
+              </div>
+            </div>
+          )}
+
+          {/* SIM WARNING MODAL */}
+          {simWarningModal && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
+              <div style={{ width: "100%", maxWidth: "500px", padding: "2rem", background: "#10101a", border: "1px solid rgba(239,68,68,0.5)", borderRadius: "16px", textAlign: "center" }}>
+                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
+                 <h2 style={{ color: "#FFF", marginBottom: "1rem" }}>Important Notice</h2>
+                 <p style={{ color: "#9ca3af", lineHeight: 1.6, marginBottom: "2rem" }}>
+                   SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
+                 </p>
+                 <div style={{ display: "flex", gap: "1rem" }}>
+                   <button onClick={() => setSimWarningModal(null)} style={{ flex: 1, padding: "1rem", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+                   <button onClick={() => proceedToCheckout(simWarningModal)} style={{ flex: 1, padding: "1rem", background: "#ef4444", color: "#FFF", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: "pointer" }}>I Understand</button>
+                 </div>
               </div>
             </div>
           )}
@@ -1005,6 +1041,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         @media (max-width: 395px) {
           .mobile-hide-name { display: none !important; }
         }
+        .hover-scale-card { transition: transform 0.2s; }
         .hover-scale-card:hover { transform: scale(1.02); }
       `}</style>
     </div>
