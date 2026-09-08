@@ -15,7 +15,7 @@ export default async function AdminPage() {
   return (
     <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, color: "#FFFFFF" }}>
       <DashboardMatrix />
-      <AdminDashboardClient initialUsers={data?.users || []} />
+      <AdminDashboardClient initialUsers={data.users || []} />
     </div>
   );
 }
