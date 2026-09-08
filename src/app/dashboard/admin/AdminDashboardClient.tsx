@@ -174,7 +174,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     }
   }
 
-  // 🚀 REAL-TIME ONLINE / LAST SEEN TRACKER
+  // 🚀 REAL-TIME ONLINE / LAST SEEN TRACKER (5-second reactive evaluation)
   const [onlineText, setOnlineText] = useState("Offline");
   const [isClientOnline, setIsClientOnline] = useState(false);
 
@@ -204,7 +204,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     return () => clearInterval(interval);
   }, [metaData.lastSeen]);
 
-  // 🚀 INTERACTIVE MULTI-CONFIG SECTIONS
+  // 🚀 DYNAMIC MULTI-CONFIG SECTIONS
   interface ConfigItem {
     id: string;
     name: string;
@@ -235,7 +235,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     return items.map(item => `📦 [ ${item.name} ]\n${item.code}`).join("\n\n");
   };
 
-  // Add Empty Section
   const handleAddNewConfigSection = () => {
     const newItem: ConfigItem = {
       id: `${Date.now()}`,
@@ -247,14 +246,12 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { vpnConfigKey: serializeConfigItems(updated), vpnStatus: "Active" });
   };
 
-  // Remove Specific Section
   const handleRemoveConfigSection = (idToRemove: string) => {
     const updated = configItems.filter(item => item.id !== idToRemove);
     setConfigItems(updated);
     onUpdate(userId, { vpnConfigKey: serializeConfigItems(updated) });
   };
 
-  // Update Individual Section
   const handleConfigChange = (id: string, field: "name" | "code", val: string) => {
     const updated = configItems.map(item => item.id === id ? { ...item, [field]: val } : item);
     setConfigItems(updated);
@@ -278,7 +275,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     setDaysAmount("");
   };
 
-  // Custom Message
+  // Message Handling
   const [msgEmoji, setMsgEmoji] = useState("⚠️");
   const [msgText, setMsgText] = useState("");
 
@@ -318,7 +315,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             </h2>
             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af", fontSize: "0.9rem" }}>{user.email || "No email"}</p>
             
-            {/* Real-time Online/Offline Status */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: isClientOnline ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", padding: "4px 12px", borderRadius: "20px" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isClientOnline ? "#22c55e" : "#9ca3af", boxShadow: isClientOnline ? "0 0 8px #22c55e" : "none" }}></span>
               <span style={{ fontSize: "0.8rem", color: isClientOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>{onlineText}</span>
@@ -346,7 +342,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       {/* ⏳ COUNTDOWN (ADD & DEDUCT) + 💬 MESSAGE */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem" }}>
         
-        {/* Days Add & Deduct */}
+        {/* Days Adjustment */}
         <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
           <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>⏳ Adjust Subscription Days</h3>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", background: "rgba(0,0,0,0.3)", padding: "0.8rem 1rem", borderRadius: "8px" }}>
