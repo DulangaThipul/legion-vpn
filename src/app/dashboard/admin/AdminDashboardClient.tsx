@@ -22,23 +22,22 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 
   const filteredUsers = users.filter(u =>
     u.name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    (u.referredBy && u.referredBy.toLowerCase().includes(search.toLowerCase()))
+    u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSave = async (userId: string, newConfig: string, newLink: string, newStatus: string, newExpiry: string, newReferredBy: string) => {
+  // Added Custom Message Field
+  const handleSave = async (userId: string, newConfig: string, newStatus: string, newExpiry: string, newCustomMsg: string) => {
     try {
       const response = await updateUserAdmin(userId, {
         vpnConfigKey: newConfig,
-        subscriptionLink: newLink,
         vpnStatus: newStatus,
         expiryDate: newExpiry ? new Date(newExpiry) : null,
-        referredBy: newReferredBy
+        alertMessage: newCustomMsg // Send Live Message!
       });
 
       if (response.success) {
-        setUsers(users.map(u => u.id === userId ? { ...u, vpnConfigKey: newConfig, subscriptionLink: newLink, vpnStatus: newStatus, expiryDate: newExpiry, referredBy: newReferredBy } : u));
-        setToast("Changes saved successfully!");
+        setUsers(users.map(u => u.id === userId ? { ...u, vpnConfigKey: newConfig, vpnStatus: newStatus, expiryDate: newExpiry, alertMessage: newCustomMsg } : u));
+        setToast("Changes saved & synced live successfully!");
         router.refresh();
       } else {
         alert("Failed to save changes.");
@@ -53,7 +52,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
     <main style={{ padding: "3rem 1.5rem", maxWidth: "1200px", margin: "0 auto", position: "relative" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1.5rem" }}>
         <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "600", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
-          🛡️ Advanced CRM Dashboard
+          🛡️ LEGION Super Admin
         </h1>
         <Link href="/dashboard" style={{ color: "#818cf8", textDecoration: "none", fontWeight: "bold", background: "rgba(99,102,241,0.1)", padding: "0.5rem 1rem", borderRadius: "8px" }}>
           ← Back to Site
@@ -61,7 +60,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
       </header>
 
       {toast && (
-        <div style={{ position: "fixed", top: "2rem", left: "50%", transform: "translateX(-50%)", background: "#22c55e", color: "#000", padding: "1rem 2rem", borderRadius: "30px", fontWeight: "bold", zIndex: 1000, boxShadow: "0 10px 20px rgba(34,197,94,0.3)", animation: "fadeInDown 0.3s ease" }}>
+        <div style={{ position: "fixed", top: "2rem", left: "50%", transform: "translateX(-50%)", background: "#22c55e", color: "#000", padding: "1rem 2rem", borderRadius: "30px", fontWeight: "bold", zIndex: 1000, boxShadow: "0 10px 20px rgba(34,197,94,0.3)" }}>
           {toast}
         </div>
       )}
@@ -69,7 +68,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", marginBottom: "2rem" }}>
         <input
           type="text"
-          placeholder="Search clients by name, email, or referral code..."
+          placeholder="Search clients by name or email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ width: "100%", padding: "1rem 1.5rem", borderRadius: "12px", background: "rgba(15,15,20,0.8)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", fontSize: "1rem" }}
@@ -84,24 +83,20 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
           <UserAdvancedCard key={user.id} user={user} onSave={handleSave} />
         ))}
       </div>
-
-      <style>{`
-        @keyframes fadeInDown {
-          from { opacity: 0; transform: translate(-50%, -20px); }
-          to { opacity: 1; transform: translate(-50%, 0); }
-        }
-      `}</style>
     </main>
   );
 }
 
-function UserAdvancedCard({ user, onSave }: { user: any, onSave: (id: string, config: string, link: string, status: string, expiry: string, referredBy: string) => void }) {
+function UserAdvancedCard({ user, onSave }: { user: any, onSave: (id: string, config: string, status: string, expiry: string, msg: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [configText, setConfigText] = useState(user.vpnConfigKey || "");
-  const [subLink, setSubLink] = useState(user.subscriptionLink || "");
   const [status, setStatus] = useState(user.vpnStatus || "Inactive");
   const [expiry, setExpiry] = useState(user.expiryDate ? new Date(user.expiryDate).toISOString().split('T')[0] : "");
-  const [referredBy, setReferredBy] = useState(user.referredBy || "");
+  
+  // Custom Live Message
+  const [customMsg, setCustomMsg] = useState(user.alertMessage || "");
+  const [msgType, setMsgType] = useState<"success" | "danger">(user.alertMessage?.includes("❌") ? "danger" : "success");
+
   const [selectedPkg, setSelectedPkg] = useState(PACKAGE_LIST[0]);
   const [tempVless, setTempVless] = useState("");
 
@@ -120,8 +115,13 @@ function UserAdvancedCard({ user, onSave }: { user: any, onSave: (id: string, co
 
   const daysLeft = expiry ? Math.ceil((new Date(expiry).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : null;
 
+  const buildMessage = () => {
+    const icon = msgType === "success" ? "✅" : "❌";
+    return `${icon} ${customMsg.replace(/[✅❌]/g, "").trim()}`;
+  };
+
   return (
-    <div style={{ background: status === "Suspended" ? "rgba(245, 158, 11, 0.05)" : "rgba(15,15,20,0.8)", border: `1px solid ${status === "Suspended" ? "#f59e0b" : expanded ? "#6366f1" : "rgba(255,255,255,0.05)"}`, borderRadius: "16px", overflow: "hidden", transition: "all 0.3s ease" }}>
+    <div style={{ background: status === "Banned" ? "rgba(239, 68, 68, 0.05)" : "rgba(15,15,20,0.8)", border: `1px solid ${status === "Banned" ? "#ef4444" : expanded ? "#6366f1" : "rgba(255,255,255,0.05)"}`, borderRadius: "16px", overflow: "hidden", transition: "all 0.3s ease" }}>
       
       {/* CARD HEADER */}
       <div onClick={() => setExpanded(!expanded)} style={{ padding: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: expanded ? "rgba(99,102,241,0.05)" : "transparent", flexWrap: "wrap", gap: "1rem" }}>
@@ -131,20 +131,15 @@ function UserAdvancedCard({ user, onSave }: { user: any, onSave: (id: string, co
             <h3 style={{ margin: "0 0 0.2rem 0", fontSize: "1.2rem", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
               {user.name} 
               {status === "Active" && <span style={{ width: "8px", height: "8px", background: "#22c55e", borderRadius: "50%", boxShadow: "0 0 8px #22c55e" }} title="Active"/>}
-              {status === "Inactive" && <span style={{ width: "8px", height: "8px", background: "#6b7280", borderRadius: "50%" }} title="Inactive"/>}
-              {status === "Suspended" && <span style={{ padding: "2px 8px", background: "#f59e0b", color: "#000", fontSize: "0.7rem", borderRadius: "12px", fontWeight: "bold" }}>REVIEW / SUSPENDED</span>}
+              {status === "Banned" && <span style={{ padding: "2px 8px", background: "#ef4444", color: "#FFF", fontSize: "0.7rem", borderRadius: "12px", fontWeight: "bold" }}>BANNED</span>}
+              {status === "Suspended" && <span style={{ padding: "2px 8px", background: "#f59e0b", color: "#000", fontSize: "0.7rem", borderRadius: "12px", fontWeight: "bold" }}>REVIEW / PENDING</span>}
             </h3>
             <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)" }}>{user.email}</p>
           </div>
         </div>
         
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          {referredBy && (
-            <span style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", padding: "0.3rem 0.8rem", borderRadius: "8px", fontSize: "0.8rem", fontWeight: "bold" }}>
-              Ref: {referredBy.toUpperCase()}
-            </span>
-          )}
-          {daysLeft !== null && (
+          {daysLeft !== null && status !== "Banned" && (
             <span style={{ color: daysLeft < 3 ? "#ef4444" : "var(--muted-text)", fontSize: "0.85rem", fontWeight: "bold" }}>
               {daysLeft > 0 ? `${daysLeft} Days Left` : "Expired"}
             </span>
@@ -159,22 +154,21 @@ function UserAdvancedCard({ user, onSave }: { user: any, onSave: (id: string, co
           
           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.2)" }}>
             <h4 style={{ margin: "0 0 1rem 0", color: "#818cf8" }}>➕ Assign Ordered VPN Config</h4>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>Package</label>
             <select value={selectedPkg} onChange={(e) => setSelectedPkg(e.target.value)} style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", marginBottom: "1rem", outline: "none" }}>
               {PACKAGE_LIST.map(pkg => <option key={pkg} value={pkg} style={{ background: "#0a0a0f" }}>{pkg}</option>)}
             </select>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>VLESS Key</label>
             <textarea value={tempVless} onChange={(e) => setTempVless(e.target.value)} placeholder="vless://..." style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", minHeight: "60px", marginBottom: "1rem" }} />
             <button onClick={handleAddConfig} style={{ width: "100%", padding: "0.8rem", background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.4)", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>↓ Add to User ↓</button>
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", gap: "1.2rem" }}>
             <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>🔒 Account Status</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: status === "Suspended" ? "rgba(245, 158, 11, 0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${status === "Suspended" ? "#f59e0b" : "rgba(255,255,255,0.1)"}`, color: status === "Suspended" ? "#f59e0b" : "#FFF", fontWeight: "bold", outline: "none" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>🔒 Account Status (Verify & Ban)</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: status === "Banned" ? "rgba(239, 68, 68, 0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${status === "Banned" ? "#ef4444" : "rgba(255,255,255,0.1)"}`, color: status === "Banned" ? "#ef4444" : "#FFF", fontWeight: "bold", outline: "none" }}>
                 <option value="Active" style={{ background: "#0a0a0f", color: "#22c55e" }}>🟢 Active (Approved)</option>
                 <option value="Inactive" style={{ background: "#0a0a0f", color: "#FFF" }}>⚪ Inactive</option>
-                <option value="Suspended" style={{ background: "#0a0a0f", color: "#f59e0b" }}>🟠 Suspended (Needs Review/Ban)</option>
+                <option value="Suspended" style={{ background: "#0a0a0f", color: "#f59e0b" }}>🟠 Suspended (Needs Review)</option>
+                <option value="Banned" style={{ background: "#0a0a0f", color: "#ef4444" }}>🔴 BANNED</option>
               </select>
             </div>
 
@@ -189,30 +183,29 @@ function UserAdvancedCard({ user, onSave }: { user: any, onSave: (id: string, co
               </div>
             </div>
             
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>📊 Usage Link</label>
-                <input type="text" value={subLink} onChange={(e) => setSubLink(e.target.value)} placeholder="https://..." style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF" }} />
+            {/* 🚀 SEND LIVE MESSAGE WIDGET */}
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>💬 Send Live Pop-Up Message</label>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                 <button onClick={() => setMsgType("success")} style={{ flex: 1, padding: "0.5rem", borderRadius: "6px", background: msgType === "success" ? "#22c55e" : "rgba(255,255,255,0.05)", border: "none", color: msgType === "success" ? "#000" : "#FFF", fontWeight: "bold", cursor: "pointer" }}>✅ Success Mark</button>
+                 <button onClick={() => setMsgType("danger")} style={{ flex: 1, padding: "0.5rem", borderRadius: "6px", background: msgType === "danger" ? "#ef4444" : "rgba(255,255,255,0.05)", border: "none", color: msgType === "danger" ? "#000" : "#FFF", fontWeight: "bold", cursor: "pointer" }}>❌ Danger Mark</button>
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--muted-text)" }}>Agent / Ref</label>
-                <input type="text" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="e.g. RAVIDU" style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", textTransform: "uppercase" }} />
-              </div>
+              <input type="text" value={customMsg.replace(/[✅❌]/g, "").trim()} onChange={(e) => setCustomMsg(e.target.value)} placeholder="Type custom message to user..." style={{ width: "100%", padding: "0.8rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF" }} />
+              <button onClick={() => setCustomMsg("")} style={{ marginTop: "10px", width: "100%", padding: "0.5rem", background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "6px", cursor: "pointer" }}>Clear Message</button>
             </div>
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: "1rem" }}>
              <h4 style={{ margin: 0, color: "#FFF", display: "flex", justifyContent: "space-between" }}>
                👁️ Assigned Configs (Raw Text)
-               {user.slipUrl && <a href={user.slipUrl} target="_blank" style={{ color: "#818cf8", fontSize: "0.9rem" }}>📄 View Uploaded Slip</a>}
              </h4>
              <textarea value={configText} onChange={(e) => setConfigText(e.target.value)} placeholder="No configs assigned yet..." style={{ width: "100%", padding: "1rem", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.1)", color: "#22c55e", minHeight: "100px", fontFamily: "monospace", fontSize: "0.9rem", whiteSpace: "pre-wrap" }} />
              
              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginTop: "1rem" }}>
                 <a href={`mailto:${user.email}`} style={{ color: "#818cf8", textDecoration: "none", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "5px" }}>✉️ Send Email to Client</a>
                 
-                <button onClick={() => onSave(user.id, configText, subLink, status, expiry, referredBy)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", padding: "1rem 3rem", borderRadius: "30px", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer", transition: "transform 0.2s", boxShadow: "0 5px 15px rgba(99,102,241,0.3)" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}>
-                  💾 Sync & Save Profile
+                <button onClick={() => onSave(user.id, configText, status, expiry, customMsg ? buildMessage() : "")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", padding: "1rem 3rem", borderRadius: "30px", fontWeight: "bold", fontSize: "1.1rem", border: "none", cursor: "pointer", transition: "transform 0.2s", boxShadow: "0 5px 15px rgba(99,102,241,0.3)" }}>
+                  💾 Sync & Save Live Profile
                 </button>
              </div>
           </div>
