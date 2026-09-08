@@ -61,7 +61,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
   const [toastMsg, setToastMsg] = useState<{title: string, desc: string} | null>(null);
 
-  // Metadata Decode
+  // 🚀 Read Metadata from Database
   let metaData = { alert: "", isPremium: false, payments: [] as any[] };
   if (user?.subscriptionLink) {
     try {
@@ -71,24 +71,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   }
 
-  // 🚀 Dismissible Center Popup (Will not re-appear on refresh if dismissed)
+  // 🚀 Single-time dismissible Center Popup Modal
   const [showCenterAlert, setShowCenterAlert] = useState(false);
 
   useEffect(() => {
     if (metaData.alert) {
-      const dismissed = localStorage.getItem("legion_dismissed_alert");
+      const userDismissKey = `legion_dismissed_alert_${user?.id || user?.email}`;
+      const dismissed = localStorage.getItem(userDismissKey);
       if (dismissed !== metaData.alert) {
         setShowCenterAlert(true);
       }
     }
-  }, [metaData.alert]);
+  }, [metaData.alert, user?.id, user?.email]);
 
   const handleDismissAlert = () => {
     if (metaData.alert) {
-      localStorage.setItem("legion_dismissed_alert", metaData.alert);
+      const userDismissKey = `legion_dismissed_alert_${user?.id || user?.email}`;
+      localStorage.setItem(userDismissKey, metaData.alert);
     }
     setShowCenterAlert(false);
   };
+
+  // 🚀 User-Specific Payments Isolated from Database Only
+  useEffect(() => {
+    if (metaData.payments && Array.isArray(metaData.payments)) {
+      setPayments(metaData.payments);
+    } else {
+      setPayments([]);
+    }
+  }, [user?.subscriptionLink]);
 
   const isVerified = metaData.isPremium || payments.length > 0 || Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
   const safeName = user?.name || "Premium User";
@@ -100,18 +111,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
-  // 🚀 Send Heartbeat Every 15s to update real-time online status in Admin
+  // 🚀 Send Heartbeat Every 15s to update real-time online status
   useEffect(() => {
     sendClientHeartbeat();
     const hb = setInterval(() => sendClientHeartbeat(), 15000);
     return () => clearInterval(hb);
   }, []);
-
-  useEffect(() => {
-    if (metaData.payments && Array.isArray(metaData.payments)) {
-      setPayments(metaData.payments);
-    }
-  }, [user?.subscriptionLink]);
 
   const availablePackages = ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
   const hasRouter = availablePackages.some(p => p.type === "router");
@@ -129,8 +134,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
     let matches = [...rawText.matchAll(regex)];
     let configs = [];
-    if (matches.length > 0) configs = matches.map(m => ({ name: m[1].trim(), code: m[2].trim() }));
-    else {
+    if (matches.length > 0) {
+      configs = matches.map(m => ({ name: m[1].trim(), code: m[2].trim() }));
+    } else {
       const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
       if (vlessLinks) configs = vlessLinks.map((link, i) => ({ name: `Premium VPN Server ${i + 1}`, code: link }));
       else configs = [{ name: "Your Configuration Details", code: rawText }];
@@ -139,9 +145,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
   const { configs: parsedConfigs, receiptLink } = parseConfigs(user?.vpnConfigKey);
 
-  // 🚀 COPY CODE: STRIP BRACKETS [...] BEFORE COPYING
+  // 🚀 STRIP BRACKETS [...] BEFORE COPYING
   const handleCopyCleanCode = (text: string) => {
-    const cleanCode = text.replace(/\[[\s\S]*?\]/g, "").trim();
+    const cleanCode = text.replace(/(?:📦\s*)?\[[\s\S]*?\]\s*/g, "").trim();
     navigator.clipboard.writeText(cleanCode);
     alert("Copied to clipboard!");
   };
@@ -157,7 +163,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         
         const slISPs = ["dialog", "sri lanka telecom", "slt", "mobitel", "airtel", "hutchison", "lanka bell"];
         setIsVpnConnected(!slISPs.some(sl => orgName.toLowerCase().includes(sl)));
-      } catch (err) {}
+      } catch {}
     };
     
     checkConnection(); 
@@ -253,7 +259,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setSelectedQuota(null);
   };
 
-  // 🚀 UPLOAD SLIP DIRECTLY TO PRISMA DB FOR ADMIN VISIBILITY
+  // 🚀 SUBMIT ORDER TO DATABASE (Visible in Admin Panel)
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
@@ -283,7 +289,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       closeCheckout();
       setActiveTab("configs");
-    } catch (err) {
+    } catch {
       alert("Failed to upload slip. Please check your connection.");
     } finally {
       setIsUploading(false);
@@ -450,7 +456,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* CONFIGS TAB (STRIPS BRACKETS BEFORE COPYING) */}
+          {/* CONFIGS TAB */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-4">
               <h2 style={{ margin: 0, color: "#FFF" }}>My Configurations</h2>
@@ -472,12 +478,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* PAYMENTS TAB */}
+          {/* 🚀 PAYMENTS TAB (ISOLATED TO CURRENT USER ONLY) */}
           {activeTab === "payments" && (
             <div className="animate-fade-in" style={{ background: "#0c0c14", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h2 style={{ margin: "0 0 1.5rem 0", color: "#FFF" }}>Payment History</h2>
+              <h2 style={{ margin: "0 0 1.5rem 0", color: "#FFF" }}>My Payment History</h2>
               {payments.length === 0 ? (
-                <p style={{ color: "#9ca3af" }}>No payments recorded yet.</p>
+                <div style={{ textAlign: "center", padding: "2rem 0", color: "#9ca3af" }}>
+                  <p style={{ margin: 0 }}>You haven't made any payment orders yet.</p>
+                </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {payments.map((p, idx) => (
@@ -488,7 +496,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p.amount}</h3>
-                        <a href={p.receipt} target="_blank" rel="noreferrer" style={{ fontSize: "0.75rem", color: "#818cf8" }}>View Slip ↗</a>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "4px" }}>
+                          <span style={{ fontSize: "0.75rem", background: p.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p.status}</span>
+                          {p.receipt && <a href={p.receipt} target="_blank" rel="noreferrer" style={{ fontSize: "0.75rem", color: "#818cf8" }}>View Slip ↗</a>}
+                        </div>
                       </div>
                     </div>
                   ))}
