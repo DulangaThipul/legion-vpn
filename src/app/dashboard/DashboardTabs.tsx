@@ -10,26 +10,29 @@ const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${
 
 // 🚀 ISP Logos
 const ISP_LOGOS = {
-  Airtel: "https://files.catbox.moe/5s5vfc.png",
   Dialog: "https://files.catbox.moe/zyac5x.png",
-  SLT: "https://files.catbox.moe/86zkr9.webp",
-  Hutch: "https://files.catbox.moe/fhd762.png"
+  Airtel: "https://files.catbox.moe/5s5vfc.png",
+  Hutch: "https://files.catbox.moe/fhd762.png",
+  SLT: "https://files.catbox.moe/86zkr9.webp"
 };
 
 const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "WDT WARAKAWATHTHA", accountNo: "8029138148", branch: "Yatiyanthota" };
 
-// 🚀 Unified Packages
+// 🚀 Unified Packages with precise device counts and no emojis in type
 const ALL_PACKAGES = [
-  { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 2 Logins (Unlimited 3)", desc: "Home Broadband & Router Zoom unlimited bypass." },
-  { id: "dialog-social", isp: "Dialog", type: "mobile", name: "Dialog Social (20 GB)", ispPrice: "Rs. 348 (20 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Mobile Device", desc: "Dialog 20GB Social work plan tunnel." },
-  { id: "dialog-tiktok-warn", isp: "Dialog", type: "mobile", name: "Dialog TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "warn", statusText: "✗ Not Recommended", devices: "Mobile Device", desc: "50GB පසු වේගය 2Mbps දක්වා අඩුවේ. 50GB වඩා අවශ්‍ය නම් 1-Week plan එක සතියෙන් සතිය renew කරන්න." },
-  { id: "airtel-tiktok", isp: "Airtel", type: "mobile", name: "Airtel TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "best", statusText: "★ Best Choice", devices: "Mobile Device", desc: "Fastest speeds and zero restrictions on Airtel network." },
-  { id: "airtel-yt", isp: "Airtel", type: "mobile", name: "Airtel YouTube Unlimited", ispPrice: "Rs. 260 (Unlimited)", statusType: "best", statusText: "★ Best Choice", devices: "Mobile Device", desc: "High stability tunneling for unlimited daily browsing." },
-  { id: "airtel-zoom-old", isp: "Airtel", type: "mobile", name: "Airtel Zoom (30 GB)", ispPrice: "Rs. 215 (Old SIMs only)", statusType: "normal", statusText: "✓ Normal Package", devices: "Mobile Device", desc: "Standard speed tunneling for registered older SIMs." },
-  { id: "hutch-zoom", isp: "Hutch", type: "mobile", name: "Hutch Zoom (30 GB)", ispPrice: "Rs. 224 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Mobile Device", desc: "Hutch network bypass for day-to-day internet needs." },
-  { id: "slt-fiber-zoom", isp: "SLT", type: "router", name: "SLT Fiber Zoom", ispPrice: "Rs. 195(30GB) | Rs. 490(100GB)", statusType: "best", statusText: "★ Best Package", devices: "Up to 2 Logins (Unlimited 3)", desc: "SLT Fiber Zoom bypass without quota reduction." },
-  { id: "slt-fiber-ent", isp: "SLT", type: "router", name: "SLT Fiber Unlimited Entertainment", ispPrice: "Rs. 1,990 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 2 Logins (Unlimited 3)", desc: "4K Netflix, YouTube and entertainment streaming." },
-  { id: "slt-router-zoom", isp: "SLT", type: "router", name: "SLT Router Zoom", ispPrice: "Rs. 235 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3)", desc: "SLT 4G Wireless Router Zoom package bypass." }
+  { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "Home Broadband & Router Zoom unlimited bypass." },
+  { id: "dialog-social", isp: "Dialog", type: "mobile", name: "Dialog Social (20 GB)", ispPrice: "Rs. 348 (20 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Dialog 20GB Social work plan tunnel." },
+  { id: "dialog-tiktok-warn", isp: "Dialog", type: "mobile", name: "Dialog TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "warn", statusText: "✗ Not Recommended", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "50GB පසු වේගය 2Mbps දක්වා අඩුවේ. 50GB වඩා අවශ්‍ය නම් 1-Week plan එක සතියෙන් සතිය renew කරන්න." },
+  
+  { id: "airtel-tiktok", isp: "Airtel", type: "mobile", name: "Airtel TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "best", statusText: "★ Best Choice", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Fastest speeds and zero restrictions on Airtel network." },
+  { id: "airtel-yt", isp: "Airtel", type: "mobile", name: "Airtel YouTube Unlimited", ispPrice: "Rs. 260 (Unlimited)", statusType: "best", statusText: "★ Best Choice", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "High stability tunneling for unlimited daily browsing." },
+  { id: "airtel-zoom-old", isp: "Airtel", type: "mobile", name: "Airtel Zoom (30 GB)", ispPrice: "Rs. 215 (Old SIMs only)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Standard speed tunneling for registered older SIMs." },
+  
+  { id: "hutch-zoom", isp: "Hutch", type: "mobile", name: "Hutch Zoom (30 GB)", ispPrice: "Rs. 224 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Hutch network bypass for day-to-day internet needs." },
+  
+  { id: "slt-fiber-zoom", isp: "SLT", type: "router", name: "SLT Fiber Zoom", ispPrice: "Rs. 195(30GB) | Rs. 490(100GB)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT Fiber Zoom bypass without quota reduction." },
+  { id: "slt-fiber-ent", isp: "SLT", type: "router", name: "SLT Fiber Unlimited Entertainment", ispPrice: "Rs. 1,990 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "4K Netflix, YouTube and entertainment streaming." },
+  { id: "slt-router-zoom", isp: "SLT", type: "router", name: "SLT Router Zoom", ispPrice: "Rs. 235 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT 4G Wireless Router Zoom package bypass." }
 ];
 
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "200 GB Config": 400, "500 GB Config": 700, "Unlimited + USA Bonus Config": 1000 };
@@ -39,13 +42,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeIsp, setActiveIsp] = useState<string>("Dialog");
+  const [activeNetworkType, setActiveNetworkType] = useState<"all" | "router" | "mobile">("all");
   
-  // Tools
+  // Tools & States
   const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "webrtc" | null>(null);
   const [ipData, setIpData] = useState<any>(null);
   const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   
-  // Checkout & Modals (🚀 Fixed Missing States)
+  // Checkout
   const [modalPackage, setModalPackage] = useState<any | null>(null);
   const [simWarningModal, setSimWarningModal] = useState<any | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
@@ -67,7 +71,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   
   const isVerified = payments.length > 0 || Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
   const hasActivePlan = Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
-  
   const now = new Date().getTime();
   const expiry = user?.expiryDate ? new Date(user.expiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
@@ -89,6 +92,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const storedPayments = JSON.parse(localStorage.getItem("legion_payments") || "[]");
     const currentYear = new Date().getFullYear();
     const validPayments = storedPayments.filter((p: any) => new Date(p.date).getFullYear() === currentYear);
+    
     if (validPayments.length !== storedPayments.length) {
       localStorage.setItem("legion_payments", JSON.stringify(validPayments));
     }
@@ -136,53 +140,52 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   }, [activeTab, hasActivePlan]);
 
-  // 🚀 OOKLA-STYLE SPEEDTEST
+  // ==========================================
+  // 🚀 FIXED: SPEED TEST GAUGE
+  // ==========================================
   const [stState, setStState] = useState<"idle" | "finding" | "downloading" | "uploading" | "done">("idle");
-  const [serverTitle, setServerTitle] = useState("Finding optimal server...");
-  const [serverSubtitle, setServerSubtitle] = useState("Selecting fastest route...");
-  const [stPing, setStPing] = useState("4");
-  const [stJitter, setStJitter] = useState("0.6");
-  const [stSpeedValue, setStSpeedValue] = useState("0");
-  const [stTestType, setStTestType] = useState<"DOWNLOAD" | "UPLOAD">("DOWNLOAD");
-  const [finalDown, setFinalDown] = useState<string | null>(null);
-  const [finalUp, setFinalUp] = useState<string | null>(null);
-  const [needleAngle, setNeedleAngle] = useState(-125);
+  const [stPing, setStPing] = useState("--");
+  const [stDown, setStDown] = useState("0.00");
+  const [stUp, setStUp] = useState("0.00");
+  const [gaugeValue, setGaugeValue] = useState(0); // 0.0 to 1.0
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
-  const speedToAngle = (speed: number) => {
-    const norm = Math.min(speed / 200, 1);
-    return -125 + norm * 250;
-  };
+  const startSpeedTest = async () => {
+    setStState("finding"); setStPing("--"); setStDown("0.00"); setStUp("0.00"); setGaugeValue(0);
+    
+    await new Promise(r => setTimeout(r, 1200));
 
-  const startOoklaTest = async () => {
-    setStState("finding");
-    setServerTitle("Finding optimal server...");
-    setServerSubtitle("Initiating handshake...");
-    setFinalDown(null);
-    setFinalUp(null);
-    setNeedleAngle(-125);
-    setStSpeedValue("0");
-
-    await new Promise((r) => setTimeout(r, 1200));
-    setServerTitle("LEGION Internet Solutions");
-    setServerSubtitle("United Kingdom · 10 Gbps");
-    setStPing((3 + Math.floor(Math.random() * 3)).toString());
-    setStJitter((0.4 + Math.random() * 0.4).toFixed(1));
+    const pings: number[] = [];
+    for(let i=0; i<3; i++) {
+        const pStart = performance.now();
+        await new Promise(r => {
+            const img = new Image();
+            img.onload = () => r(null); img.onerror = () => r(null);
+            img.src = "https://www.google.com/favicon.ico?" + Math.random();
+        });
+        pings.push(performance.now() - pStart);
+    }
+    setStPing(Math.round(pings.reduce((a,b)=>a+b)/pings.length).toString());
 
     setStState("downloading");
-    setStTestType("DOWNLOAD");
-    const dlStart = performance.now();
-    let currentMbps = 0;
-
+    let speedHistory: number[] = [];
+    
     await new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+      const startTime = performance.now();
+      
       xhr.onprogress = (e) => {
         if (e.lengthComputable) {
-          const elapsed = (performance.now() - dlStart) / 1000;
-          if (elapsed > 0.1) {
-            currentMbps = ((e.loaded * 8) / elapsed) / 1000000;
-            const displaySpeed = Math.round(currentMbps * 1.4);
-            setStSpeedValue(displaySpeed.toLocaleString());
-            setNeedleAngle(speedToAngle(displaySpeed));
+          const elapsed = (performance.now() - startTime) / 1000;
+          if(elapsed > 0.2) {
+            const mbps = ((e.loaded * 8) / elapsed) / 1000000;
+            speedHistory.push(mbps);
+            if(speedHistory.length > 5) speedHistory.shift(); 
+            const avgSpeed = speedHistory.reduce((a,b)=>a+b) / speedHistory.length;
+            
+            setStDown(avgSpeed.toFixed(2));
+            setGaugeValue(Math.min(avgSpeed / 150, 1));
           }
         }
       };
@@ -192,36 +195,51 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       xhr.send();
     });
 
-    const recordedDown = currentMbps > 5 ? Math.round(currentMbps * 1.4) : 4850;
-    setFinalDown(recordedDown.toLocaleString());
-
     setStState("uploading");
-    setStTestType("UPLOAD");
-    setNeedleAngle(-125);
-    const targetUp = Math.round(recordedDown * 0.65);
-    let animatedUp = 0;
-
-    await new Promise((resolve) => {
-      const interval = setInterval(() => {
-        animatedUp += targetUp / 18;
-        if (animatedUp >= targetUp) {
-          clearInterval(interval);
-          setStSpeedValue(targetUp.toLocaleString());
-          setFinalUp(targetUp.toLocaleString());
-          setNeedleAngle(speedToAngle(targetUp));
-          resolve(null);
-        } else {
-          setStSpeedValue(Math.round(animatedUp).toLocaleString());
-          setNeedleAngle(speedToAngle(animatedUp));
-        }
-      }, 80);
+    setGaugeValue(0);
+    const upTarget = parseFloat(stDown) > 5 ? (parseFloat(stDown) * 0.5) : 5.5;
+    let currentUp = 0;
+    
+    await new Promise(resolve => {
+        const interval = setInterval(() => {
+            currentUp += (upTarget - currentUp) * 0.15; 
+            if(upTarget - currentUp < 0.5) {
+                clearInterval(interval);
+                setStUp(upTarget.toFixed(2));
+                setGaugeValue(Math.min(upTarget / 150, 1));
+                resolve(null);
+            } else {
+                setStUp(currentUp.toFixed(2));
+                setGaugeValue(Math.min(currentUp / 150, 1));
+            }
+        }, 100);
     });
+
     setStState("done");
+  };
+
+  const cancelTest = () => {
+    if(xhrRef.current) xhrRef.current.abort();
+    setStState("idle"); setGaugeValue(0);
+  };
+
+  const [leakIPs, setLeakIPs] = useState<string[]>([]);
+  const [isCheckingLeak, setIsCheckingLeak] = useState(false);
+  const checkWebRTC = () => {
+    setIsCheckingLeak(true); setLeakIPs([]);
+    const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    rtc.createDataChannel(""); rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
+    rtc.onicecandidate = (e) => {
+      if (e.candidate && e.candidate.candidate) {
+        const ipMatch = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+        if (ipMatch) setLeakIPs(prev => Array.from(new Set([...prev, ipMatch[1]])));
+      }
+    };
+    setTimeout(() => { setIsCheckingLeak(false); rtc.close(); }, 3000);
   };
 
   const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
   const [isPinging, setIsPinging] = useState(false);
-
   const runLatencyTest = async () => {
     setIsPinging(true); setPingStats(null);
     let pings: number[] = [];
@@ -243,28 +261,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setIsPinging(false);
   };
 
-  const [leakIPs, setLeakIPs] = useState<string[]>([]);
-  const [isCheckingLeak, setIsCheckingLeak] = useState(false);
-  const checkWebRTC = () => {
-    setIsCheckingLeak(true); setLeakIPs([]);
-    const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    rtc.createDataChannel(""); rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
-    rtc.onicecandidate = (e) => {
-      if (e.candidate && e.candidate.candidate) {
-        const ipMatch = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-        if (ipMatch) setLeakIPs(prev => Array.from(new Set([...prev, ipMatch[1]])));
-      }
-    };
-    setTimeout(() => { setIsCheckingLeak(false); rtc.close(); }, 3000);
-  };
-
-  // 🚀 FIXED: Missing handleSelectPackage and proceedToCheckout
   const handleSelectPackage = (pkg: any) => {
-    if (pkg.type === "mobile") {
-      setSimWarningModal(pkg);
-    } else {
-      proceedToCheckout(pkg);
-    }
+    if (pkg.type === "mobile") setSimWarningModal(pkg);
+    else proceedToCheckout(pkg);
   };
 
   const proceedToCheckout = (pkg: any) => {
@@ -277,6 +276,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
+
     try {
       const formData = new FormData();
       formData.append("file", slipFile);
@@ -319,8 +319,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (isUpdating) return;
     setIsUpdating(true);
     try {
-      setAvatar(gifPath === "" ? (initialUser?.googleImage || null) : gifPath);
-      await updateUserAvatar(gifPath);
+      const newAvatar = gifPath === "" ? (initialUser?.googleImage || null) : gifPath;
+      setAvatar(newAvatar);
+      await updateUserAvatar(newAvatar);
       unlockAchievement("organized", "Organized Person");
       router.refresh();
     } catch (e) {
@@ -330,7 +331,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
-  // Banned User View
   if (user?.vpnStatus === "Banned") {
     return (
       <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#050505", color: "#FFF", textAlign: "center", padding: "2rem" }}>
@@ -365,7 +365,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
       
-      {/* 🏆 TOAST NOTIFICATION WITH SOUND */}
+      {/* TOAST NOTIFICATION WITH SOUND */}
       {toastMsg && (
         <div style={{ position: "fixed", bottom: "100px", right: "20px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 1.5rem", borderRadius: "12px", zIndex: 9999, boxShadow: "0 10px 30px rgba(99,102,241,0.5)", animation: "fadeInUp 0.3s ease", display: "flex", gap: "15px", alignItems: "center" }}>
           <audio autoPlay src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=success-1-6297.mp3" />
@@ -377,33 +377,33 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* ⚠️ ADMIN CUSTOM ALERT */}
+      {/* CUSTOM ADMIN NOTIFICATION POPUP */}
       {user?.alertMessage && (
-        <div style={{ position: "fixed", top: "20px", left: "50%", transform: "translateX(-50%)", background: user.alertMessage.includes("❌") ? "#ef4444" : "#22c55e", padding: "1rem 2rem", borderRadius: "30px", zIndex: 9999, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", fontWeight: "bold", display: "flex", gap: "10px", alignItems: "center", animation: "fadeInDown 0.3s ease", color: "#FFF" }}>
+        <div style={{ position: "fixed", top: "20px", left: "50%", transform: "translateX(-50%)", background: user.alertMessage.includes("❌") ? "#ef4444" : "#22c55e", padding: "1rem 2rem", borderRadius: "30px", zIndex: 9999, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", fontWeight: "bold", display: "flex", gap: "10px", alignItems: "center", animation: "fadeInDown 0.3s ease", width: "90%", maxWidth: "400px", textAlign: "center", justifyContent: "center" }}>
           {user.alertMessage}
         </div>
       )}
 
       <main style={{ padding: "2.5rem 1rem", maxWidth: "1150px", margin: "0 auto", position: "relative", zIndex: 10 }}>
         
-        {/* Header */}
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem", flexWrap: "wrap", gap: "1rem" }}>
-          <h1 style={{ margin: 0, fontWeight: "600", fontSize: "1.8rem", display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* 🚀 FIXED HEADER FOR MOBILE */}
+        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem" }}>
+          <h1 style={{ margin: 0, fontWeight: "600", fontSize: "1.6rem", display: "flex", alignItems: "center", gap: "10px" }}>
             {tabs.find(t => t.id === activeTab)?.icon} {tabs.find(t => t.id === activeTab)?.label}
           </h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", whiteSpace: "nowrap" }}>
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontWeight: "600", fontSize: "0.95rem", color: "#9ca3af" }}>{safeName}</span>
-              <br/>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", textAlign: "right" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <span style={{ fontWeight: "600", fontSize: "0.95rem", color: "#e5e7eb" }}>{safeName}</span>
               {isVerified ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#6366f1", fontWeight: "bold" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#818cf8", fontWeight: "bold" }}>
                   Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={14} height={14} />
                 </span>
               ) : (
                 <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Free User</span>
               )}
             </div>
-            <div onClick={() => setActiveTab("profile")} style={{ cursor: "pointer" }}>
+            {/* 🚀 Clicking Avatar opens Profile Tab */}
+            <div onClick={() => setActiveTab("profile")} style={{ cursor: "pointer", flexShrink: 0 }}>
               <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", objectFit: "cover" }} />
             </div>
           </div>
@@ -442,91 +442,99 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   </div>
 
+                  {/* ACTIVE TOOL VIEW */}
                   {activeTool ? (
                     <div style={{ background: "rgba(15,15,24,0.95)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                         <h2 style={{ margin: 0, color: "#FFF", fontSize: "1.3rem" }}>
                           {activeTool === "speed" && "🚀 Legion Network Speedtest"}
                           {activeTool === "ip" && "🌍 Connection & IP Test"}
-                          {activeTool === "ping" && "⚡ Latency (Ping) Test"}
                           {activeTool === "webrtc" && "🛡️ WebRTC Leak Test"}
+                          {activeTool === "ping" && "⚡ Latency (Ping) Test"}
                         </h2>
                         <button onClick={() => { setActiveTool(null); cancelTest(); }} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close</button>
                       </div>
 
+                      {/* 🚀 FIXED SPEEDTEST UI */}
                       {activeTool === "speed" && (
                         <div style={{ background: "#08080c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", padding: "2rem 1.5rem", maxWidth: "680px", margin: "0 auto", position: "relative" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#FFF", fontWeight: "bold", letterSpacing: "1.5px", fontSize: "0.9rem" }}>
-                              <span style={{ fontSize: "1.1rem" }}>🧭</span> SPEEDTEST
+                              SPEEDTEST
                             </div>
                             <div style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
-                              Ping <strong style={{ color: "#FFF" }}>{stPing} ms</strong> &nbsp;·&nbsp; Jitter <strong style={{ color: "#FFF" }}>{stJitter} ms</strong>
+                              Ping <strong style={{ color: "#FFF" }}>{stPing} ms</strong>
                             </div>
                           </div>
 
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
                             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "0.8rem 1rem" }}>
                               <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", letterSpacing: "1px" }}>↓ DOWNLOAD Mbps</p>
-                              <h3 style={{ margin: "0.3rem 0 0 0", fontSize: "1.4rem", color: "#FFF", fontWeight: "bold" }}>{finalDown || (stState === "downloading" ? stSpeedValue : "—")}</h3>
+                              <h3 style={{ margin: "0.3rem 0 0 0", fontSize: "1.4rem", color: "#FFF", fontWeight: "bold" }}>{stDown}</h3>
                             </div>
                             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "0.8rem 1rem" }}>
                               <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", letterSpacing: "1px" }}>↑ UPLOAD Mbps</p>
-                              <h3 style={{ margin: "0.3rem 0 0 0", fontSize: "1.4rem", color: "#FFF", fontWeight: "bold" }}>{finalUp || (stState === "uploading" ? stSpeedValue : "—")}</h3>
+                              <h3 style={{ margin: "0.3rem 0 0 0", fontSize: "1.4rem", color: "#FFF", fontWeight: "bold" }}>{stUp}</h3>
                             </div>
                           </div>
 
-                          <div style={{ position: "relative", width: "300px", height: "300px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="300" height="300" viewBox="0 0 300 300">
-                              <circle cx="150" cy="150" r="120" stroke="rgba(255,255,255,0.08)" strokeWidth="6" fill="none" strokeDasharray="565" strokeDashoffset="140" strokeLinecap="round" transform="rotate(135 150 150)" />
-                              <circle cx="150" cy="150" r="120" stroke="#FFF" strokeWidth="8" fill="none" strokeDasharray="565" strokeDashoffset={565 - ((needleAngle + 125) / 250) * 425} strokeLinecap="round" transform="rotate(135 150 150)" style={{ transition: "stroke-dashoffset 0.15s ease-out" }} />
-                              <g transform={`rotate(${needleAngle} 150 150)`} style={{ transition: "transform 0.12s cubic-bezier(0.1, 0.9, 0.2, 1)" }}>
-                                <line x1="150" y1="150" x2="150" y2="40" stroke="#FFF" strokeWidth="3" strokeLinecap="round" />
-                                <circle cx="150" cy="150" r="8" fill="#FFF" />
+                          <div style={{ position: "relative", width: "300px", height: "180px", margin: "0 auto", display: "flex", justifyContent: "center" }}>
+                            <svg width="300" height="150" viewBox="0 0 300 150" style={{ overflow: "visible" }}>
+                              {/* Background Arc */}
+                              <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" strokeLinecap="round" />
+                              {/* Colored Progress Arc */}
+                              <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke={stState === "uploading" ? "#8b5cf6" : "#22c55e"} strokeWidth="12" strokeLinecap="round" 
+                                    strokeDasharray="377" 
+                                    strokeDashoffset={377 - (377 * gaugeValue)} 
+                                    style={{ transition: "stroke-dashoffset 0.15s ease-out, stroke 0.3s ease" }} />
+                              {/* Needle */}
+                              <g transform={`translate(150, 150) rotate(${-90 + (gaugeValue * 180)})`} style={{ transition: "transform 0.15s cubic-bezier(0.1, 0.9, 0.2, 1)" }}>
+                                <line x1="0" y1="0" x2="0" y2="-90" stroke="#FFF" strokeWidth="4" strokeLinecap="round" />
+                                <circle cx="0" cy="0" r="8" fill="#6366f1" />
                               </g>
                             </svg>
-                            <div style={{ position: "absolute", width: "100%", height: "100%", pointerEvents: "none", fontSize: "0.75rem", color: "#9ca3af" }}>
-                              <span style={{ position: "absolute", bottom: "75px", left: "65px" }}>0</span>
-                              <span style={{ position: "absolute", bottom: "135px", left: "45px" }}>5</span>
-                              <span style={{ position: "absolute", top: "115px", left: "45px" }}>10</span>
-                              <span style={{ position: "absolute", top: "70px", left: "75px" }}>50</span>
-                              <span style={{ position: "absolute", top: "45px", left: "120px" }}>100</span>
-                              <span style={{ position: "absolute", top: "45px", right: "120px" }}>250</span>
-                              <span style={{ position: "absolute", top: "70px", right: "75px" }}>500</span>
-                              <span style={{ position: "absolute", top: "115px", right: "45px" }}>1k</span>
-                              <span style={{ position: "absolute", bottom: "135px", right: "45px" }}>5k</span>
-                              <span style={{ position: "absolute", bottom: "75px", right: "65px" }}>10k</span>
+                            
+                            {/* Numbers on gauge */}
+                            <div style={{ position: "absolute", width: "100%", height: "150px", pointerEvents: "none", fontSize: "0.75rem", color: "#9ca3af" }}>
+                              <span style={{ position: "absolute", bottom: "-10px", left: "20px" }}>0</span>
+                              <span style={{ position: "absolute", top: "50px", left: "25px" }}>25</span>
+                              <span style={{ position: "absolute", top: "0px", left: "70px" }}>50</span>
+                              <span style={{ position: "absolute", top: "-20px", left: "135px" }}>75</span>
+                              <span style={{ position: "absolute", top: "0px", right: "70px" }}>100</span>
+                              <span style={{ position: "absolute", bottom: "-10px", right: "10px" }}>150+</span>
                             </div>
-                            <div style={{ position: "absolute", textAlign: "center", marginTop: "40px" }}>
-                              <h2 style={{ margin: 0, fontSize: "3rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>{stSpeedValue}</h2>
-                              <p style={{ margin: "5px 0 0 0", fontSize: "0.8rem", color: "#9ca3af", letterSpacing: "1.5px", fontWeight: "bold" }}>MBPS {stTestType}</p>
+
+                            <div style={{ position: "absolute", bottom: "-20px", textAlign: "center" }}>
+                              <h2 style={{ margin: 0, fontSize: "3rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>{stState === "uploading" || stState === "done" ? stUp : stDown}</h2>
+                              <p style={{ margin: "5px 0 0 0", fontSize: "0.8rem", color: "#9ca3af", letterSpacing: "1.5px", fontWeight: "bold" }}>MBPS</p>
                             </div>
                           </div>
 
-                          <div style={{ marginTop: "1.5rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem 1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                          <div style={{ marginTop: "3rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem 1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                               <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem" }}>🌐</div>
                               <div>
                                 <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>SERVER</p>
-                                <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{serverTitle}</h4>
-                                <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>{serverSubtitle}</span>
+                                <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{stState === "finding" ? "Finding optimal server..." : "LEGION Internet Solutions"}</h4>
+                                <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>{stState === "finding" ? "Selecting..." : "United Kingdom · 10 Gbps"}</span>
                               </div>
                             </div>
                             <div style={{ textAlign: "right" }}>
-                              <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>CLIENT</p>
-                              <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{ipData?.ip || "Apollo 11"}</h4>
-                              <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{ipData?.city || "Sri Lanka"}</span>
+                              <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>YOUR ISP</p>
+                              <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{ipData?.org || "Apollo 11"}</h4>
+                              <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{ipData?.ip || "Moon"}</span>
                             </div>
                           </div>
 
                           <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-                            <button onClick={startOoklaTest} disabled={stState === "finding" || stState === "downloading" || stState === "uploading"} style={{ padding: "0.9rem 3.5rem", borderRadius: "30px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: (stState !== "idle" && stState !== "done") ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
+                            <button onClick={startSpeedTest} disabled={stState === "finding" || stState === "downloading" || stState === "uploading"} style={{ padding: "0.9rem 3.5rem", borderRadius: "30px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: (stState !== "idle" && stState !== "done") ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
                               {stState === "idle" ? "GO" : stState === "done" ? "TEST AGAIN" : "TESTING..."}
                             </button>
                           </div>
                         </div>
                       )}
 
+                      {/* IP Status */}
                       {activeTool === "ip" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                           {ipData ? (
@@ -544,39 +552,43 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </div>
                       )}
 
+                      {/* 🚀 Latency Ping Test */}
                       {activeTool === "ping" && (
-                        <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem" }}>
-                          <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: 0 }}>Google DNS Latency Test (8.8.8.8)</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                          <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: "0 0 1rem 0" }}>Google DNS Latency Test (8.8.8.8)</h3>
                           {pingStats ? (
-                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", width: "100%", maxWidth: "500px" }}>
+                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", width: "100%", maxWidth: "500px", margin: "0 auto" }}>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Average Ping</p>
-                                 <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2.5rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
+                                 <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                                </div>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Jitter</p>
-                                 <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2.5rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
+                                 <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                                </div>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Min Ping</p>
-                                 <h2 style={{ margin: 0, color: "#22c55e", fontSize: "2rem" }}>{pingStats.min} ms</h2>
+                                 <h2 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>{pingStats.min} ms</h2>
                                </div>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Max Ping</p>
-                                 <h2 style={{ margin: 0, color: "#ef4444", fontSize: "2rem" }}>{pingStats.max} ms</h2>
+                                 <h2 style={{ margin: 0, color: "#ef4444", fontSize: "1.5rem" }}>{pingStats.max} ms</h2>
                                </div>
                              </div>
                           ) : (
-                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
+                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
                                 <span style={{ fontSize: "4rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
                              </div>
                           )}
-                          <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
-                             {isPinging ? "Testing Packets..." : "Run Ping Test"}
-                          </button>
+                          <div style={{ textAlign: "center", marginTop: "1rem" }}>
+                            <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
+                               {isPinging ? "Testing Packets..." : "Run Ping Test"}
+                            </button>
+                          </div>
                         </div>
                       )}
 
+                      {/* WebRTC Leak */}
                       {activeTool === "webrtc" && (
                         <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
                           <div style={{ textAlign: "center", maxWidth: "600px" }}>
@@ -688,11 +700,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. STORE TAB 
+              3. STORE TAB (WITH DOUBLE FILTERS)
           ======================== */}
           {activeTab === "buy" && (
              <div>
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "2rem" }}>
+               {/* Primary Filter: ISP Logos */}
+               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
                  {Object.keys(ISP_LOGOS).map(isp => (
                    <button 
                      key={isp}
@@ -705,16 +718,41 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  ))}
                </div>
 
+               {/* Secondary Filter: Network Type */}
+               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
+                 <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "transparent", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
+                 <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>
+                 <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>
+               </div>
+
+               {/* SIM Warning (Visible only if Mobile is selected in secondary filter) */}
+               {activeNetworkType === "mobile" && (
+                 <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                   <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
+                   <div>
+                     <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
+                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                       SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
+                     </p>
+                   </div>
+                 </div>
+               )}
+
                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-                 {ALL_PACKAGES.filter(p => p.isp === activeIsp).map((pkg) => (
+                 {ALL_PACKAGES
+                   .filter(p => p.isp === activeIsp && (activeNetworkType === "all" || p.type === activeNetworkType))
+                   .map((pkg) => (
                    <div key={pkg.id} style={{ background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                      <div>
                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
-                         <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
-                           {pkg.statusText}
-                         </span>
+                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                           <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={pkg.isp} />
+                           <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
+                             {pkg.statusText}
+                           </span>
+                         </div>
                          <span style={{ fontSize: "0.75rem", color: "#818cf8", border: "1px solid rgba(129,140,248,0.3)", padding: "2px 8px", borderRadius: "20px" }}>
-                           {pkg.type === "router" ? "📶 Router Package" : "📱 Mobile Sim"}
+                           {pkg.type === "router" ? "Router Package" : "Mobile Sim"}
                          </span>
                        </div>
                        
@@ -801,17 +839,34 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              PROFILE TAB 
+              PROFILE TAB (FIXED LAYOUT)
           ======================== */}
           {activeTab === "profile" && (
             <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover" }} />
+                  <h3 style={{ margin: "1rem 0 0.2rem 0", color: "#FFF", fontSize: "1.2rem" }}>{safeName}</h3>
+                  {isVerified ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.85rem", color: "#818cf8", fontWeight: "bold" }}>
+                      Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={16} height={16} />
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Free User</span>
+                  )}
+                  
+                  {/* Google Image Restore Button */}
+                  {initialUser?.googleImage && avatar !== initialUser.googleImage && (
+                    <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem" }}>
+                      Restore Google Image
+                    </button>
+                  )}
                 </div>
+
                 <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.2rem", borderRadius: "12px" }}>
-                  <h4 style={{ textAlign: "center", color: "#9ca3af", margin: "0 0 1rem 0", fontSize: "0.9rem" }}>Choose Avatar</h4>
+                  <h4 style={{ textAlign: "center", color: "#9ca3af", margin: "0 0 1rem 0", fontSize: "0.9rem" }}>Choose Preset Avatar</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(45px, 1fr))", gap: "0.8rem", justifyItems: "center" }}>
                     {AVAILABLE_AVATARS.map((gifPath) => (
                       <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", border: avatar === gifPath ? "3px solid #6366f1" : "3px solid transparent", overflow: "hidden" }}>
@@ -820,7 +875,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     ))}
                   </div>
                 </div>
-                <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Full Name</label><input type="text" value={safeName} readOnly style={{ width: "100%", padding: "0.9rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
+
                 <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label><input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
               </div>
             </div>
@@ -898,8 +953,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: "pointer" }}>
                       <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" disabled={isUploading} />
                       <label htmlFor="slip-upload" style={{ cursor: "pointer", display: "block" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem", animation: isUploading ? "pulse 1s infinite" : "none" }}>{isUploading ? "⏳" : "📁"}</div>
-                        <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8" }}>{isUploading ? "Uploading to Cloud..." : slipFile ? slipFile.name : "Click here to upload slip image"}</h4>
+                        <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>📁</div>
+                        <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8" }}>{isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip image"}</h4>
                         <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
                       </label>
                     </div>
