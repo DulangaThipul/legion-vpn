@@ -146,6 +146,7 @@ export async function updateUserAvatar(imageUrl: string) {
     if (!payload || !payload.id) throw new Error("Unauthorized");
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
+
     let finalImage = imageUrl;
     if (imageUrl === "") {
       finalImage = currentUser?.googleImage || "";
