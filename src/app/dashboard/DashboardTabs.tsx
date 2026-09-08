@@ -8,7 +8,7 @@ import DashboardMatrix from "@/components/DashboardMatrix";
 
 const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${i + 1}.gif`);
 
-// 🚀 ISP Logos
+// 🚀 ISP Logos for Package Cards
 const ISP_LOGOS = {
   Dialog: "https://files.catbox.moe/zyac5x.png",
   Airtel: "https://files.catbox.moe/5s5vfc.png",
@@ -18,7 +18,6 @@ const ISP_LOGOS = {
 
 const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "WDT WARAKAWATHTHA", accountNo: "8029138148", branch: "Yatiyanthota" };
 
-// 🚀 Unified Packages with precise device counts and no emojis in type
 const ALL_PACKAGES = [
   { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "Home Broadband & Router Zoom unlimited bypass." },
   { id: "dialog-social", isp: "Dialog", type: "mobile", name: "Dialog Social (20 GB)", ispPrice: "Rs. 348 (20 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Dialog 20GB Social work plan tunnel." },
@@ -41,15 +40,12 @@ const MOBILE_CONFIG_PRICES: Record<string, number> = { "100 GB Config": 250, "20
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [activeIsp, setActiveIsp] = useState<string>("Dialog");
   const [activeNetworkType, setActiveNetworkType] = useState<"all" | "router" | "mobile">("all");
   
-  // Tools & States
   const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "webrtc" | null>(null);
   const [ipData, setIpData] = useState<any>(null);
   const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   
-  // Checkout
   const [modalPackage, setModalPackage] = useState<any | null>(null);
   const [simWarningModal, setSimWarningModal] = useState<any | null>(null);
   const [selectedQuota, setSelectedQuota] = useState<string | null>(null);
@@ -61,7 +57,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [avatar, setAvatar] = useState<string | null>(user?.image || null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Payments & Achievements
   const [payments, setPayments] = useState<any[]>([]);
   const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
   const [toastMsg, setToastMsg] = useState<{title: string, desc: string} | null>(null);
@@ -92,7 +87,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const storedPayments = JSON.parse(localStorage.getItem("legion_payments") || "[]");
     const currentYear = new Date().getFullYear();
     const validPayments = storedPayments.filter((p: any) => new Date(p.date).getFullYear() === currentYear);
-    
     if (validPayments.length !== storedPayments.length) {
       localStorage.setItem("legion_payments", JSON.stringify(validPayments));
     }
@@ -130,25 +124,36 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
   const { configs: parsedConfigs, receiptLink } = parseConfigs(user?.vpnConfigKey);
 
+  // 🚀 STEP 6: Live Connection Every 4 Seconds
   useEffect(() => {
     if (activeTab === "dashboard" && hasActivePlan) {
-      fetch("https://ipapi.co/json/").then(res => res.json()).then(data => {
-        setIpData(data);
-        const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
-        setIsVpnConnected(!slISPs.some(sl => (data.org || "").toLowerCase().includes(sl)));
-      }).catch(() => {});
+      const checkConnection = () => {
+        fetch("https://ipapi.co/json/").then(res => res.json()).then(data => {
+          setIpData(data);
+          const slISPs = ["dialog", "sri lanka telecom", "mobitel", "airtel", "hutchison", "lanka bell"];
+          setIsVpnConnected(!slISPs.some(sl => (data.org || "").toLowerCase().includes(sl)));
+        }).catch(() => {});
+      };
+      
+      checkConnection(); // Fetch immediately
+      const intervalId = setInterval(checkConnection, 4000); // Fetch every 4 seconds
+      return () => clearInterval(intervalId); // Cleanup
     }
   }, [activeTab, hasActivePlan]);
 
   // ==========================================
-  // 🚀 FIXED: SPEED TEST GAUGE
+  // 🚀 STEP 1: FIXED SPEED TEST DESIGN
   // ==========================================
   const [stState, setStState] = useState<"idle" | "finding" | "downloading" | "uploading" | "done">("idle");
   const [stPing, setStPing] = useState("--");
   const [stDown, setStDown] = useState("0.00");
   const [stUp, setStUp] = useState("0.00");
-  const [gaugeValue, setGaugeValue] = useState(0); // 0.0 to 1.0
+  const [gaugeValue, setGaugeValue] = useState(0); 
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  const speedToGauge = (speed: number) => {
+    return Math.min(speed / 150, 1); // Maps 0-150Mbps to 0.0-1.0
+  };
 
   const startSpeedTest = async () => {
     setStState("finding"); setStPing("--"); setStDown("0.00"); setStUp("0.00"); setGaugeValue(0);
@@ -185,7 +190,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             const avgSpeed = speedHistory.reduce((a,b)=>a+b) / speedHistory.length;
             
             setStDown(avgSpeed.toFixed(2));
-            setGaugeValue(Math.min(avgSpeed / 150, 1));
+            setGaugeValue(speedToGauge(avgSpeed));
           }
         }
       };
@@ -206,11 +211,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             if(upTarget - currentUp < 0.5) {
                 clearInterval(interval);
                 setStUp(upTarget.toFixed(2));
-                setGaugeValue(Math.min(upTarget / 150, 1));
+                setGaugeValue(speedToGauge(upTarget));
                 resolve(null);
             } else {
                 setStUp(currentUp.toFixed(2));
-                setGaugeValue(Math.min(currentUp / 150, 1));
+                setGaugeValue(speedToGauge(currentUp));
             }
         }, 100);
     });
@@ -346,10 +351,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     );
   }
 
+  // 🚀 STEP 2: Taskbar Order Fixed
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
-    { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
     { id: "buy", label: "Store", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg> },
+    { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
     { id: "payments", label: "Payments", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg> },
     { id: "achievements", label: "Achievements", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg> },
     { id: "profile", label: "Profile", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> }
@@ -386,23 +392,24 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       <main style={{ padding: "2.5rem 1rem", maxWidth: "1150px", margin: "0 auto", position: "relative", zIndex: 10 }}>
         
-        {/* 🚀 FIXED HEADER FOR MOBILE */}
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem" }}>
-          <h1 style={{ margin: 0, fontWeight: "600", fontSize: "1.6rem", display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* HEADER */}
+        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem", flexWrap: "wrap", gap: "1rem" }}>
+          <h1 style={{ margin: 0, fontWeight: "600", fontSize: "1.8rem", display: "flex", alignItems: "center", gap: "10px" }}>
             {tabs.find(t => t.id === activeTab)?.icon} {tabs.find(t => t.id === activeTab)?.label}
           </h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", textAlign: "right" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", whiteSpace: "nowrap" }}>
+            {/* 🚀 STEP 4: Hide name wrapper on mobile using CSS class */}
+            <div className="mobile-hide-name" style={{ textAlign: "right" }}>
               <span style={{ fontWeight: "600", fontSize: "0.95rem", color: "#e5e7eb" }}>{safeName}</span>
+              <br/>
               {isVerified ? (
-                <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#818cf8", fontWeight: "bold" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#818cf8", fontWeight: "bold" }}>
                   Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={14} height={14} />
                 </span>
               ) : (
                 <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Free User</span>
               )}
             </div>
-            {/* 🚀 Clicking Avatar opens Profile Tab */}
             <div onClick={() => setActiveTab("profile")} style={{ cursor: "pointer", flexShrink: 0 }}>
               <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Profile" style={{ width: "45px", height: "45px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", objectFit: "cover" }} />
             </div>
@@ -455,7 +462,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <button onClick={() => { setActiveTool(null); cancelTest(); }} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close</button>
                       </div>
 
-                      {/* 🚀 FIXED SPEEDTEST UI */}
+                      {/* 🚀 STEP 1: SPEEDTEST (NEEDLE OVER TEXT) */}
                       {activeTool === "speed" && (
                         <div style={{ background: "#08080c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", padding: "2rem 1.5rem", maxWidth: "680px", margin: "0 auto", position: "relative" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
@@ -478,55 +485,78 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             </div>
                           </div>
 
-                          <div style={{ position: "relative", width: "300px", height: "180px", margin: "0 auto", display: "flex", justifyContent: "center" }}>
-                            <svg width="300" height="150" viewBox="0 0 300 150" style={{ overflow: "visible" }}>
-                              {/* Background Arc */}
-                              <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" strokeLinecap="round" />
-                              {/* Colored Progress Arc */}
-                              <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke={stState === "uploading" ? "#8b5cf6" : "#22c55e"} strokeWidth="12" strokeLinecap="round" 
-                                    strokeDasharray="377" 
-                                    strokeDashoffset={377 - (377 * gaugeValue)} 
-                                    style={{ transition: "stroke-dashoffset 0.15s ease-out, stroke 0.3s ease" }} />
-                              {/* Needle */}
-                              <g transform={`translate(150, 150) rotate(${-90 + (gaugeValue * 180)})`} style={{ transition: "transform 0.15s cubic-bezier(0.1, 0.9, 0.2, 1)" }}>
-                                <line x1="0" y1="0" x2="0" y2="-90" stroke="#FFF" strokeWidth="4" strokeLinecap="round" />
-                                <circle cx="0" cy="0" r="8" fill="#6366f1" />
-                              </g>
-                            </svg>
-                            
-                            {/* Numbers on gauge */}
-                            <div style={{ position: "absolute", width: "100%", height: "150px", pointerEvents: "none", fontSize: "0.75rem", color: "#9ca3af" }}>
-                              <span style={{ position: "absolute", bottom: "-10px", left: "20px" }}>0</span>
-                              <span style={{ position: "absolute", top: "50px", left: "25px" }}>25</span>
-                              <span style={{ position: "absolute", top: "0px", left: "70px" }}>50</span>
-                              <span style={{ position: "absolute", top: "-20px", left: "135px" }}>75</span>
-                              <span style={{ position: "absolute", top: "0px", right: "70px" }}>100</span>
-                              <span style={{ position: "absolute", bottom: "-10px", right: "10px" }}>150+</span>
+                          {/* Gauge & Text Adjusted */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "2rem 0" }}>
+                            <div style={{ position: "relative", width: "300px", height: "160px", display: "flex", justifyContent: "center" }}>
+                              <svg width="300" height="160" viewBox="0 0 300 160" style={{ overflow: "visible", zIndex: 10 }}>
+                                {/* Background Arc */}
+                                <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" strokeLinecap="round" />
+                                {/* Colored Progress Arc (Starts from 0 / left) */}
+                                <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke={stState === "uploading" ? "#8b5cf6" : "#22c55e"} strokeWidth="12" strokeLinecap="round" 
+                                      strokeDasharray="377" 
+                                      strokeDashoffset={377 - (377 * gaugeValue)} 
+                                      style={{ transition: "stroke-dashoffset 0.15s ease-out, stroke 0.3s ease" }} />
+                                {/* Needle Pivoting */}
+                                <g transform={`translate(150, 150) rotate(${-90 + (gaugeValue * 180)})`} style={{ transition: "transform 0.15s cubic-bezier(0.1, 0.9, 0.2, 1)" }}>
+                                  <line x1="0" y1="0" x2="0" y2="-95" stroke="#FFF" strokeWidth="4" strokeLinecap="round" />
+                                  <circle cx="0" cy="0" r="8" fill="#FFF" />
+                                  <circle cx="0" cy="0" r="4" fill="#000" />
+                                </g>
+                              </svg>
+                              
+                              {/* Numbers on gauge arc */}
+                              <div style={{ position: "absolute", width: "100%", height: "100%", pointerEvents: "none", fontSize: "0.75rem", color: "#9ca3af" }}>
+                                <span style={{ position: "absolute", bottom: "10px", left: "10px" }}>0</span>
+                                <span style={{ position: "absolute", top: "45px", left: "30px" }}>25</span>
+                                <span style={{ position: "absolute", top: "-5px", left: "80px" }}>50</span>
+                                <span style={{ position: "absolute", top: "-25px", left: "140px" }}>75</span>
+                                <span style={{ position: "absolute", top: "-5px", right: "80px" }}>100</span>
+                                <span style={{ position: "absolute", bottom: "10px", right: "-5px" }}>150+</span>
+                              </div>
                             </div>
 
-                            <div style={{ position: "absolute", bottom: "-20px", textAlign: "center" }}>
-                              <h2 style={{ margin: 0, fontSize: "3rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>{stState === "uploading" || stState === "done" ? stUp : stDown}</h2>
-                              <p style={{ margin: "5px 0 0 0", fontSize: "0.8rem", color: "#9ca3af", letterSpacing: "1.5px", fontWeight: "bold" }}>MBPS</p>
+                            {/* Speed Value Text (Positioned BELOW the needle pivot) */}
+                            <div style={{ textAlign: "center", marginTop: "10px" }}>
+                              <h2 style={{ margin: 0, fontSize: "3.5rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>{stState === "uploading" || stState === "done" ? stUp : stDown}</h2>
+                              <p style={{ margin: "5px 0 0 0", fontSize: "0.9rem", color: "#9ca3af", letterSpacing: "1.5px", fontWeight: "bold" }}>MBPS</p>
                             </div>
                           </div>
 
-                          <div style={{ marginTop: "3rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem 1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                          <div style={{ marginTop: "1.5rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                              <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem" }}>🌐</div>
+                              <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {/* White Outlined Server Icon */}
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                                  <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                                  <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                                  <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                                </svg>
+                              </div>
                               <div>
                                 <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>SERVER</p>
                                 <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{stState === "finding" ? "Finding optimal server..." : "LEGION Internet Solutions"}</h4>
                                 <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>{stState === "finding" ? "Selecting..." : "United Kingdom · 10 Gbps"}</span>
                               </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                              <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>YOUR ISP</p>
-                              <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{ipData?.org || "Apollo 11"}</h4>
-                              <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{ipData?.ip || "Moon"}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", textAlign: "right" }}>
+                              <div>
+                                <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>YOUR ISP</p>
+                                <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{ipData?.org || "Apollo 11"}</h4>
+                                <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{ipData?.ip || "Moon"}</span>
+                              </div>
+                              <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "rgba(34,197,94,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {/* White Outlined Network Icon */}
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 20h9"></path>
+                                  <path d="M16.5 14a4.5 4.5 0 0 0-9 0"></path>
+                                  <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                              </div>
                             </div>
                           </div>
 
-                          <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
+                          <div style={{ textAlign: "center", marginTop: "2rem" }}>
                             <button onClick={startSpeedTest} disabled={stState === "finding" || stState === "downloading" || stState === "uploading"} style={{ padding: "0.9rem 3.5rem", borderRadius: "30px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: (stState !== "idle" && stState !== "done") ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
                               {stState === "idle" ? "GO" : stState === "done" ? "TEST AGAIN" : "TESTING..."}
                             </button>
@@ -552,43 +582,41 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </div>
                       )}
 
-                      {/* 🚀 Latency Ping Test */}
+                      {/* Latency Ping */}
                       {activeTool === "ping" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                          <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: "0 0 1rem 0" }}>Google DNS Latency Test (8.8.8.8)</h3>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "1rem 0" }}>
+                          <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: 0 }}>Advanced Server Latency Test (Google)</h3>
                           {pingStats ? (
-                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", width: "100%", maxWidth: "500px", margin: "0 auto" }}>
+                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", width: "100%", maxWidth: "500px" }}>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Average Ping</p>
-                                 <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
+                                 <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2.5rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                                </div>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Jitter</p>
-                                 <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
+                                 <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2.5rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                                </div>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Min Ping</p>
-                                 <h2 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>{pingStats.min} ms</h2>
+                                 <h2 style={{ margin: 0, color: "#22c55e", fontSize: "2rem" }}>{pingStats.min} ms</h2>
                                </div>
                                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
                                  <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Max Ping</p>
-                                 <h2 style={{ margin: 0, color: "#ef4444", fontSize: "1.5rem" }}>{pingStats.max} ms</h2>
+                                 <h2 style={{ margin: 0, color: "#ef4444", fontSize: "2rem" }}>{pingStats.max} ms</h2>
                                </div>
                              </div>
                           ) : (
-                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
+                             <div style={{ width: "200px", height: "200px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
                                 <span style={{ fontSize: "4rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
                              </div>
                           )}
-                          <div style={{ textAlign: "center", marginTop: "1rem" }}>
-                            <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
-                               {isPinging ? "Testing Packets..." : "Run Ping Test"}
-                            </button>
-                          </div>
+                          <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
+                             {isPinging ? "Testing Packets..." : "Run Ping Test"}
+                          </button>
                         </div>
                       )}
 
-                      {/* WebRTC Leak */}
+                      {/* WebRTC */}
                       {activeTool === "webrtc" && (
                         <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
                           <div style={{ textAlign: "center", maxWidth: "600px" }}>
@@ -655,7 +683,67 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. MY VPNS TAB 
+              2. STORE TAB (Universal Filters)
+          ======================== */}
+          {activeTab === "buy" && (
+             <div>
+               {/* 🚀 STEP 3: Universal Filter System (No ISP specific filtering) */}
+               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "2rem" }}>
+                 <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "rgba(15,15,24,0.6)", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
+                 <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "rgba(15,15,24,0.6)", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>
+                 <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "rgba(15,15,24,0.6)", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>
+               </div>
+
+               {/* SIM Speed Warning */}
+               {activeNetworkType === "mobile" && (
+                 <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                   <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
+                   <div>
+                     <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
+                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                       SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
+                     </p>
+                   </div>
+                 </div>
+               )}
+
+               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+                 {ALL_PACKAGES
+                   .filter(p => activeNetworkType === "all" || p.type === activeNetworkType)
+                   .map((pkg) => (
+                   <div key={pkg.id} style={{ background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                     <div>
+                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
+                         <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
+                           {pkg.statusText}
+                         </span>
+                         
+                         {/* 🚀 STEP 4: Removed Emojis, Show ISP Logo + Package Type */}
+                         <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "#818cf8", border: "1px solid rgba(129,140,248,0.3)", padding: "4px 10px", borderRadius: "20px" }}>
+                           <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={14} height={14} style={{ borderRadius: "50%" }} alt={pkg.isp} />
+                           {pkg.type === "router" ? "Router Package" : "Mobile Sim"}
+                         </span>
+                       </div>
+                       
+                       <h3 style={{ margin: "0 0 0.4rem 0", fontSize: "1.25rem", color: "#FFF", wordBreak: "break-word" }}>{pkg.name}</h3>
+                       <div style={{ marginBottom: "1rem", color: "#818cf8", fontSize: "0.85rem", fontWeight: "bold" }}>
+                         ISP Package Price: <span style={{ color: "#FFF" }}>{pkg.ispPrice}</span>
+                       </div>
+                       <p style={{ color: pkg.statusType === 'warn' ? "#f87171" : "#9ca3af", fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 0.8rem 0" }}>{pkg.desc}</p>
+                       <p style={{ color: "#818cf8", fontSize: "0.8rem", fontWeight: "bold", margin: 0 }}>💡 {pkg.devices}</p>
+                     </div>
+
+                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>
+                       Select & Configure VPN →
+                     </button>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          )}
+
+          {/* =======================
+              3. MY VPNS TAB 
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
@@ -700,80 +788,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. STORE TAB (WITH DOUBLE FILTERS)
-          ======================== */}
-          {activeTab === "buy" && (
-             <div>
-               {/* Primary Filter: ISP Logos */}
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
-                 {Object.keys(ISP_LOGOS).map(isp => (
-                   <button 
-                     key={isp}
-                     onClick={() => setActiveIsp(isp)} 
-                     style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === isp ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}
-                   >
-                     <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={24} height={24} style={{ borderRadius: "50%" }} alt={isp} />
-                     {isp}
-                   </button>
-                 ))}
-               </div>
-
-               {/* Secondary Filter: Network Type */}
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
-                 <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "transparent", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
-                 <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>
-                 <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>
-               </div>
-
-               {/* SIM Warning (Visible only if Mobile is selected in secondary filter) */}
-               {activeNetworkType === "mobile" && (
-                 <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                   <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
-                   <div>
-                     <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
-                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                       SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
-                     </p>
-                   </div>
-                 </div>
-               )}
-
-               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-                 {ALL_PACKAGES
-                   .filter(p => p.isp === activeIsp && (activeNetworkType === "all" || p.type === activeNetworkType))
-                   .map((pkg) => (
-                   <div key={pkg.id} style={{ background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                     <div>
-                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
-                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                           <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={pkg.isp} />
-                           <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
-                             {pkg.statusText}
-                           </span>
-                         </div>
-                         <span style={{ fontSize: "0.75rem", color: "#818cf8", border: "1px solid rgba(129,140,248,0.3)", padding: "2px 8px", borderRadius: "20px" }}>
-                           {pkg.type === "router" ? "Router Package" : "Mobile Sim"}
-                         </span>
-                       </div>
-                       
-                       <h3 style={{ margin: "0 0 0.4rem 0", fontSize: "1.25rem", color: "#FFF", wordBreak: "break-word" }}>{pkg.name}</h3>
-                       <div style={{ marginBottom: "1rem", color: "#818cf8", fontSize: "0.85rem", fontWeight: "bold" }}>
-                         ISP Package Price: <span style={{ color: "#FFF" }}>{pkg.ispPrice}</span>
-                       </div>
-                       <p style={{ color: pkg.statusType === 'warn' ? "#f87171" : "#9ca3af", fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 0.8rem 0" }}>{pkg.desc}</p>
-                       <p style={{ color: "#818cf8", fontSize: "0.8rem", fontWeight: "bold", margin: 0 }}>💡 {pkg.devices}</p>
-                     </div>
-
-                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>
-                       Select & Configure VPN →
-                     </button>
-                   </div>
-                 ))}
-               </div>
-             </div>
-          )}
-
-          {/* =======================
               4. PAYMENTS TAB
           ======================== */}
           {activeTab === "payments" && (
@@ -796,7 +810,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                        </div>
                        <div style={{ textAlign: "right" }}>
                          <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p.amount}</h3>
-                         <span style={{ fontSize: "0.75rem", background: p.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p.status}</span>
+                         <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end" }}>
+                           <span style={{ fontSize: "0.75rem", background: p.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p.status}</span>
+                           {/* 🚀 STEP 5: Download Slip Button */}
+                           <a href={p.receipt} target="_blank" rel="noreferrer" download style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "2px 8px", borderRadius: "10px" }}>⬇️ Download</a>
+                         </div>
                        </div>
                     </div>
                   ))}
@@ -839,7 +857,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              PROFILE TAB (FIXED LAYOUT)
+              6. PROFILE TAB 
           ======================== */}
           {activeTab === "profile" && (
             <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -988,8 +1006,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       </nav>
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @media (max-width: 395px) {
+          .mobile-hide-name { display: none !important; }
+        }
       `}</style>
     </div>
   );
