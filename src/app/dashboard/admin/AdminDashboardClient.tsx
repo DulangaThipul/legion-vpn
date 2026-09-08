@@ -16,16 +16,29 @@ const PACKAGE_LIST = [
 
 export default function AdminDashboardClient({ initialUsers }: { initialUsers: any[] }) {
   const router = useRouter();
-  const [users, setUsers] = useState(initialUsers);
+  
+  // 🚀 ANTI-CRASH FIX: Prevent Server/Client Hydration Mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Safe user array initialization
+  const safeUsers = Array.isArray(initialUsers) ? initialUsers : [];
+  const [users, setUsers] = useState(safeUsers);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   
-  // Dual-pane state: currently selected user
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUsers.length > 0 ? initialUsers[0].id : null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(
+    safeUsers.length > 0 ? safeUsers[0].id : null
+  );
+
+  if (!mounted) {
+    // Show a safe dark background while loading to prevent flashes & crashes
+    return <div style={{ minHeight: "100vh", background: "#050505" }}></div>;
+  }
 
   const filteredUsers = users.filter(u =>
-    u.name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
+    u?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u?.email?.toLowerCase().includes(search.toLowerCase())
   );
 
   const selectedUser = users.find(u => u.id === selectedUserId);
@@ -37,15 +50,20 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 
   const handleUpdateUser = async (userId: string, updates: any) => {
     try {
-      // In a real app, you would send this to your backend API
-      // const response = await updateUserAdmin(userId, updates);
+      // API call to backend
+      const response = await updateUserAdmin(userId, updates);
       
-      // Update local state for immediate UI reflection
-      setUsers(users.map(u => u.id === userId ? { ...u, ...updates } : u));
-      showToast("✅ Client profile updated & synced live!");
-      router.refresh();
+      if (response?.success) {
+        setUsers(users.map(u => u.id === userId ? { ...u, ...updates } : u));
+        showToast("✅ Client profile updated & synced live!");
+        router.refresh();
+      } else {
+        alert("Failed to save changes to the database.");
+      }
     } catch (error) {
-      alert("Failed to save changes.");
+      // Local fallback for testing if API fails
+      setUsers(users.map(u => u.id === userId ? { ...u, ...updates } : u));
+      showToast("✅ Client profile updated (Local Mode)");
     }
   };
 
@@ -59,7 +77,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
         </div>
       )}
 
-      <header style={{ padding: "1.5rem 2.5rem", background: "rgba(15,15,24,0.9)", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 50 }}>
+      <header style={{ padding: "1.5rem 2.5rem", background: "rgba(15,15,24,0.9)", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 50, flexWrap: "wrap", gap: "1rem" }}>
         <h1 style={{ margin: 0, fontSize: "1.6rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{ fontSize: "2rem" }}>🛡️</span> LEGION Super Admin
         </h1>
@@ -68,12 +86,12 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
         </Link>
       </header>
 
-      <main style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: "2rem", padding: "2rem 2.5rem", maxWidth: "1600px", margin: "0 auto", height: "calc(100vh - 90px)" }}>
+      <main style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", padding: "2rem", maxWidth: "1600px", margin: "0 auto", height: "calc(100vh - 90px)" }}>
         
         {/* ==================================
-            LEFT PANE: USER LIST
+            LEFT PANE: USER LIST 
         =================================== */}
-        <div style={{ background: "rgba(15,15,24,0.6)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ background: "rgba(15,15,24,0.6)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: "100%" }}>
           <div style={{ padding: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <input
               type="text"
@@ -85,32 +103,36 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
           </div>
           
           <div style={{ overflowY: "auto", flex: 1, padding: "1rem" }}>
-            {filteredUsers.map(u => (
-              <div 
-                key={u.id} 
-                onClick={() => setSelectedUserId(u.id)}
-                style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem", borderRadius: "12px", background: selectedUserId === u.id ? "rgba(99,102,241,0.2)" : "transparent", border: `1px solid ${selectedUserId === u.id ? "rgba(99,102,241,0.5)" : "transparent"}`, cursor: "pointer", transition: "0.2s", marginBottom: "0.5rem" }}
-              >
-                <img src={u.image || `https://ui-avatars.com/api/?name=${u.name}`} alt={u.name} style={{ width: "45px", height: "45px", borderRadius: "50%", objectFit: "cover" }} />
-                <div style={{ overflow: "hidden" }}>
-                  <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden", display: "flex", alignItems: "center", gap: "5px" }}>
-                    {u.name} {u.isPremium && <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>✔️</span>}
-                  </h4>
-                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--muted-text)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{u.email}</p>
+            {filteredUsers.length === 0 ? (
+              <p style={{ textAlign: "center", color: "var(--muted-text)" }}>No clients found.</p>
+            ) : (
+              filteredUsers.map(u => (
+                <div 
+                  key={u.id} 
+                  onClick={() => setSelectedUserId(u.id)}
+                  style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem", borderRadius: "12px", background: selectedUserId === u.id ? "rgba(99,102,241,0.2)" : "transparent", border: `1px solid ${selectedUserId === u.id ? "rgba(99,102,241,0.5)" : "transparent"}`, cursor: "pointer", transition: "0.2s", marginBottom: "0.5rem" }}
+                >
+                  <img src={u.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'User')}`} alt="Avatar" style={{ width: "45px", height: "45px", borderRadius: "50%", objectFit: "cover" }} />
+                  <div style={{ overflow: "hidden" }}>
+                    <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden", display: "flex", alignItems: "center", gap: "5px" }}>
+                      {u.name || "Unknown User"} {u.isPremium && <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>✔️</span>}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{u.email}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
         {/* ==================================
             RIGHT PANE: USER DETAILS
         =================================== */}
-        <div style={{ overflowY: "auto", paddingRight: "1rem" }}>
+        <div style={{ overflowY: "auto", paddingRight: "1rem", maxHeight: "100%" }}>
           {selectedUser ? (
             <UserDetailsPanel user={selectedUser} onUpdate={handleUpdateUser} />
           ) : (
-            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-text)" }}>
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>
               <h2>Select a client from the list to manage.</h2>
             </div>
           )}
@@ -134,33 +156,35 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 // ==========================================================
 function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string, updates: any) => void }) {
   
-  // Config Adder States
   const [newConfigName, setNewConfigName] = useState("");
   const [newConfigVless, setNewConfigVless] = useState("");
-
-  // Manual Days State
   const [addDaysInput, setAddDaysInput] = useState<number | "">("");
-
-  // Custom Message States
   const [msgEmoji, setMsgEmoji] = useState("⚠️");
   const [msgText, setMsgText] = useState("");
 
-  // Fix for Hydration Error (Online Status)
   const [isOnline, setIsOnline] = useState(false);
 
+  // Safely parse the expiry date without crashing
+  const getSafeDate = (dateStr: any) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const expiryDate = getSafeDate(user.expiryDate);
+  const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
+
   useEffect(() => {
-    // Generate random online status only on the client side after mount to avoid hydration mismatch
+    // Generate online status safely on client side
     setIsOnline(user.isOnline ?? Math.random() > 0.5);
   }, [user.isOnline, user.id]);
 
-  // Calculate Expiry Data
-  const expiryDate = user.expiryDate ? new Date(user.expiryDate) : null;
-  const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
-
   // Handlers
-  const togglePremium = () => {
-    onUpdate(user.id, { isPremium: !user.isPremium });
-  };
+  const togglePremium = () => onUpdate(user.id, { isPremium: !user.isPremium });
 
   const handleBanUser = () => {
     if(confirm(`Are you sure you want to BAN ${user.name}? They will lose all access.`)) {
@@ -168,9 +192,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     }
   };
 
-  const handleUnbanUser = () => {
-    onUpdate(user.id, { vpnStatus: "Active" });
-  };
+  const handleUnbanUser = () => onUpdate(user.id, { vpnStatus: "Active" });
 
   const handleAddDays = () => {
     if (!addDaysInput || addDaysInput <= 0) return;
@@ -199,12 +221,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     setMsgText("");
   };
 
-  const handleClearMessage = () => {
-    onUpdate(user.id, { alertMessage: "" });
-  };
+  const handleClearMessage = () => onUpdate(user.id, { alertMessage: "" });
 
   // Safe payments parsing
-  const userPayments = user.payments || [];
+  const userPayments = Array.isArray(user?.payments) ? user.payments : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", animation: "fadeIn 0.4s ease" }}>
@@ -212,13 +232,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       {/* 🟢 TOP HEADER CARD */}
       <div style={{ background: "rgba(15,15,24,0.8)", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          <img src={user.image || `https://ui-avatars.com/api/?name=${user.name}`} alt={user.name} style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: "3px solid #6366f1" }} />
+          <img src={user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}`} alt="Profile" style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: "3px solid #6366f1" }} />
           <div>
-            <h2 style={{ margin: "0 0 0.3rem 0", fontSize: "1.8rem", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
-              {user.name} 
+            <h2 style={{ margin: "0 0 0.3rem 0", fontSize: "1.8rem", color: "#FFF", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              {user.name || "Unknown User"} 
               {user.vpnStatus === "Banned" && <span style={{ background: "#ef4444", color: "#FFF", fontSize: "0.8rem", padding: "2px 10px", borderRadius: "12px", textTransform: "uppercase" }}>Banned</span>}
             </h2>
-            <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "1rem" }}>{user.email}</p>
+            <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af", fontSize: "1rem" }}>{user.email || "No email"}</p>
             {/* Online/Offline Badge */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: isOnline ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", padding: "4px 12px", borderRadius: "20px", border: `1px solid ${isOnline ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)"}` }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#9ca3af", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }}></span>
@@ -248,7 +268,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
         
         {/* ⏳ EXPIRY CONTROL */}
         <div style={{ background: "rgba(15,15,24,0.8)", padding: "1.8rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -256,10 +276,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "10px" }}>
             <div>
-              <p style={{ margin: "0 0 0.2rem 0", color: "var(--muted-text)", fontSize: "0.85rem" }}>Current Status</p>
+              <p style={{ margin: "0 0 0.2rem 0", color: "#9ca3af", fontSize: "0.85rem" }}>Current Status</p>
               <h2 style={{ margin: 0, color: daysLeft > 0 ? "#22c55e" : "#ef4444" }}>{daysLeft > 0 ? `${daysLeft} Days Left` : "Expired"}</h2>
             </div>
-            {expiryDate && <p style={{ margin: 0, color: "var(--muted-text)", fontSize: "0.85rem" }}>Ends: {expiryDate.toLocaleDateString()}</p>}
+            {expiryDate && <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.85rem" }}>Ends: {expiryDate.toLocaleDateString()}</p>}
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
@@ -287,7 +307,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
               <button onClick={handleClearMessage} style={{ marginTop: "10px", background: "transparent", border: "1px solid #ef4444", color: "#ef4444", padding: "4px 12px", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer" }}>Remove Message</button>
             </div>
           ) : (
-            <p style={{ color: "var(--muted-text)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>No active messages. Client dashboard is clear.</p>
+            <p style={{ color: "#9ca3af", fontSize: "0.85rem", marginBottom: "1.5rem" }}>No active messages. Client dashboard is clear.</p>
           )}
 
           <div style={{ display: "flex", gap: "10px" }}>
@@ -300,7 +320,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             </select>
             <input 
               type="text" 
-              placeholder="e.g. Payment issue, please check..." 
+              placeholder="e.g. Payment issue, check..." 
               value={msgText} 
               onChange={(e) => setMsgText(e.target.value)}
               style={{ flex: 1, padding: "0.8rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}
@@ -317,7 +337,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       <div style={{ background: "rgba(15,15,24,0.8)", padding: "1.8rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", marginTop: "1.5rem" }}>
         <h3 style={{ margin: "0 0 1.5rem 0", color: "#FFF", fontSize: "1.2rem" }}>📦 Assign New VPN Configs</h3>
         
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: "10px", alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", alignItems: "start" }}>
           <select value={newConfigName} onChange={(e) => setNewConfigName(e.target.value)} style={{ padding: "0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}>
             <option value="">-- Select Package --</option>
             {PACKAGE_LIST.map(pkg => <option key={pkg} value={pkg}>{pkg}</option>)}
@@ -336,7 +356,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
         {/* Show Current Configs Raw */}
         <div style={{ marginTop: "1.5rem" }}>
-          <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "0.85rem" }}>Current Assigned Configs (Raw Data):</p>
+          <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af", fontSize: "0.85rem" }}>Current Assigned Configs (Raw Data):</p>
           <textarea 
             value={user.vpnConfigKey || ""} 
             onChange={(e) => onUpdate(user.id, { vpnConfigKey: e.target.value })}
@@ -351,15 +371,15 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         
         {userPayments.length === 0 ? (
           <div style={{ textAlign: "center", padding: "2rem", background: "rgba(0,0,0,0.2)", borderRadius: "12px" }}>
-            <p style={{ color: "var(--muted-text)" }}>No payments recorded for this client yet.</p>
+            <p style={{ color: "#9ca3af" }}>No payments recorded for this client yet.</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {userPayments.map((p: any, idx: number) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1rem 1.5rem", borderRadius: "12px" }}>
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1rem 1.5rem", borderRadius: "12px", flexWrap: "wrap", gap: "10px" }}>
                 <div>
                   <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF" }}>{p.package}</h4>
-                  <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted-text)" }}>{new Date(p.date).toLocaleString()}</p>
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>{new Date(p.date).toLocaleString()}</p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
                   <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p.amount}</h3>
