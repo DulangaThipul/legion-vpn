@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAdmin } from "@/lib/authActions";
 
-// Mocking initial users if payments aren't loaded (for demonstration)
+const PACKAGE_LIST = [
+  "Airtel Old Sim 260 Package",
+  "Airtel New Sim Rs.297 (7D) / 997 Package",
+  "Dialog Router 724 Zoom Unlimited",
+  "SLT 4G/Fiber Router 490 Zoom 100GB",
+  "SLT Fiber 1990 Unlimited",
+  "Custom / Special Package"
+];
+
 export default function AdminDashboardClient({ initialUsers }: { initialUsers: any[] }) {
   const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
@@ -63,7 +71,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
       <main style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: "2rem", padding: "2rem 2.5rem", maxWidth: "1600px", margin: "0 auto", height: "calc(100vh - 90px)" }}>
         
         {/* ==================================
-            LEFT PANE: USER LIST (STEP 1)
+            LEFT PANE: USER LIST
         =================================== */}
         <div style={{ background: "rgba(15,15,24,0.6)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
@@ -126,23 +134,28 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 // ==========================================================
 function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string, updates: any) => void }) {
   
-  // STEP 3: Config Adder States
+  // Config Adder States
   const [newConfigName, setNewConfigName] = useState("");
   const [newConfigVless, setNewConfigVless] = useState("");
 
-  // STEP 4: Manual Days State
+  // Manual Days State
   const [addDaysInput, setAddDaysInput] = useState<number | "">("");
 
-  // STEP 7: Custom Message States
+  // Custom Message States
   const [msgEmoji, setMsgEmoji] = useState("⚠️");
   const [msgText, setMsgText] = useState("");
+
+  // Fix for Hydration Error (Online Status)
+  const [isOnline, setIsOnline] = useState(false);
+
+  useEffect(() => {
+    // Generate random online status only on the client side after mount to avoid hydration mismatch
+    setIsOnline(user.isOnline ?? Math.random() > 0.5);
+  }, [user.isOnline, user.id]);
 
   // Calculate Expiry Data
   const expiryDate = user.expiryDate ? new Date(user.expiryDate) : null;
   const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
-
-  // Mocking Online/Offline status randomly or via a prop for demonstration (STEP 5)
-  const isOnline = user.isOnline ?? Math.random() > 0.5; 
 
   // Handlers
   const togglePremium = () => {
@@ -190,13 +203,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(user.id, { alertMessage: "" });
   };
 
-  // Safe payments parsing (STEP 8)
+  // Safe payments parsing
   const userPayments = user.payments || [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", animation: "fadeIn 0.4s ease" }}>
       
-      {/* 🟢 TOP HEADER CARD (STEP 1 & 5) */}
+      {/* 🟢 TOP HEADER CARD */}
       <div style={{ background: "rgba(15,15,24,0.8)", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
           <img src={user.image || `https://ui-avatars.com/api/?name=${user.name}`} alt={user.name} style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: "3px solid #6366f1" }} />
@@ -206,7 +219,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
               {user.vpnStatus === "Banned" && <span style={{ background: "#ef4444", color: "#FFF", fontSize: "0.8rem", padding: "2px 10px", borderRadius: "12px", textTransform: "uppercase" }}>Banned</span>}
             </h2>
             <p style={{ margin: "0 0 0.5rem 0", color: "var(--muted-text)", fontSize: "1rem" }}>{user.email}</p>
-            {/* STEP 5: Online/Offline Badge */}
+            {/* Online/Offline Badge */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: isOnline ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", padding: "4px 12px", borderRadius: "20px", border: `1px solid ${isOnline ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)"}` }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isOnline ? "#22c55e" : "#9ca3af", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }}></span>
               <span style={{ fontSize: "0.8rem", color: isOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>{isOnline ? "Online Now" : "Offline"}</span>
@@ -214,7 +227,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </div>
         </div>
 
-        {/* STEP 2 & 6: Premium Toggle & Ban Action */}
+        {/* Premium Toggle & Ban Action */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "flex-end" }}>
           <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "rgba(0,0,0,0.3)", padding: "10px 15px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
             <span style={{ color: "#FFF", fontWeight: "bold", fontSize: "0.95rem" }}>⭐ Premium User</span>
@@ -224,7 +237,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </label>
           
           {user.vpnStatus !== "Banned" ? (
-            <button onClick={handleBanUser} style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "0.6rem 1.5rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", transition: "0.2s" }} className="hover:bg-red-500 hover:text-white">
+            <button onClick={handleBanUser} style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "0.6rem 1.5rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", transition: "0.2s" }}>
               🚫 Ban Client
             </button>
           ) : (
@@ -237,7 +250,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
         
-        {/* ⏳ EXPIRY CONTROL (STEP 4) */}
+        {/* ⏳ EXPIRY CONTROL */}
         <div style={{ background: "rgba(15,15,24,0.8)", padding: "1.8rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
           <h3 style={{ margin: "0 0 1.5rem 0", color: "#FFF", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "8px" }}>⏳ Dashboard Countdown</h3>
           
@@ -263,7 +276,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </div>
         </div>
 
-        {/* 💬 CUSTOM POPUP MESSAGER (STEP 7) */}
+        {/* 💬 CUSTOM POPUP MESSAGER */}
         <div style={{ background: "rgba(15,15,24,0.8)", padding: "1.8rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
           <h3 style={{ margin: "0 0 1.5rem 0", color: "#FFF", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "8px" }}>💬 Send Live Pop-up Message</h3>
           
@@ -300,18 +313,16 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       </div>
 
-      {/* 📦 ADD CONFIGS SECTION (STEP 3) */}
+      {/* 📦 ADD CONFIGS SECTION */}
       <div style={{ background: "rgba(15,15,24,0.8)", padding: "1.8rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", marginTop: "1.5rem" }}>
         <h3 style={{ margin: "0 0 1.5rem 0", color: "#FFF", fontSize: "1.2rem" }}>📦 Assign New VPN Configs</h3>
         
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: "10px", alignItems: "start" }}>
-          <input 
-            type="text" 
-            placeholder="Config Name (e.g. Airtel Tiktok)" 
-            value={newConfigName} 
-            onChange={(e) => setNewConfigName(e.target.value)}
-            style={{ padding: "0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}
-          />
+          <select value={newConfigName} onChange={(e) => setNewConfigName(e.target.value)} style={{ padding: "0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", outline: "none" }}>
+            <option value="">-- Select Package --</option>
+            {PACKAGE_LIST.map(pkg => <option key={pkg} value={pkg}>{pkg}</option>)}
+          </select>
+
           <textarea 
             placeholder="Paste VLESS Key here..." 
             value={newConfigVless} 
@@ -334,7 +345,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* 🧾 PAYMENT HISTORY & SLIPS (STEP 8) */}
+      {/* 🧾 PAYMENT HISTORY & SLIPS */}
       <div style={{ background: "rgba(15,15,24,0.8)", padding: "1.8rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)", marginTop: "1.5rem" }}>
         <h3 style={{ margin: "0 0 1.5rem 0", color: "#FFF", fontSize: "1.2rem" }}>🧾 Payment History & Slips</h3>
         
