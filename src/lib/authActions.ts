@@ -58,7 +58,7 @@ export async function updateUserAdmin(userId: string, data: any) {
   }
 }
 
-// 3. Client Payment Order Submission
+// 3. Client Payment Order Submission (Preserves existing active configs)
 export async function submitClientPaymentOrder(data: { packageName: string; amount: number; receiptUrl: string }) {
   try {
     const cookieStore = await cookies();
@@ -71,7 +71,7 @@ export async function submitClientPaymentOrder(data: { packageName: string; amou
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
     if (!currentUser) return { success: false, error: "User not found" };
 
-    let meta: any = { alert: "", isPremium: false, payments: [] };
+    let meta: any = { alert: "", isPremium: false, payments: [], pendingOrders: [] };
     if (currentUser.subscriptionLink) {
       try {
         meta = { ...meta, ...JSON.parse(currentUser.subscriptionLink) };
@@ -86,15 +86,26 @@ export async function submitClientPaymentOrder(data: { packageName: string; amou
       status: "Verifying",
       receipt: data.receiptUrl,
     };
-    meta.payments = [newPayment, ...(meta.payments || [])];
 
+    meta.payments = [newPayment, ...(meta.payments || [])];
+    meta.pendingOrders = [
+      {
+        id: newPayment.id,
+        package: data.packageName,
+        amount: data.amount,
+        receipt: data.receiptUrl,
+        date: newPayment.date,
+      },
+      ...(meta.pendingOrders || []),
+    ];
+
+    // 🚀 Keep existing configs intact & don't suspend user if already Active
     const updated = await prisma.user.update({
       where: { id: payload.id as string },
       data: {
-        vpnStatus: "Suspended",
+        vpnStatus: currentUser.vpnStatus === "Active" ? "Active" : "Suspended",
         subscriptionLink: JSON.stringify(meta),
-        vpnConfigKey: `[ Payment Verifying ]\nYour config will appear here once approved.\n\nReceipt: ${data.receiptUrl}`
-      }
+      },
     });
 
     return { success: true, user: JSON.parse(JSON.stringify(updated)) };
@@ -126,7 +137,7 @@ export async function sendClientHeartbeat() {
 
     await prisma.user.update({
       where: { id: payload.id as string },
-      data: { subscriptionLink: JSON.stringify(meta) }
+      data: { subscriptionLink: JSON.stringify(meta) },
     });
 
     return { success: true };
@@ -146,7 +157,6 @@ export async function updateUserAvatar(imageUrl: string) {
     if (!payload || !payload.id) throw new Error("Unauthorized");
 
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
-
     let finalImage = imageUrl;
     if (imageUrl === "") {
       finalImage = currentUser?.googleImage || "";
@@ -156,7 +166,7 @@ export async function updateUserAvatar(imageUrl: string) {
 
     const updatedUser = await prisma.user.update({
       where: { id: payload.id as string },
-      data: { image: finalImage === "" ? null : finalImage }
+      data: { image: finalImage === "" ? null : finalImage },
     });
 
     return { success: true, image: updatedUser.image };
