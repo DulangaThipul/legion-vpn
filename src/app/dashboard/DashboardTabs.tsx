@@ -8,7 +8,6 @@ import DashboardMatrix from "@/components/DashboardMatrix";
 
 const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${i + 1}.gif`);
 
-// 🚀 ISP Logos
 const ISP_LOGOS = {
   Dialog: "https://files.catbox.moe/zyac5x.png",
   Airtel: "https://files.catbox.moe/5s5vfc.png",
@@ -78,7 +77,25 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   }
 
-  // 🚀 Premium Verification Priority: Admin Setting takes priority, fallback to active plan / payments
+  // 🚀 CENTER POPUP ALERT (DOES NOT RE-APPEAR ON REFRESH IF DISMISSED)
+  const [showCenterAlert, setShowCenterAlert] = useState(false);
+
+  useEffect(() => {
+    if (adminAlert) {
+      const dismissedAlert = localStorage.getItem("legion_dismissed_alert");
+      if (dismissedAlert !== adminAlert) {
+        setShowCenterAlert(true);
+      }
+    }
+  }, [adminAlert]);
+
+  const handleDismissCenterAlert = () => {
+    if (adminAlert) {
+      localStorage.setItem("legion_dismissed_alert", adminAlert);
+    }
+    setShowCenterAlert(false);
+  };
+
   const isVerified = adminPremiumOverride !== null
     ? adminPremiumOverride
     : (payments.length > 0 || Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5));
@@ -154,6 +171,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   };
   const { configs: parsedConfigs, receiptLink } = parseConfigs(user?.vpnConfigKey);
 
+  // 🚀 STRIP BRACKETS [...] BEFORE COPYING
+  const handleCopyCleanCode = (text: string) => {
+    const cleanCode = text.replace(/\[[\s\S]*?\]/g, "").trim();
+    navigator.clipboard.writeText(cleanCode);
+    alert("Copied to clipboard!");
+  };
+
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -182,7 +206,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [stDown, setStDown] = useState("0.00");
   const [stUp, setStUp] = useState("0.00");
   const [gaugeValue, setGaugeValue] = useState(0); 
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const speedToGauge = (speed: number) => Math.min(speed / 150, 1);
 
@@ -207,16 +230,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     
     await new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
-      xhrRef.current = xhr;
       const startTime = performance.now();
-      
       xhr.onprogress = (e) => {
         if (e.lengthComputable) {
           const elapsed = (performance.now() - startTime) / 1000;
-          if(elapsed > 0.2) {
+          if (elapsed > 0.2) {
             const mbps = ((e.loaded * 8) / elapsed) / 1000000;
             speedHistory.push(mbps);
-            if(speedHistory.length > 5) speedHistory.shift(); 
+            if (speedHistory.length > 5) speedHistory.shift(); 
             const avgSpeed = speedHistory.reduce((a,b)=>a+b) / speedHistory.length;
             setStDown(avgSpeed.toFixed(2));
             setGaugeValue(speedToGauge(avgSpeed));
@@ -237,7 +258,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     await new Promise(resolve => {
         const interval = setInterval(() => {
             currentUp += (upTarget - currentUp) * 0.15; 
-            if(upTarget - currentUp < 0.5) {
+            if (upTarget - currentUp < 0.5) {
                 clearInterval(interval);
                 setStUp(upTarget.toFixed(2));
                 setGaugeValue(speedToGauge(upTarget));
@@ -252,48 +273,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setStState("done");
   };
 
-  const cancelTest = () => {
-    if(xhrRef.current) xhrRef.current.abort();
-    setStState("idle"); setGaugeValue(0);
-  };
-
-  const [leakIPs, setLeakIPs] = useState<string[]>([]);
-  const [isCheckingLeak, setIsCheckingLeak] = useState(false);
-  const checkWebRTC = () => {
-    setIsCheckingLeak(true); setLeakIPs([]);
-    const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    rtc.createDataChannel(""); rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
-    rtc.onicecandidate = (e) => {
-      if (e.candidate && e.candidate.candidate) {
-        const ipMatch = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-        if (ipMatch) setLeakIPs(prev => Array.from(new Set([...prev, ipMatch[1]])));
-      }
-    };
-    setTimeout(() => { setIsCheckingLeak(false); rtc.close(); }, 3000);
-  };
-
-  const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
-  const [isPinging, setIsPinging] = useState(false);
-  const runLatencyTest = async () => {
-    setIsPinging(true); setPingStats(null);
-    let pings: number[] = [];
-    for (let i = 0; i < 6; i++) {
-      const start = performance.now();
-      await new Promise(r => {
-          const img = new Image();
-          img.onload = () => r(null); img.onerror = () => r(null);
-          img.src = "https://www.google.com/favicon.ico?" + Math.random();
-      });
-      pings.push(performance.now() - start);
-      await new Promise(r => setTimeout(r, 100));
-    }
-    const min = Math.min(...pings);
-    const max = Math.max(...pings);
-    const avg = pings.reduce((a,b)=>a+b)/pings.length;
-    const jitter = max - min;
-    setPingStats({ min: Math.round(min), max: Math.round(max), avg: Math.round(avg), jitter: Math.round(jitter) });
-    setIsPinging(false);
-  };
+  const cancelTest = () => { setStState("idle"); setGaugeValue(0); };
 
   const handleSelectPackage = (pkg: any) => {
     if (pkg.type === "mobile") setSimWarningModal(pkg);
@@ -411,31 +391,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* 🚀 LIVE ADMIN NOTIFICATION POPUP (DANGER / SUCCESS AUTO-DETECT) */}
-      {adminAlert && (
-        <div style={{ 
-          position: "fixed", 
-          top: "20px", 
-          left: "50%", 
-          transform: "translateX(-50%)", 
-          background: adminAlert.includes("❌") ? "rgba(239, 68, 68, 0.95)" : adminAlert.includes("⚠️") ? "rgba(245, 158, 11, 0.95)" : "rgba(34, 197, 94, 0.95)", 
-          backdropFilter: "blur(10px)",
-          padding: "1rem 2rem", 
-          borderRadius: "30px", 
-          zIndex: 9999, 
-          boxShadow: "0 10px 30px rgba(0,0,0,0.5)", 
-          fontWeight: "bold", 
-          display: "flex", 
-          gap: "10px", 
-          alignItems: "center", 
-          animation: "fadeInDown 0.3s ease", 
-          width: "90%", 
-          maxWidth: "450px", 
-          textAlign: "center", 
-          justifyContent: "center",
-          color: "#FFF"
-        }}>
-          {adminAlert}
+      {/* 🚀 CENTER BIG CUSTOM POPUP MODAL (SHOWN ONCE PER NEW ALERT) */}
+      {showCenterAlert && adminAlert && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
+          <div style={{ background: "#11111a", border: "1px solid rgba(99,102,241,0.5)", borderRadius: "20px", padding: "2.5rem 2rem", maxWidth: "480px", width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.8)", animation: "fadeInUp 0.3s ease" }}>
+            <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>
+              {adminAlert.split(" ")[0] || "📢"}
+            </div>
+            <h2 style={{ color: "#FFF", fontSize: "1.4rem", marginBottom: "1rem" }}>Notice from Admin</h2>
+            <p style={{ color: "#cbd5e1", fontSize: "1.05rem", lineHeight: 1.6, marginBottom: "2rem" }}>
+              {adminAlert.replace(/^[^\s]+/, "").trim() || adminAlert}
+            </p>
+            <button onClick={handleDismissCenterAlert} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2.8rem", borderRadius: "10px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", boxShadow: "0 10px 25px rgba(99,102,241,0.4)" }}>
+              OK, I Understand
+            </button>
+          </div>
         </div>
       )}
 
@@ -450,7 +420,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div className="mobile-hide-name" style={{ textAlign: "right" }}>
               <span style={{ fontWeight: "600", fontSize: "0.95rem", color: "#e5e7eb" }}>{safeName}</span>
               <br/>
-              {/* 🚀 LIVE VERIFIED BADGE & PREMIUM STATUS */}
               {isVerified ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#818cf8", fontWeight: "bold" }}>
                   Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={14} height={14} />
@@ -844,7 +813,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div key={idx} style={{ background: "rgba(15,15,24,0.85)", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
                          <div style={{ background: "rgba(99,102,241,0.08)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#818cf8" }}>📦 {cfg.name}</h3>
-                            <button onClick={() => { navigator.clipboard.writeText(cfg.code); alert("Copied to clipboard!"); }} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>📋 Copy Code</button>
+                            {/* 🚀 STRIPS ALL BRACKETS [...] BEFORE COPYING */}
+                            <button onClick={() => handleCopyCleanCode(cfg.code)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>📋 Copy Code</button>
                          </div>
                          <div style={{ padding: "1.5rem" }}>
                             <code style={{ color: user?.vpnStatus === "Suspended" ? "#9ca3af" : "#22c55e", fontSize: "0.85rem", fontFamily: "monospace", wordBreak: "break-all", whiteSpace: "pre-wrap" }}>
@@ -937,7 +907,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover" }} />
                   <h3 style={{ margin: "1rem 0 0.2rem 0", color: "#FFF", fontSize: "1.2rem" }}>{safeName}</h3>
-                  {/* 🚀 LIVE VERIFIED BADGE & STATUS */}
                   {isVerified ? (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.85rem", color: "#818cf8", fontWeight: "bold" }}>
                       Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={16} height={16} />
