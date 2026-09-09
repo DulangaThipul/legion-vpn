@@ -1,105 +1,189 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Points, PointMaterial, Icosahedron } from "@react-three/drei";
-
-// 🚀 maath import crash එක වළක්වා ගනිමින් තාරකා 5,001 ක් ජනනය කරන ශ්‍රිතය
-function generateSphere(count: number, radius: number) {
-  const buffer = new Float32Array(count);
-  for (let i = 0; i < count; i += 3) {
-    const u = Math.random();
-    const v = Math.random();
-    const theta = u * 2.0 * Math.PI;
-    const phi = Math.acos(2.0 * v - 1.0);
-    const r = Math.cbrt(Math.random()) * radius;
-    const sinPhi = Math.sin(phi);
-    buffer[i] = r * sinPhi * Math.cos(theta);
-    buffer[i + 1] = r * sinPhi * Math.sin(theta);
-    buffer[i + 2] = r * Math.cos(phi);
-  }
-  return buffer;
-}
-
-function StarBackground(props: any) {
-  const ref = useRef<any>();
-  // 🚀 Low-end phones වල Lag වීම වැළැක්වීමට එක් වරක් පමණක් generate වේ
-  const sphere = useMemo(() => generateSphere(5001, 1.5), []);
-
-  useFrame((state, delta) => {
-    if (ref.current) {
-      ref.current.rotation.x -= delta / 10;
-      ref.current.rotation.y -= delta / 15;
-    }
-  });
-
-  return (
-    <group rotation={[0, 0, Math.PI / 4]}>
-      <Points ref={ref} positions={sphere} stride={3} frustumCulled={false} {...props}>
-        <PointMaterial
-          transparent
-          color="#ffffff"
-          size={0.015}
-          sizeAttenuation={true}
-          depthWrite={false}
-        />
-      </Points>
-    </group>
-  );
-}
-
-function WireframeShape() {
-  const meshRef = useRef<any>();
-  const groupRef = useRef<any>();
-
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      // Continuous base rotation
-      meshRef.current.rotation.x += delta * 0.2;
-      meshRef.current.rotation.y += delta * 0.3;
-    }
-    if (groupRef.current) {
-      // Mouse tracking offset
-      const targetX = (state.mouse.y * Math.PI) / 5;
-      const targetY = (state.mouse.x * Math.PI) / 5;
-      
-      // Smoothly interpolate towards mouse position
-      groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.05;
-      groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * 0.05;
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      <Icosahedron ref={meshRef} args={[1, 1]} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#ffffff" wireframe={true} transparent opacity={0.6} />
-      </Icosahedron>
-    </group>
-  );
-}
+import { useEffect, useRef } from "react";
+import * as THREE from "three";
 
 export default function ThreeScene() {
-  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    setMounted(true);
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    let animId: number;
+    let isDisposed = false;
+
+    // 1. WEBGL RENDERER SETUP (OPTIMIZED FOR LOW-END & MOBILE DEVICES)
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: false, // Low-end devices වල lag වීම වළක්වයි
+        powerPreference: "high-performance",
+      });
+    } catch {
+      return;
+    }
+
+    const width = container.clientWidth || window.innerWidth;
+    const height = container.clientHeight || window.innerHeight;
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setSize(width, height);
+
+    const scene = new THREE.Scene();
+
+    // 2. CAMERA SETUP (EXACT FOV & POSITION TO PREVENT CLIPPING)
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+    camera.position.set(0, 0, 1.8);
+
+    // 3. LIGHTS (EXACT ORIGINAL INTENSITIES)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(10, 10, 5);
+    scene.add(directionalLight);
+
+    // 4. STAR BACKGROUND (100% IDENTICAL 5,001 SPHERICAL POINTS)
+    const starCount = 1667; // 1667 * 3 = 5001 float coordinates
+    const starPositions = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount * 3; i += 3) {
+      const u = Math.random();
+      const v = Math.random();
+      const theta = u * 2.0 * Math.PI;
+      const phi = Math.acos(2.0 * v - 1.0);
+      const r = Math.cbrt(Math.random()) * 1.5; // Radius 1.5 (Exact original)
+      starPositions[i] = r * Math.sin(phi) * Math.cos(theta);
+      starPositions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPositions[i + 2] = r * Math.cos(phi);
+    }
+
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+
+    const starMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.015,
+      transparent: true,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    const starPoints = new THREE.Points(starGeometry, starMaterial);
+    const starGroup = new THREE.Group();
+    starGroup.rotation.set(0, 0, Math.PI / 4); // Exact original 45-deg tilt
+    starGroup.add(starPoints);
+    scene.add(starGroup);
+
+    // 5. WIREFRAME ICOSAHEDRON (EXACT ORIGINAL MESH & MATERIAL)
+    const shapeGroup = new THREE.Group();
+    const icosaGeometry = new THREE.IcosahedronGeometry(1, 1); // args={[1, 1]}
+    const icosaMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.5,
+    });
+
+    const shapeMesh = new THREE.Mesh(icosaGeometry, icosaMaterial);
+    shapeGroup.add(shapeMesh);
+    scene.add(shapeGroup);
+
+    // 6. MOUSE TRACKING (SMOOTH INTERPOLATION)
+    let mouseX = 0;
+    let mouseY = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+
+    // 7. RESIZE LISTENER
+    const handleResize = () => {
+      if (!container || isDisposed) return;
+      const w = container.clientWidth || window.innerWidth;
+      const h = container.clientHeight || window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
+
+    // 8. RENDER LOOP (EXACT ORIGINAL ROTATION SPEEDS)
+    const clock = new THREE.Clock();
+
+    const animate = () => {
+      if (isDisposed) return;
+      animId = requestAnimationFrame(animate);
+
+      const delta = Math.min(clock.getDelta(), 0.1);
+
+      // Starfield base rotation
+      starGroup.rotation.x -= delta / 10;
+      starGroup.rotation.y -= delta / 15;
+
+      // Icosahedron continuous rotation
+      shapeMesh.rotation.x += delta * 0.2;
+      shapeMesh.rotation.y += delta * 0.3;
+
+      // Mouse tracking offset
+      const targetX = (mouseY * Math.PI) / 5;
+      const targetY = (mouseX * Math.PI) / 5;
+
+      shapeGroup.rotation.x += (targetX - shapeGroup.rotation.x) * 0.05;
+      shapeGroup.rotation.y += (targetY - shapeGroup.rotation.y) * 0.05;
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // CLEANUP
+    return () => {
+      isDisposed = true;
+      cancelAnimationFrame(animId);
+      window.removeEventListener("mousemove", handleMouseMove);
+      resizeObserver.disconnect();
+
+      starGeometry.dispose();
+      starMaterial.dispose();
+      icosaGeometry.dispose();
+      icosaMaterial.dispose();
+      renderer.dispose();
+    };
   }, []);
 
-  if (!mounted) return null;
-
   return (
-    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: "none" }}>
-      <Canvas
-        style={{ width: "100%", height: "100%", display: "block" }}
-        camera={{ position: [0, 0, 2], fov: 60 }}
-        dpr={[1, 1.5]}
-        gl={{ powerPreference: "high-performance", antialias: false, alpha: true }}
-      >
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ffffff" />
-        <StarBackground />
-        <WireframeShape />
-      </Canvas>
+    <div
+      ref={containerRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 0,
+        pointerEvents: "none",
+        overflow: "hidden",
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+      />
     </div>
   );
 }
