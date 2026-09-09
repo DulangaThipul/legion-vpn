@@ -8,9 +8,8 @@ export default function ThreeScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
     const canvas = canvasRef.current;
-    if (!container || !canvas) return;
+    if (!canvas) return;
 
     let animationFrameId: number;
     let renderer: THREE.WebGLRenderer | null = null;
@@ -29,55 +28,39 @@ export default function ThreeScene() {
 
     if (!renderer) return;
 
+    // 🚀 Window dimensions සෘජුවම භාවිත කිරීම නිසා Size 0 වීමේ දෝෂ සම්පූර්ණයෙන්ම වැළකේ
+    const width = window.innerWidth || 800;
+    const height = window.innerHeight || 600;
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setSize(width, height);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020202); // සම්පූර්ණ අඳුරු පසුබිම
+    scene.background = new THREE.Color(0x030307);
 
     // 🚀 Camera Setup
-    const camera = new THREE.PerspectiveCamera(
-      50,
-      (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
-      0.1,
-      1000
-    );
-    camera.position.set(0, 0, 4.5);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    camera.position.set(0, 0, 4);
 
-    // 🚀 Cinematic Lighting (අඳුරු පරිසරයක චලනය වන Torch / Spotlight)
-    const ambientLight = new THREE.AmbientLight(0x111115, 0.4); // ඉතා අවම ආලෝකයක්
+    // 🚀 Lighting (Interactive Torch / Flashlight)
+    const ambientLight = new THREE.AmbientLight(0x222228, 0.5);
     scene.add(ambientLight);
 
-    // ප්‍රධාන චලනය වන ෆ්ලෑෂ් ලයිට් එක (Moving Flashlight)
-    const flashlight = new THREE.PointLight(0xfff2e0, 3.5, 8);
+    const flashlight = new THREE.PointLight(0x818cf8, 4, 10);
     flashlight.position.set(0, 0, 2);
     scene.add(flashlight);
 
-    // ලයිට් එකේ පිහිටීම පෙන්වන කුඩා දීප්තිමත් ලපයක් (ঐচ্ছিক)
-    const bulbGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-    const bulbMaterial = new THREE.MeshBasicMaterial({ color: 0xfff2e0 });
-    const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
-    flashlight.add(bulb);
-
-    // 🚀 3D Sculpture / Stone Relief (මූර්තියක් වැනි සංකීර්ණ හැඩයක්)
-    const sculptureGroup = new THREE.Group();
-
-    // අද්භූත සුවිශේෂී මූර්ති ස්වරූපයක් සඳහා Knot සහ Torus එකතු කිරීම
-    const geometry1 = new THREE.TorusKnotGeometry(1, 0.3, 128, 32);
+    // 🚀 Interactive 3D Torus Knot Object (විශාල, පැහැදිලි ත්‍රිමාණ හැඩයක්)
+    const geometry = new THREE.TorusKnotGeometry(1, 0.35, 128, 32);
     const material = new THREE.MeshStandardMaterial({
-      color: 0x888890,
-      roughness: 0.75,
-      metalness: 0.25,
-      bumpScale: 0.05,
+      color: 0xcccccc,
+      roughness: 0.4,
+      metalness: 0.6,
     });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
 
-    const sculptureMesh = new THREE.Mesh(geometry1, material);
-    sculptureGroup.add(sculptureMesh);
-    scene.add(sculptureGroup);
-
-    // 🚀 Mouse & Touch Tracking Variables
+    // 🚀 Mouse & Touch Tracking (Desktop Parallax & Mobile Auto Animation)
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
@@ -102,19 +85,19 @@ export default function ThreeScene() {
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: true });
 
-    // Resize Handler
+    // Window Resize Handler
     const handleResize = () => {
-      if (!container || !renderer || isCleanedUp) return;
-      const width = container.clientWidth || window.innerWidth;
-      const height = container.clientHeight || window.innerHeight;
-      camera.aspect = width / height;
+      if (!renderer || isCleanedUp) return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderer.setSize(w, h);
     };
 
     window.addEventListener("resize", handleResize);
 
-    // 🚀 Animation Loop (Mouse Tracking + Mobile Auto-orbit Flashlight)
+    // 🚀 Render Loop
     const clock = new THREE.Clock();
 
     const animate = () => {
@@ -123,24 +106,24 @@ export default function ThreeScene() {
 
       const delta = clock.getDelta();
 
-      // ජංගම දුරකථන වලදී හෝ මවුස් එක ක්‍රියාත්මක නොවන විට ලයිට් එක ස්වයංක්‍රීයව වටේට ගමන් කරයි (Auto Mobile Mode)
+      // Mobile හෝ මවුස් එක පාවිච්චි නොකරන විට ස්වයංක්‍රීයව ලයිට් එක වටේට ගමන් කරයි
       if (!isUserActive) {
         autoAngle += delta * 0.8;
-        mouseX = Math.sin(autoAngle) * 1.2;
-        mouseY = Math.cos(autoAngle * 0.5) * 0.8;
+        mouseX = Math.sin(autoAngle) * 1.5;
+        mouseY = Math.cos(autoAngle * 0.5) * 1.0;
       }
 
-      // Smooth interpolation (මෘදු චලනයක් සඳහා)
-      targetX += (mouseX * 1.8 - targetX) * 0.05;
-      targetY += (mouseY * 1.8 - targetY) * 0.05;
+      // Smooth interpolation
+      targetX += (mouseX * 1.5 - targetX) * 0.05;
+      targetY += (mouseY * 1.5 - targetY) * 0.05;
 
-      // ෆ්ලෑෂ් ලයිට් එක මවුස් එක හෝ ස්වයංක්‍රීය පථය දිගේ ගමන් කරවීම
+    // Flashlight position update
       flashlight.position.x = targetX;
       flashlight.position.y = targetY;
 
-      // මූර්තිය ඉතා සෙමෙන් ස්වයංක්‍රීයව කැරකැවීම
-      sculptureMesh.rotation.x += delta * 0.1;
-      sculptureMesh.rotation.y += delta * 0.15;
+      // Mesh slow rotation
+      mesh.rotation.x += delta * 0.2;
+      mesh.rotation.y += delta * 0.3;
 
       renderer.render(scene, camera);
     };
@@ -153,8 +136,7 @@ export default function ThreeScene() {
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
-
-      geometry1.dispose();
+      geometry.dispose();
       material.dispose();
       renderer?.dispose();
     };
