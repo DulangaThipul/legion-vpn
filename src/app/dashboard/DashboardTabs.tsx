@@ -61,7 +61,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
   const [toastMsg, setToastMsg] = useState<{title: string, desc: string} | null>(null);
 
-  // 🚀 LIVE STATE SYNC: Admin Panel එකෙන් වෙනස් කරන දත්ත ක්ෂණිකව Sync වීම
+  // 🚀 LIVE STATE SYNC: Admin Panel එකෙන් දත්ත වෙනස් කළ විට Dashboard එක Live Sync වීම
   useEffect(() => {
     setUser(initialUser);
   }, [initialUser]);
@@ -76,7 +76,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   }
 
-  // 🚀 USER-ISOLATED PAYMENT HISTORY (ADMIN DELETIONS COMPATIBLE)
+  // 🚀 USER-ISOLATED PAYMENT HISTORY
   useEffect(() => {
     if (metaData.payments && Array.isArray(metaData.payments)) {
       setPayments(metaData.payments);
@@ -150,11 +150,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setShowCenterAlert(false);
   };
 
-  // 🚀 CRASH-PROOF CONFIG PARSER (SAFE AGAINST CRASHES & DELETIONS)
+  // 🚀 CRASH-PROOF CONFIG PARSER
   const parseConfigs = (rawText: string | null) => {
     if (!rawText || typeof rawText !== "string" || !rawText.trim()) return [];
     
-    // 1. JSON Array Format (Admin Deletion Safe)
     try {
       if (rawText.trim().startsWith("[") || rawText.trim().startsWith("{")) {
         const parsed = JSON.parse(rawText);
@@ -170,7 +169,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     } catch {}
 
-    // 2. Plain Text Blocks: 📦 [ Name ]\nvless://...
     try {
       const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
       let matches = [...rawText.matchAll(regex)];
@@ -196,10 +194,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const activeConfigs = parseConfigs(user?.vpnConfigKey);
 
-  // Safe Receipt Link Extractor for Review Notice
+  // 🚀 PENDING VERIFICATION CHECK (Only true if there is an actual slip/order pending)
   const pendingOrders = Array.isArray(metaData.pendingOrders) ? metaData.pendingOrders : [];
+  const hasVerifyingPayment = Array.isArray(metaData.payments) && metaData.payments.some((p: any) => p?.status === "Verifying");
+  const hasPendingReview = pendingOrders.length > 0 || hasVerifyingPayment;
+  
   const receiptMatch = typeof user?.vpnConfigKey === "string" ? user.vpnConfigKey.match(/Receipt:\s*(https?:\/\/[^\s]+)/i) : null;
-  const receiptLink = receiptMatch ? receiptMatch[1] : (pendingOrders[0]?.receipt || null);
+  const receiptLink = receiptMatch ? receiptMatch[1] : (pendingOrders[0]?.receipt || (Array.isArray(metaData.payments) ? metaData.payments.find((p: any) => p?.status === "Verifying")?.receipt : null));
 
   const isVerified = metaData.isPremium || payments.length > 0 || Boolean(activeConfigs.length > 0);
   const safeName = user?.name || "Premium User";
@@ -876,7 +877,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB (100% FIXED)
+              2. STORE TAB
           ======================== */}
           {activeTab === "buy" && (
              <div className="animate-fade-in">
@@ -884,7 +885,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === "All" ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
                    All ISPs
                  </button>
-                 {/* 🚀 BUG FIXED: ISP_LOGOS[isp] instead of undefined ISP_LOGOS[pkg] */}
                  {Object.keys(ISP_LOGOS).map(isp => (
                    <button key={isp} onClick={() => setActiveIsp(isp)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === isp ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
                      <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={isp} />
@@ -951,7 +951,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div className="animate-fade-in flex flex-col gap-6">
                <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
                
-               {user?.vpnStatus === "Suspended" && (
+               {/* 🚀 REVIEW NOTICE (ONLY SHOWN IF ACTUALLY PENDING REVIEW) */}
+               {hasPendingReview && (
                  <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
                    <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
                      <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
@@ -964,7 +965,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* PENDING PACKAGES CARD (AWAITING VERIFICATION APPEARS HERE WITHOUT OVERWRITING ACTIVE ONES) */}
+               {/* PENDING PACKAGES CARD */}
                {pendingOrders.length > 0 && (
                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
                    {pendingOrders.map((po: any, idx: number) => (
@@ -988,7 +989,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* ACTIVE CONFIGURATIONS */}
+               {/* ACTIVE CONFIGURATIONS & NO CONFIGS FALLBACK */}
                {activeConfigs.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     {activeConfigs.map((cfg, idx) => (
@@ -1005,12 +1006,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </div>
                     ))}
                   </div>
-               ) : pendingOrders.length === 0 && user?.vpnStatus !== "Suspended" ? (
-                  <div style={{ padding: "3rem", textAlign: "center", background: "rgba(15,15,24,0.7)", borderRadius: "16px" }}>
-                     <p style={{ color: "#9ca3af" }}>No active configurations assigned yet.</p>
-                     <button onClick={() => setActiveTab("buy")} style={{ marginTop: "1rem", background: "#6366f1", color: "#FFF", border: "none", padding: "0.8rem 1.8rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>Buy from Store</button>
+               ) : (
+                  /* 🚀 ALWAYS SHOWN WHEN CONFIGS ARE DELETED / EMPTY */
+                  <div style={{ padding: "3rem", textAlign: "center", background: "rgba(15,15,24,0.7)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                     <p style={{ color: "#9ca3af", fontSize: "1.05rem", margin: "0 0 1rem 0" }}>No active configurations assigned yet.</p>
+                     <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
                   </div>
-               ) : null}
+               )}
             </div>
           )}
 
