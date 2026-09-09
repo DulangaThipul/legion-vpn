@@ -13,9 +13,11 @@ export default function ThreeScene() {
         pointerEvents: "none",
         overflow: "hidden",
         background: "#000000",
+        transform: "translateZ(0)", // GPU Layer Promotion
+        backfaceVisibility: "hidden",
       }}
     >
-      {/* 🚀 Optimized Video Background for Mobile & Desktop */}
+      {/* 🚀 GPU Accelerated Video Background */}
       <video
         autoPlay
         muted
@@ -26,18 +28,22 @@ export default function ThreeScene() {
           position: "absolute",
           top: "50%",
           left: "50%",
-          width: "100%",
-          height: "100%",
+          minWidth: "100%",
+          minHeight: "100%",
+          width: "auto",
+          height: "auto",
           objectFit: "cover",
-          transform: "translate(-50%, -50%)",
+          transform: "translate3d(-50%, -50%, 0)", // Hardware accelerated movement
           willChange: "transform",
+          backfaceVisibility: "hidden",
+          pointerEvents: "none",
         }}
       >
         <source src="https://files.catbox.moe/w6juhp.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
 
-      {/* 🚀 Dark Overlay to blend perfectly with the site theme */}
+      {/* Dark Overlay */}
       <div
         style={{
           position: "absolute",
@@ -47,6 +53,7 @@ export default function ThreeScene() {
           height: "100%",
           background: "rgba(0, 0, 0, 0.45)",
           zIndex: 1,
+          pointerEvents: "none",
         }}
       />
     </div>
