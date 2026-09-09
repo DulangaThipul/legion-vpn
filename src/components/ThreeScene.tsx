@@ -16,23 +16,19 @@ export default function ThreeScene() {
     let renderer: THREE.WebGLRenderer | null = null;
     let isCleanedUp = false;
 
-    // 🚀 1. WEBGL INITIALIZATION WITH FALLBACK (BRAVE SHIELDS SAFE)
+    // 🚀 1. WEBGL INITIALIZATION (SAFE & OPTIMIZED)
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: false, // Low-end GPU memory optimization
+        antialias: false,
         powerPreference: "high-performance",
       });
     } catch {
-      run2DFallback(canvas);
       return;
     }
 
-    if (!renderer) {
-      run2DFallback(canvas);
-      return;
-    }
+    if (!renderer) return;
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
@@ -48,7 +44,7 @@ export default function ThreeScene() {
     );
     camera.position.z = 2.8;
 
-    // 🚀 3. 3D ENHANCED & LARGER STARFIELD
+    // 🚀 3. 3D ENHANCED & LARGER STARS (ඔබ ඉල්ලූ පරිදි ලොකු තාරකා)
     const starCount = 800; 
     const positions = new Float32Array(starCount * 3);
 
@@ -57,7 +53,6 @@ export default function ThreeScene() {
       const v = Math.random();
       const theta = u * 2.0 * Math.PI;
       const phi = Math.acos(2.0 * v - 1.0);
-      // තාරකා වල ගැඹුර වැඩි කිරීමට radius එක තරමක් පුළුල් කර ඇත
       const r = Math.cbrt(Math.random()) * 3.2;
 
       positions[i] = r * Math.sin(phi) * Math.cos(theta);
@@ -70,17 +65,17 @@ export default function ThreeScene() {
 
     const starMaterial = new THREE.PointsMaterial({
       color: 0x818cf8,
-      size: 0.045, // 🚀 තාරකා ප්‍රමාණය මඳක් විශාල කර ඇත (Larger Stars)
+      size: 0.045, // ලොකු කළ තාරකා ප්‍රමාණය
       transparent: true,
       opacity: 0.9,
       depthWrite: false,
-      sizeAttenuation: true, // 3D පෙනුම වැඩි කිරීමට දුර අනුව ප්‍රමාණය වෙනස් වේ
+      sizeAttenuation: true,
     });
 
     const starPoints = new THREE.Points(starGeometry, starMaterial);
     scene.add(starPoints);
 
-    // 🚀 4. 3D WIREFRAME ICOSAHEDRON
+    // 🚀 4. WIREFRAME ICOSAHEDRON SHAPE (ඔබ ඉල්ලූ හැඩය)
     const shapeGroup = new THREE.Group();
     const shapeGeometry = new THREE.IcosahedronGeometry(0.9, 1);
     const shapeMaterial = new THREE.MeshBasicMaterial({
@@ -94,18 +89,30 @@ export default function ThreeScene() {
     shapeGroup.add(shapeMesh);
     scene.add(shapeGroup);
 
-    // 🚀 5. 3D MOUSE PARALLAX TRACKING
+    // 🚀 5. MOUSE & TOUCH TRACKING (DESKTOP PARALLAX & MOBILE AUTO-ROTATE)
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
     let targetY = 0;
+    let isUserInteracting = false;
+    let autoRotateAngle = 0;
 
     const handleMouseMove = (e: MouseEvent) => {
+      isUserInteracting = true;
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
       mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        isUserInteracting = true;
+        mouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+      }
+    };
+
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
 
     // 🚀 6. RESIZE LISTENER
     const handleResize = () => {
@@ -119,22 +126,29 @@ export default function ThreeScene() {
 
     window.addEventListener("resize", handleResize);
 
-    // 🚀 7. DYNAMIC 3D RENDER LOOP
+    // 🚀 7. DYNAMIC RENDER LOOP (DESKTOP MOUSE TRACKING + MOBILE AUTO-ROTATE)
     const animate = () => {
       if (isCleanedUp) return;
       animationFrameId = requestAnimationFrame(animate);
 
-      // Smooth mouse interpolation for 3D depth effect
-      targetX += (mouseX * 0.5 - targetX) * 0.05;
-      targetY += (mouseY * 0.5 - targetY) * 0.05;
+      // ජංගම දුරකථන වලදී (Mobile view) හෝ මවුස් එක භාවිත නොකරන විට ස්වයංක්‍රීයව කැරකේ (Auto-rotate)
+      if (!isUserInteracting) {
+        autoRotateAngle += 0.005;
+        mouseX = Math.sin(autoRotateAngle) * 0.5;
+        mouseY = Math.cos(autoRotateAngle * 0.5) * 0.3;
+      }
 
-      // Starfield 3D rotation & parallax reaction
+      // Smooth interpolation for 3D depth effect
+      targetX += (mouseX * 0.6 - targetX) * 0.05;
+      targetY += (mouseY * 0.6 - targetY) * 0.05;
+
+      // Starfield rotation
       starPoints.rotation.x -= 0.0005;
       starPoints.rotation.y -= 0.0008;
       starPoints.rotation.x += (targetY * 0.2 - starPoints.rotation.x) * 0.03;
       starPoints.rotation.y += (targetX * 0.2 - starPoints.rotation.y) * 0.03;
 
-      // Icosahedron rotation & parallax reaction
+      // Icosahedron shape rotation matching mouse / auto-rotate
       shapeMesh.rotation.x += 0.004;
       shapeMesh.rotation.y += 0.006;
       shapeGroup.rotation.x = targetY;
@@ -149,6 +163,7 @@ export default function ThreeScene() {
     return () => {
       isCleanedUp = true;
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
 
@@ -161,38 +176,6 @@ export default function ThreeScene() {
       }
     };
   }, []);
-
-  const run2DFallback = (canvas: HTMLCanvasElement) => {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    const width = (canvas.width = window.innerWidth);
-    const height = (canvas.height = window.innerHeight);
-
-    const stars = Array.from({ length: 120 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: Math.random() * 2.2,
-      alpha: Math.random(),
-      speed: Math.random() * 0.02 + 0.005,
-    }));
-
-    const render = () => {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#818cf8";
-      for (const s of stars) {
-        s.alpha += s.speed;
-        ctx.globalAlpha = Math.abs(Math.sin(s.alpha));
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-  };
 
   return (
     <div
