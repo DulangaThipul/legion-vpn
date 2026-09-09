@@ -150,7 +150,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setShowCenterAlert(false);
   };
 
-  // 🚀 CRASH-PROOF CONFIG PARSER (FIXES 'receiptLink is not defined' ERROR)
+  // 🚀 CRASH-PROOF CONFIG PARSER
   const parseConfigs = (rawText: string | null) => {
     if (!rawText || !rawText.trim()) return [];
     
@@ -412,9 +412,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
+  // 🚀 STORE SELECTION HANDLERS
   const handleSelectPackage = (pkg: any) => {
-    if (pkg.type === "mobile") setSimWarningModal(pkg);
-    else proceedToCheckout(pkg);
+    if (pkg.type === "mobile") {
+      setSimWarningModal(pkg);
+    } else {
+      proceedToCheckout(pkg);
+    }
   };
 
   const proceedToCheckout = (pkg: any) => {
@@ -474,7 +478,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
-  const closeCheckout = () => { setModalPackage(null); setSimWarningModal(null); setCheckoutStep(1); setSelectedQuota(null); setSlipFile(null); };
+  const closeCheckout = () => { 
+    setModalPackage(null); 
+    setSimWarningModal(null); 
+    setCheckoutStep(1); 
+    setSelectedQuota(null); 
+    setSlipFile(null); 
+  };
 
   const handleAvatarSelect = async (gifPath: string) => {
     if (isUpdating) return;
@@ -1123,7 +1133,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* CHECKOUT MODAL */}
+          {/* 🚀 CLEAN SINGLE CHECKOUT MODAL (FIXED STORE) */}
           {modalPackage && !simWarningModal && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
               <div style={{ width: "100%", maxWidth: "560px", padding: "2rem", background: "#10101a", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", maxHeight: "90vh", overflowY: "auto" }}>
