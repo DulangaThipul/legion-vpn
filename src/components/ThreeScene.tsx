@@ -4,32 +4,37 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 export default function ThreeScene() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
     let animationFrameId: number;
     let renderer: THREE.WebGLRenderer | null = null;
     let isCleanedUp = false;
 
     try {
-      const width = window.innerWidth || 800;
-      const height = window.innerHeight || 600;
+      // 🚀 Window dimensions සෘජුවම ලබා ගැනීම නිසා 0 වීමේ ප්‍රශ්න ඇති නොවේ
+      const width = window.innerWidth;
+      const height = window.innerHeight;
 
-      // Scene & Camera Setup
+      // Renderer Setup
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: false,
+        powerPreference: "high-performance",
+      });
+
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
       camera.position.z = 1.2;
 
-      // Renderer Setup
-      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
-      renderer.setSize(width, height);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-      container.appendChild(renderer.domElement);
-
-      // Lights
+      // Lights (Original ambient & directional lights)
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
       scene.add(ambientLight);
 
@@ -90,16 +95,18 @@ export default function ThreeScene() {
       };
       window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
-      // Window Resize
+      // Window Resize Handler
       const handleResize = () => {
-        if (!container || !renderer || isCleanedUp) return;
-        camera.aspect = window.innerWidth / window.innerHeight;
+        if (!renderer || isCleanedUp) return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        camera.aspect = w / h;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(w, h);
       };
       window.addEventListener("resize", handleResize);
 
-      // Animation Loop
+      // Animation Loop (Matching original rotation speeds & interpolation)
       const clock = new THREE.Clock();
       const animate = () => {
         if (isCleanedUp) return;
@@ -114,7 +121,7 @@ export default function ThreeScene() {
         icosaMesh.rotation.x += delta * 0.2;
         icosaMesh.rotation.y += delta * 0.3;
 
-        // Mouse interpolation
+        // Smooth mouse interpolation
         const targetX = (mouseY * Math.PI) / 5;
         const targetY = (mouseX * Math.PI) / 5;
         shapeGroup.rotation.x += (targetX - shapeGroup.rotation.x) * 0.05;
@@ -135,9 +142,6 @@ export default function ThreeScene() {
         icosaGeometry.dispose();
         icosaMaterial.dispose();
         renderer?.dispose();
-        if (container && renderer?.domElement && container.contains(renderer.domElement)) {
-          container.removeChild(renderer.domElement);
-        }
       };
     } catch (err) {
       console.error("Three.js init error:", err);
@@ -146,7 +150,6 @@ export default function ThreeScene() {
 
   return (
     <div
-      ref={containerRef}
       style={{
         position: "absolute",
         top: 0,
@@ -157,6 +160,15 @@ export default function ThreeScene() {
         pointerEvents: "none",
         overflow: "hidden",
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+      />
+    </div>
   );
 }
