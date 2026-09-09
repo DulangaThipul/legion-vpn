@@ -46,69 +46,82 @@ export default function ThreeScene() {
       0.1,
       1000
     );
-    camera.position.set(0, 1.5, 3.2);
+    camera.position.set(0, 2.0, 3.8);
     camera.lookAt(0, 0, 0);
 
-    // 🚀 3. MILKY WAY GALAXY STARFIELD (SPIRAL DISK DISTRIBUTION)
-    const starCount = 1500; // තාරකා සංඛ්‍යාව වැඩි කර ගැලැක්සි ස්වභාවය වැඩි කර ඇත
+    // 🚀 3. REAL SPIRAL MILKY WAY GALAXY (LARGE GLOWING STARS & ARMS)
+    const starCount = 2200; 
     const positions = new Float32Array(starCount * 3);
+    const colors = new Float32Array(starCount * 3);
+
+    // ගැලැක්සියේ මැද Core එකේ වර්ණය (රන්වන්/සුදු) සහ පිටත බාහු වල වර්ණය (නිල්/පර්පල්)
+    const colorInside = new THREE.Color("#fff5cb");
+    const colorOutside = new THREE.Color("#818cf8");
 
     for (let i = 0; i < starCount; i++) {
       const i3 = i * 3;
       
-      // Galaxy Spiral Arms Mathematics
-      const radius = Math.random() * 4.5;
-      const spinAngle = radius * 1.2;
-      const branchAngle = ((i % 3) * 2 * Math.PI) / 3; // බාහු 3 කින් යුත් ගැලැක්සියක්
+      // සැබෑ ගැලැක්සි සර්පිලාකාර සමීකරණය (Logarithmic Spiral Arms - Arms 4 ක්)
+      const radius = Math.random() * 5.0;
+      const spinAngle = radius * 1.4;
+      const branchAngle = ((i % 4) * Math.PI * 2) / 4; 
       
-      const theta = branchAngle + spinAngle + (Math.random() - 0.5) * 0.5;
+      const theta = branchAngle + spinAngle + (Math.random() - 0.5) * 0.4;
 
-      const x = Math.cos(theta) * radius + (Math.random() - 0.5) * 0.3;
-      // මැද කොටස (Core එක) ඝනකම් සහ ඈතට යද්දී තුනී වන තැටියක් මෙන් සැකසීම
-      const y = (Math.random() - 0.5) * (0.8 / (radius + 0.4)); 
-      const z = Math.sin(theta) * radius + (Math.random() - 0.5) * 0.3;
+      const x = Math.cos(theta) * radius + (Math.random() - 0.5) * 0.4;
+      const y = (Math.random() - 0.5) * (0.6 / (radius + 0.3)); // මැද ඝනකම් තැටියක් වීම
+      const z = Math.sin(theta) * radius + (Math.random() - 0.5) * 0.4;
 
       positions[i3] = x;
       positions[i3 + 1] = y;
       positions[i3 + 2] = z;
+
+      // තාරකා වල වර්ණ මිශ්‍ර කිරීම (Core සිට පිටතට)
+      const mixedColor = colorInside.clone();
+      mixedColor.lerp(colorOutside, radius / 5.0);
+      
+      colors[i3] = mixedColor.r;
+      colors[i3 + 1] = mixedColor.g;
+      colors[i3 + 2] = mixedColor.b;
     }
 
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    starGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
     const starMaterial = new THREE.PointsMaterial({
-      color: 0xa29bfe, // 🌌 Cosmic purple-blue galaxy tint
-      size: 0.07,     // 🚀 ඔබ ඉල්ලූ පරිදි තාරකා ප්‍රමාණය විශාල කර ඇත (Larger Stars)
+      size: 0.11, // 🚀 ඔබ ඉල්ලූ පරිදි තාරකා ප්‍රමාණය හොඳින් පෙනෙන පරිදි විශාල කර ඇත
       transparent: true,
       opacity: 0.95,
       depthWrite: false,
       sizeAttenuation: true,
-      blending: THREE.AdditiveBlending, // තාරකා එකිනෙක මත හැමී බබළන ස්වභාවය
+      vertexColors: true, // වර්ණ විවිධත්වය සක්‍රීය කිරීම
+      blending: THREE.AdditiveBlending, // තාරකා එකිනෙක මත බබළන ස්වභාවය
     });
 
     const starPoints = new THREE.Points(starGeometry, starMaterial);
     
-    // ගැලැක්සිය සැබෑ පෙනුමක් ලබා ගැනීමට මඳක් ඇල කර තැබීම (Tilt)
+    // ගැලැක්සිය 3D පෙනුම සඳහා මඳක් ඇල කර තැබීම
     const galaxyGroup = new THREE.Group();
-    galaxyGroup.rotation.x = Math.PI / 6;
+    galaxyGroup.rotation.x = Math.PI / 5;
     galaxyGroup.add(starPoints);
     scene.add(galaxyGroup);
 
-    // 🚀 4. 3D WIREFRAME ICOSAHEDRON (මැද පිහිටන හරය/Core එක ලෙස)
+    // 🚀 4. 3D WIREFRAME ICOSAHEDRON (ගැලැක්සියේ හරය/Core එක ලෙස මැද පිහිටයි)
     const shapeGroup = new THREE.Group();
-    const shapeGeometry = new THREE.IcosahedronGeometry(0.8, 1);
+    const shapeGeometry = new THREE.IcosahedronGeometry(0.7, 1);
     const shapeMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       wireframe: true,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.45,
     });
 
     const shapeMesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
     shapeGroup.add(shapeMesh);
     scene.add(shapeGroup);
 
-    // 🚀 5. MOUSE PARALLAX & AUTOMATIC MOVEMENT TRACKING
+    // 🚀 5. MOUSE PARALLAX & AUTO MOVEMENT
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
@@ -133,25 +146,24 @@ export default function ThreeScene() {
 
     window.addEventListener("resize", handleResize);
 
-    // 🚀 7. DYNAMIC GALAXY ROTATION & ANIMATION LOOP
+    // 🚀 7. RENDER LOOP (GALAXY ROTATION)
     const animate = () => {
       if (isCleanedUp) return;
       animationFrameId = requestAnimationFrame(animate);
 
-      // Smooth mouse interpolation
       targetX += (mouseX * 0.4 - targetX) * 0.05;
       targetY += (mouseY * 0.4 - targetY) * 0.05;
 
-      // 🌌 සැබෑ ගැලැක්සියක් මෙන් මුළු තාරකා පද්ධතියම ස්වයංක්‍රීයව සෙමෙන් කැරකැවීම (Automatic movement)
-      galaxyGroup.rotation.y += 0.0015; 
+      // 🌌 සැබෑ ගැලැක්සියක් මෙන් මුළු තාරකා පද්ධතියම ස්වයංක්‍රීයව පරිභ්‍රමණය වීම
+      galaxyGroup.rotation.y += 0.002; 
 
-      // Parallax interaction with mouse
-      galaxyGroup.rotation.x = (Math.PI / 6) + targetY * 0.3;
-      galaxyGroup.rotation.z = targetX * 0.3;
+      // Parallax effect
+      galaxyGroup.rotation.x = (Math.PI / 5) + targetY * 0.25;
+      galaxyGroup.rotation.z = targetX * 0.25;
 
-      // Icosahedron core rotation
-      shapeMesh.rotation.x += 0.003;
-      shapeMesh.rotation.y += 0.005;
+      // Core wireframe rotation
+      shapeMesh.rotation.x += 0.004;
+      shapeMesh.rotation.y += 0.007;
       shapeGroup.rotation.x = targetY;
       shapeGroup.rotation.y = targetX;
 
