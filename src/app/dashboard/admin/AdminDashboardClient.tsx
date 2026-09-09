@@ -311,7 +311,31 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     const updatedMeta = { ...metaData, payments: updatedPayments };
     onUpdate(userId, {
       subscriptionLink: JSON.stringify(updatedMeta),
-      vpnStatus: "Active" // Auto-activate user upon verifying payment
+      vpnStatus: "Active"
+    });
+  };
+
+  // 🚀 DELETE PAYMENT HANDLER
+  const handleDeletePayment = (paymentIdentifier: any) => {
+    if (!confirm("Are you sure you want to permanently delete this payment slip record?")) return;
+
+    const updatedPayments = (metaData.payments || []).filter((p: any) => {
+      return p.id !== paymentIdentifier && p.date !== paymentIdentifier;
+    });
+
+    // Remove from pendingOrders if present
+    const updatedPendingOrders = (metaData.pendingOrders || []).filter((po: any) => {
+      return po.id !== paymentIdentifier && po.date !== paymentIdentifier;
+    });
+
+    const updatedMeta = { 
+      ...metaData, 
+      payments: updatedPayments, 
+      pendingOrders: updatedPendingOrders 
+    };
+
+    onUpdate(userId, {
+      subscriptionLink: JSON.stringify(updatedMeta),
     });
   };
 
@@ -475,7 +499,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         )}
       </div>
 
-      {/* 🧾 PAYMENT SLIPS & VERIFICATION (WITH VERIFY BUTTON) */}
+      {/* 🧾 PAYMENT SLIPS & VERIFICATION (WITH VERIFY & DELETE BUTTONS) */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>🧾 Payment Slips & History</h3>
         
@@ -495,7 +519,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                     <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF" }}>{p?.package || "VPN Plan"}</h4>
                     <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>{pDate ? pDate.toLocaleString() : "Date recorded"}</p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
                     <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                     {p?.receipt && (
                       <a href={p.receipt} target="_blank" rel="noreferrer" style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.4)", padding: "0.45rem 0.9rem", borderRadius: "6px", textDecoration: "none", fontSize: "0.8rem", fontWeight: "bold" }}>
@@ -503,7 +527,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                       </a>
                     )}
                     
-                    {/* 🚀 VERIFY PAYMENT BUTTON */}
+                    {/* VERIFY PAYMENT BUTTON */}
                     {isVerified ? (
                       <span style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", padding: "0.45rem 0.9rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold" }}>
                         ✅ Verified
@@ -516,6 +540,15 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                         ✓ Verify Payment
                       </button>
                     )}
+
+                    {/* 🚀 DELETE PAYMENT SLIP BUTTON */}
+                    <button
+                      onClick={() => handleDeletePayment(p?.id || p?.date)}
+                      style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.45rem 0.9rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}
+                      title="Delete this payment record"
+                    >
+                      🗑️ Delete
+                    </button>
                   </div>
                 </div>
               );
