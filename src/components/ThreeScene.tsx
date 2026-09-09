@@ -16,12 +16,11 @@ export default function ThreeScene() {
     let renderer: THREE.WebGLRenderer | null = null;
     let isCleanedUp = false;
 
-    // 🚀 1. WEBGL INITIALIZATION (SAFE & OPTIMIZED)
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: false,
+        antialias: true,
         powerPreference: "high-performance",
       });
     } catch {
@@ -31,70 +30,83 @@ export default function ThreeScene() {
     if (!renderer) return;
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000); // සම්පූර්ණ කළු පාට අහස (Dark Sky)
+    scene.background = new THREE.Color(0x020202); // සම්පූර්ණ අඳුරු පසුබිම
 
-    // 🚀 2. CAMERA SETUP
+    // 🚀 Camera Setup
     const camera = new THREE.PerspectiveCamera(
-      60,
-      window.innerWidth / window.innerHeight,
+      50,
+      (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
       0.1,
       1000
     );
-    camera.position.set(0, 1.5, 4);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, 0, 4.5);
 
-    // 🚀 3. MATRIX DIGITAL CLOUDS (GRID PARTICLES)
-    const particleCount = 2500;
-    const positions = new Float32Array(particleCount * 3);
-    const scales = new Float32Array(particleCount);
+    // 🚀 Cinematic Lighting (අඳුරු පරිසරයක චලනය වන Torch / Spotlight)
+    const ambientLight = new THREE.AmbientLight(0x111115, 0.4); // ඉතා අවම ආලෝකයක්
+    scene.add(ambientLight);
 
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      // වලාකුළු මෙන් පහළ තට්ටුවක පැතිරී යන සේ සකස් කිරීම
-      positions[i3] = (Math.random() - 0.5) * 8;     // X axis (Width)
-      positions[i3 + 1] = -0.5 + Math.random() * 1.2; // Y axis (Height - පහළ වලාකුළු මට්ටම)
-      positions[i3 + 2] = (Math.random() - 0.5) * 6;  // Z axis (Depth)
+    // ප්‍රධාන චලනය වන ෆ්ලෑෂ් ලයිට් එක (Moving Flashlight)
+    const flashlight = new THREE.PointLight(0xfff2e0, 3.5, 8);
+    flashlight.position.set(0, 0, 2);
+    scene.add(flashlight);
 
-      scales[i] = Math.random();
-    }
+    // ලයිට් එකේ පිහිටීම පෙන්වන කුඩා දීප්තිමත් ලපයක් (ঐচ্ছিক)
+    const bulbGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+    const bulbMaterial = new THREE.MeshBasicMaterial({ color: 0xfff2e0 });
+    const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
+    flashlight.add(bulb);
 
-    const cloudGeometry = new THREE.BufferGeometry();
-    cloudGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    // 🚀 3D Sculpture / Stone Relief (මූර්තියක් වැනි සංකීර්ණ හැඩයක්)
+    const sculptureGroup = new THREE.Group();
 
-    // Matrix Green & Cyberpunk Cyan වර්ණ සහිත Glowing Particles
-    const cloudMaterial = new THREE.PointsMaterial({
-      color: 0x00ff66, // Matrix Neon Green
-      size: 0.05,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
+    // අද්භූත සුවිශේෂී මූර්ති ස්වරූපයක් සඳහා Knot සහ Torus එකතු කිරීම
+    const geometry1 = new THREE.TorusKnotGeometry(1, 0.3, 128, 32);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x888890,
+      roughness: 0.75,
+      metalness: 0.25,
+      bumpScale: 0.05,
     });
 
-    const cloudPoints = new THREE.Points(cloudGeometry, cloudMaterial);
-    scene.add(cloudPoints);
+    const sculptureMesh = new THREE.Mesh(geometry1, material);
+    sculptureGroup.add(sculptureMesh);
+    scene.add(sculptureGroup);
 
-    // 🚀 4. MOUSE PARALLAX INTERACTION
+    // 🚀 Mouse & Touch Tracking Variables
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
     let targetY = 0;
+    let isUserActive = false;
+    let autoAngle = 0;
 
     const handleMouseMove = (e: MouseEvent) => {
+      isUserActive = true;
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
       mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
     };
 
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        isUserActive = true;
+        mouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+      }
+    };
 
-    // 🚀 5. RESIZE LISTENER
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+
+    // Resize Handler
     const handleResize = () => {
-      if (!renderer || isCleanedUp) return;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      if (!container || !renderer || isCleanedUp) return;
+      const width = container.clientWidth || window.innerWidth;
+      const height = container.clientHeight || window.innerHeight;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
@@ -102,57 +114,48 @@ export default function ThreeScene() {
 
     window.addEventListener("resize", handleResize);
 
-    // 🚀 6. ANIMATION LOOP (WAVE & MATRIX MOTION)
+    // 🚀 Animation Loop (Mouse Tracking + Mobile Auto-orbit Flashlight)
     const clock = new THREE.Clock();
 
     const animate = () => {
       if (isCleanedUp) return;
       animationFrameId = requestAnimationFrame(animate);
 
-      const elapsedTime = clock.getElapsedTime();
+      const delta = clock.getDelta();
 
-      // Mouse smoothing
-      targetX += (mouseX * 0.5 - targetX) * 0.05;
-      targetY += (mouseY * 0.5 - targetY) * 0.05;
-
-      // වලාකුළු වල රැළි ස්වභාවය (Wave motion like rolling clouds)
-      const positionAttribute = cloudGeometry.attributes.position as THREE.BufferAttribute;
-      const vertex = new THREE.Vector3();
-
-      for (let i = 0; i < particleCount; i++) {
-        positionAttribute.getX(i);
-        const z = positionAttribute.getZ(i);
-
-        // Sine wave එකක් මඟින් වලාකුළු මෘදුව ගමන් කරවීම
-        const y = -0.5 + Math.sin(elapsedTime * 0.8 + positionAttribute.getX(i) * 1.5) * 0.15;
-        positionAttribute.setY(i, y);
-
-        // ඉදිරියට ගලා යන හැඟීමක් ලබා දීම
-        let newZ = z + 0.003;
-        if (newZ > 3) newZ = -3;
-        positionAttribute.setZ(i, newZ);
+      // ජංගම දුරකථන වලදී හෝ මවුස් එක ක්‍රියාත්මක නොවන විට ලයිට් එක ස්වයංක්‍රීයව වටේට ගමන් කරයි (Auto Mobile Mode)
+      if (!isUserActive) {
+        autoAngle += delta * 0.8;
+        mouseX = Math.sin(autoAngle) * 1.2;
+        mouseY = Math.cos(autoAngle * 0.5) * 0.8;
       }
-      positionAttribute.needsUpdate = true;
 
-      // Camera rotation based on mouse
-      camera.position.x = targetX * 0.8;
-      camera.position.y = 1.5 + targetY * 0.4;
-      camera.lookAt(0, 0, 0);
+      // Smooth interpolation (මෘදු චලනයක් සඳහා)
+      targetX += (mouseX * 1.8 - targetX) * 0.05;
+      targetY += (mouseY * 1.8 - targetY) * 0.05;
+
+      // ෆ්ලෑෂ් ලයිට් එක මවුස් එක හෝ ස්වයංක්‍රීය පථය දිගේ ගමන් කරවීම
+      flashlight.position.x = targetX;
+      flashlight.position.y = targetY;
+
+      // මූර්තිය ඉතා සෙමෙන් ස්වයංක්‍රීයව කැරකැවීම
+      sculptureMesh.rotation.x += delta * 0.1;
+      sculptureMesh.rotation.y += delta * 0.15;
 
       renderer.render(scene, camera);
     };
 
     animate();
 
-    // CLEANUP
     return () => {
       isCleanedUp = true;
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
 
-      cloudGeometry.dispose();
-      cloudMaterial.dispose();
+      geometry1.dispose();
+      material.dispose();
       renderer?.dispose();
     };
   }, []);
