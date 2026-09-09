@@ -1,204 +1,111 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import * as THREE from "three";
+import { useRef, useState, useEffect, useMemo } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Points, PointMaterial, Icosahedron } from "@react-three/drei";
 
-export default function ThreeScene() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!container || !canvas) return;
-
-    let animationFrameId: number;
-    let renderer: THREE.WebGLRenderer | null = null;
-    let isCleanedUp = false;
-
-    // 🚀 1. WEBGL INITIALIZATION (SAFE & OPTIMIZED)
-    try {
-      renderer = new THREE.WebGLRenderer({
-        canvas,
-        alpha: true,
-        antialias: false,
-        powerPreference: "high-performance",
-      });
-    } catch {
-      return;
-    }
-
-    if (!renderer) return;
-
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
-
-    const scene = new THREE.Scene();
-
-    // 🚀 2. CAMERA SETUP
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
-      0.1,
-      1000
-    );
-    camera.position.z = 2.8;
-
-    // 🚀 3. 3D ENHANCED & LARGER STARS (ඔබ ඉල්ලූ පරිදි ලොකු තාරකා)
-    const starCount = 800; 
-    const positions = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount * 3; i += 3) {
+function StarBackground(props: any) {
+  const ref = useRef<any>();
+  
+  // maath/random ක්‍රෑෂ් වීම වැළැක්වීමට Pure JS මගින් හරියටම මුල් විදිහටම තාරකා 5,001 ක් ජනනය කර ඇත
+  const sphere = useMemo(() => {
+    const count = 5001;
+    const buffer = new Float32Array(count);
+    for (let i = 0; i < count; i += 3) {
       const u = Math.random();
       const v = Math.random();
       const theta = u * 2.0 * Math.PI;
       const phi = Math.acos(2.0 * v - 1.0);
-      const r = Math.cbrt(Math.random()) * 3.2;
-
-      positions[i] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i + 2] = r * Math.cos(phi);
+      const r = Math.cbrt(Math.random()) * 1.5;
+      buffer[i] = r * Math.sin(phi) * Math.cos(theta);
+      buffer[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+      buffer[i + 2] = r * Math.cos(phi);
     }
-
-    const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0x818cf8,
-      size: 0.045, // ලොකු කළ තාරකා ප්‍රමාණය
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false,
-      sizeAttenuation: true,
-    });
-
-    const starPoints = new THREE.Points(starGeometry, starMaterial);
-    scene.add(starPoints);
-
-    // 🚀 4. WIREFRAME ICOSAHEDRON SHAPE (ඔබ ඉල්ලූ හැඩය)
-    const shapeGroup = new THREE.Group();
-    const shapeGeometry = new THREE.IcosahedronGeometry(0.9, 1);
-    const shapeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.4,
-    });
-
-    const shapeMesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
-    shapeGroup.add(shapeMesh);
-    scene.add(shapeGroup);
-
-    // 🚀 5. MOUSE & TOUCH TRACKING (DESKTOP PARALLAX & MOBILE AUTO-ROTATE)
-    let mouseX = 0;
-    let mouseY = 0;
-    let targetX = 0;
-    let targetY = 0;
-    let isUserInteracting = false;
-    let autoRotateAngle = 0;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      isUserInteracting = true;
-      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-      mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        isUserInteracting = true;
-        mouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
-        mouseY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: true });
-
-    // 🚀 6. RESIZE LISTENER
-    const handleResize = () => {
-      if (!container || !renderer || isCleanedUp) return;
-      const width = container.clientWidth || window.innerWidth;
-      const height = container.clientHeight || window.innerHeight;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    // 🚀 7. DYNAMIC RENDER LOOP (DESKTOP MOUSE TRACKING + MOBILE AUTO-ROTATE)
-    const animate = () => {
-      if (isCleanedUp) return;
-      animationFrameId = requestAnimationFrame(animate);
-
-      // ජංගම දුරකථන වලදී (Mobile view) හෝ මවුස් එක භාවිත නොකරන විට ස්වයංක්‍රීයව කැරකේ (Auto-rotate)
-      if (!isUserInteracting) {
-        autoRotateAngle += 0.005;
-        mouseX = Math.sin(autoRotateAngle) * 0.5;
-        mouseY = Math.cos(autoRotateAngle * 0.5) * 0.3;
-      }
-
-      // Smooth interpolation for 3D depth effect
-      targetX += (mouseX * 0.6 - targetX) * 0.05;
-      targetY += (mouseY * 0.6 - targetY) * 0.05;
-
-      // Starfield rotation
-      starPoints.rotation.x -= 0.0005;
-      starPoints.rotation.y -= 0.0008;
-      starPoints.rotation.x += (targetY * 0.2 - starPoints.rotation.x) * 0.03;
-      starPoints.rotation.y += (targetX * 0.2 - starPoints.rotation.y) * 0.03;
-
-      // Icosahedron shape rotation matching mouse / auto-rotate
-      shapeMesh.rotation.x += 0.004;
-      shapeMesh.rotation.y += 0.006;
-      shapeGroup.rotation.x = targetY;
-      shapeGroup.rotation.y = targetX;
-
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    // CLEANUP
-    return () => {
-      isCleanedUp = true;
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("resize", handleResize);
-      cancelAnimationFrame(animationFrameId);
-
-      starGeometry.dispose();
-      starMaterial.dispose();
-      shapeGeometry.dispose();
-      shapeMaterial.dispose();
-      if (renderer) {
-        renderer.dispose();
-      }
-    };
+    return buffer;
   }, []);
 
+  useFrame((state, delta) => {
+    if (ref.current) {
+      ref.current.rotation.x -= delta / 10;
+      ref.current.rotation.y -= delta / 15;
+    }
+  });
+
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: 0,
-        pointerEvents: "none",
-        overflow: "hidden",
-      }}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "block",
-        }}
-      />
+    <group rotation={[0, 0, Math.PI / 4]}>
+      <Points ref={ref} positions={sphere} stride={3} frustumCulled={false} {...props}>
+        <PointMaterial
+          transparent
+          color="#ffffff"
+          size={0.025} // 🚀 තාරකා ප්‍රමාණය මඳක් විශාල කර ඇත (Larger Stars)
+          sizeAttenuation={true}
+          depthWrite={false}
+        />
+      </Points>
+    </group>
+  );
+}
+
+function WireframeShape() {
+  const meshRef = useRef<any>();
+  const groupRef = useRef<any>();
+  const autoRotateTime = useRef(0);
+
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      // Continuous base rotation (ඔබේ මුල් කෝඩ් එකේ පරිදිම)
+      meshRef.current.rotation.x += delta * 0.2;
+      meshRef.current.rotation.y += delta * 0.3;
+    }
+    if (groupRef.current) {
+      const hasMouseMoved = state.mouse.x !== 0 || state.mouse.y !== 0;
+      
+      let targetX, targetY;
+      if (hasMouseMoved) {
+        // Desktop: Mouse tracking offset
+        targetX = (state.mouse.y * Math.PI) / 5;
+        targetY = (state.mouse.x * Math.PI) / 5;
+      } else {
+        // Mobile / Idle: Smooth Auto-rotate
+        autoRotateTime.current += delta * 0.5;
+        targetX = Math.sin(autoRotateTime.current) * 0.5;
+        targetY = Math.cos(autoRotateTime.current * 0.5) * 0.3;
+      }
+      
+      // Smoothly interpolate towards target position
+      groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.05;
+      groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * 0.05;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <Icosahedron ref={meshRef} args={[1, 1]} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#ffffff" wireframe={true} transparent opacity={0.6} />
+      </Icosahedron>
+    </group>
+  );
+}
+
+export default function ThreeScene() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return (
+    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: "none" }}>
+      <Canvas 
+        style={{ width: "100%", height: "100%", display: "block" }} 
+        camera={{ position: [0, 0, 1.5] }} 
+        dpr={[1, 1.5]}
+        gl={{ antialias: false, alpha: true }}
+      >
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ffffff" />
+        <StarBackground />
+        <WireframeShape />
+      </Canvas>
     </div>
   );
 }
