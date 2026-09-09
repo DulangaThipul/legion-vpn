@@ -145,12 +145,59 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setShowCenterAlert(false);
   };
 
-  const isVerified = metaData.isPremium || payments.length > 0 || Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5);
+  // 🚀 CRASH-PROOF CONFIG PARSER (SUPPORTS CLEAN ADMIN DELETIONS & JSON FORMATS)
+  const parseConfigs = (rawText: string | null) => {
+    if (!rawText || !rawText.trim()) return { configs: [], receiptLink: null };
 
+    let receiptLink: string | null = null;
+    const receiptMatch = rawText.match(/Receipt:\s*(https?:\/\/[^\s]+)/i);
+    if (receiptMatch) receiptLink = receiptMatch[1];
+
+    // 1. If stored as a JSON array (supports programmatic deletions from Admin)
+    try {
+      if (rawText.trim().startsWith("[") || rawText.trim().startsWith("{")) {
+        const parsed = JSON.parse(rawText);
+        if (Array.isArray(parsed)) {
+          const configs = parsed
+            .filter((item: any) => item && typeof item === "object" && item.code && item.code.trim().length > 0)
+            .map((item: any, idx: number) => ({
+              name: item.name?.trim() || `Server ${idx + 1}`,
+              code: item.code.trim()
+            }))
+            .filter(c => !c.name.toLowerCase().includes("payment verifying"));
+          return { configs, receiptLink };
+        }
+      }
+    } catch {}
+
+    // 2. Format: 📦 [ Package Name ]\nvless://...
+    const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
+    let matches = [...rawText.matchAll(regex)];
+    let configs: { name: string; code: string }[] = [];
+
+    if (matches.length > 0) {
+      configs = matches
+        .map(m => ({ name: m[1]?.trim() || "VPN Configuration", code: m[2]?.trim() || "" }))
+        .filter(c => !c.name.toLowerCase().includes("payment verifying") && c.code.length > 0);
+    } else if (!rawText.includes("Payment Verifying")) {
+      const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
+      if (vlessLinks) {
+        configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link.trim() }));
+      } else if (rawText.trim().length > 5) {
+        configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
+      }
+    }
+
+    return { configs, receiptLink };
+  };
+
+  const { configs: activeConfigs, receiptLink } = parseConfigs(user?.vpnConfigKey);
+
+  const isVerified = metaData.isPremium || payments.length > 0 || Boolean(activeConfigs.length > 0);
   const safeName = user?.name || "Premium User";
   const safeEmail = user?.email || "";
   
-  const hasActivePlan = Boolean(user?.vpnConfigKey && user.vpnConfigKey.length > 5 && !user.vpnConfigKey.includes("Payment Verifying"));
+  const hasActivePlan = activeConfigs.length > 0;
   const now = new Date().getTime();
   const expiry = user?.expiryDate ? new Date(user.expiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
@@ -164,24 +211,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (!hasRouter && activeNetworkType === "router") setActiveNetworkType("all");
     if (!hasMobile && activeNetworkType === "mobile") setActiveNetworkType("all");
   }, [activeIsp, hasRouter, hasMobile, activeNetworkType]);
-
-  const parseConfigs = (rawText: string | null) => {
-    if (!rawText) return [];
-    const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
-    let matches = [...rawText.matchAll(regex)];
-    let configs = [];
-    if (matches.length > 0) {
-      configs = matches
-        .map(m => ({ name: m[1].trim(), code: m[2].trim() }))
-        .filter(c => !c.name.toLowerCase().includes("payment verifying") && c.code.length > 0);
-    } else if (!rawText.includes("Payment Verifying")) {
-      const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
-      if (vlessLinks) configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link }));
-      else if (rawText.trim().length > 5) configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
-    }
-    return configs;
-  };
-  const activeConfigs = parseConfigs(user?.vpnConfigKey);
 
   // 🚀 STRIP BRACKETS [...] BEFORE COPYING
   const handleCopyCleanCode = (text: string) => {
@@ -287,7 +316,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const cancelTest = () => { setStState("idle"); setGaugeValue(0); };
 
-  // 🚀 FIXED: LATENCY PING TEST (REACTIVE & NO-CORS FAILSAFE)
+  // 🚀 FIXED: LATENCY PING TEST
   const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
   const [isPinging, setIsPinging] = useState(false);
 
@@ -337,7 +366,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
-  // 🚀 FIXED: WEBRTC LEAK TEST (SAFE CANDIDATE PARSING & ERROR CATCHING)
+  // 🚀 FIXED: WEBRTC LEAK TEST
   const [leakIPs, setLeakIPs] = useState<string[]>([]);
   const [isCheckingLeak, setIsCheckingLeak] = useState(false);
 
@@ -395,7 +424,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setSelectedQuota(null);
   };
 
-  // 🚀 DIRECT UPLOAD VIA CLOUDINARY (UNSIGNED PRESET: legion_slips)
+  // 🚀 CLOUDINARY DIRECT UPLOAD (UNSIGNED PRESET: legion_slips)
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
@@ -592,410 +621,129 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
               )}
 
-              {/* ACTIVE TOOL VIEW */}
-              {activeTool ? (
-                <div style={{ background: "rgba(15,15,24,0.95)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                    <h2 style={{ margin: 0, color: "#FFF", fontSize: "1.3rem" }}>
-                      {activeTool === "speed" && "🚀 Legion Network Speedtest"}
-                      {activeTool === "ip" && "🌍 Connection & IP Test"}
-                      {activeTool === "ping" && "⚡ Latency (Ping) Test"}
-                      {activeTool === "webrtc" && "🛡️ WebRTC Leak Test"}
-                    </h2>
-                    <button onClick={() => { setActiveTool(null); cancelTest(); }} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close</button>
-                  </div>
-
-                  {/* SPEEDTEST */}
-                  {activeTool === "speed" && (
-                    <div style={{ background: "#08080c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", padding: "2rem 1.5rem", maxWidth: "680px", margin: "0 auto", position: "relative" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#FFF", fontWeight: "bold", letterSpacing: "1.5px", fontSize: "0.9rem" }}>
-                          SPEEDTEST
-                        </div>
-                        <div style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
-                          Ping <strong style={{ color: "#FFF" }}>{stPing} ms</strong>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
-                        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "0.8rem 1rem" }}>
-                          <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", letterSpacing: "1px" }}>↓ DOWNLOAD Mbps</p>
-                          <h3 style={{ margin: "0.3rem 0 0 0", fontSize: "1.4rem", color: "#FFF", fontWeight: "bold" }}>{stDown}</h3>
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "0.8rem 1rem" }}>
-                          <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", letterSpacing: "1px" }}>↑ UPLOAD Mbps</p>
-                          <h3 style={{ margin: "0.3rem 0 0 0", fontSize: "1.4rem", color: "#FFF", fontWeight: "bold" }}>{stUp}</h3>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "2rem 0" }}>
-                        <div style={{ position: "relative", width: "300px", height: "160px", display: "flex", justifyContent: "center" }}>
-                          <svg width="300" height="160" viewBox="0 0 300 160" style={{ overflow: "visible", zIndex: 10 }}>
-                            <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" strokeLinecap="round" />
-                            <path d="M 30 150 A 120 120 0 0 1 270 150" fill="none" stroke={stState === "uploading" ? "#8b5cf6" : "#22c55e"} strokeWidth="12" strokeLinecap="round" 
-                                  strokeDasharray="377" 
-                                  strokeDashoffset={377 - (377 * gaugeValue)} 
-                                  style={{ transition: "stroke-dashoffset 0.15s ease-out, stroke 0.3s ease" }} />
-                            <g transform={`translate(150, 150) rotate(${-90 + (gaugeValue * 180)})`} style={{ transition: "transform 0.15s cubic-bezier(0.1, 0.9, 0.2, 1)" }}>
-                              <line x1="0" y1="0" x2="0" y2="-95" stroke="#FFF" strokeWidth="4" strokeLinecap="round" />
-                              <circle cx="0" cy="0" r="8" fill="#FFF" />
-                              <circle cx="0" cy="0" r="4" fill="#000" />
-                            </g>
-                          </svg>
-                          
-                          <div style={{ position: "absolute", width: "100%", height: "100%", pointerEvents: "none", fontSize: "0.75rem", color: "#9ca3af" }}>
-                            <span style={{ position: "absolute", bottom: "10px", left: "10px" }}>0</span>
-                            <span style={{ position: "absolute", top: "45px", left: "30px" }}>25</span>
-                            <span style={{ position: "absolute", top: "-5px", left: "80px" }}>50</span>
-                            <span style={{ position: "absolute", top: "-25px", left: "140px" }}>75</span>
-                            <span style={{ position: "absolute", top: "-5px", right: "80px" }}>100</span>
-                            <span style={{ position: "absolute", bottom: "10px", right: "-5px" }}>150+</span>
-                          </div>
-                        </div>
-
-                        <div style={{ textAlign: "center", marginTop: "10px" }}>
-                          <h2 style={{ margin: 0, fontSize: "3.5rem", fontWeight: "bold", color: "#FFF", lineHeight: 1 }}>{stState === "uploading" || stState === "done" ? stUp : stDown}</h2>
-                          <p style={{ margin: "5px 0 0 0", fontSize: "0.9rem", color: "#9ca3af", letterSpacing: "1.5px", fontWeight: "bold" }}>MBPS</p>
-                        </div>
-                      </div>
-
-                      <div style={{ marginTop: "1.5rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                          <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                          </div>
-                          <div>
-                            <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>SERVER</p>
-                            <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{stState === "finding" ? "Finding optimal server..." : "LEGION Internet Solutions"}</h4>
-                            <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>{stState === "finding" ? "Selecting..." : "United Kingdom · 10 Gbps"}</span>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px", textAlign: "right" }}>
-                          <div>
-                            <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>YOUR ISP</p>
-                            <h4 style={{ margin: "2px 0 0 0", color: "#FFF", fontSize: "0.95rem" }}>{ipData?.org || "Fetching..."}</h4>
-                            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{ipData?.ip || "Please wait"}</span>
-                          </div>
-                          <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "rgba(34,197,94,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 14a4.5 4.5 0 0 0-9 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-                        <button onClick={startSpeedTest} disabled={stState === "finding" || stState === "downloading" || stState === "uploading"} style={{ padding: "0.9rem 3.5rem", borderRadius: "30px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", fontSize: "1rem", border: "none", cursor: (stState !== "idle" && stState !== "done") ? "not-allowed" : "pointer", boxShadow: "0 10px 20px rgba(99,102,241,0.3)" }}>
-                          {stState === "idle" ? "GO" : stState === "done" ? "TEST AGAIN" : "TESTING..."}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* IP Status */}
-                  {activeTool === "ip" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                      {ipData ? (
-                        <>
-                          <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
-                            <p style={{ color: "#9ca3af", margin: "0 0 0.5rem 0" }}>Current Detected IP</p>
-                            <h1 style={{ margin: 0, color: "#22c55e", fontSize: "2.5rem" }}>{ipData.ip}</h1>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "12px" }}><p style={{ color: "#9ca3af", margin: 0, fontSize: "0.85rem" }}>ISP / Provider</p><h4 style={{ margin: "0.3rem 0 0 0" }}>{ipData.org}</h4></div>
-                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "12px" }}><p style={{ color: "#9ca3af", margin: 0, fontSize: "0.85rem" }}>Location</p><h4 style={{ margin: "0.3rem 0 0 0" }}>{ipData.city}, {ipData.country_name}</h4></div>
-                          </div>
-                        </>
-                      ) : <p style={{ textAlign: "center" }}>Loading...</p>}
-                    </div>
-                  )}
-
-                  {/* Latency Ping */}
-                  {activeTool === "ping" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center" }}>
-                      <h3 style={{ color: "#9ca3af", textAlign: "center", fontWeight: "normal", margin: "0 0 1rem 0" }}>Cloudflare Ultra-Low Latency Ping Test</h3>
-                      {pingStats ? (
-                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", width: "100%", maxWidth: "500px", margin: "0 auto" }}>
-                           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
-                             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Average Ping</p>
-                             <h2 style={{ margin: 0, color: "#6366f1", fontSize: "2rem" }}>{pingStats.avg} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
-                           </div>
-                           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
-                             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Jitter</p>
-                             <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
-                           </div>
-                           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
-                             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Min Ping</p>
-                             <h2 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>{pingStats.min} ms</h2>
-                           </div>
-                           <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
-                             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Max Ping</p>
-                             <h2 style={{ margin: 0, color: "#ef4444", fontSize: "1.5rem" }}>{pingStats.max} ms</h2>
-                           </div>
-                         </div>
-                      ) : (
-                         <div style={{ width: "150px", height: "150px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
-                            <span style={{ fontSize: "3rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
-                         </div>
-                      )}
-                      <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", marginTop: "1rem" }}>
-                         {isPinging ? "Testing..." : "Run Ping Test"}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* WebRTC Leak */}
-                  {activeTool === "webrtc" && (
-                    <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "2rem" }}>
-                      <div style={{ textAlign: "center", maxWidth: "600px" }}>
-                        <p style={{ color: "#9ca3af", fontSize: "1.1rem", lineHeight: 1.6 }}>Checks if your actual browser interface exposes your underlying ISP IP via STUN protocols.</p>
-                      </div>
-                      <div style={{ background: "rgba(0,0,0,0.3)", width: "100%", maxWidth: "600px", minHeight: "150px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                         {isCheckingLeak ? (
-                            <h3 style={{ textAlign: "center", color: "#818cf8" }}>Scanning network interfaces...</h3>
-                         ) : leakIPs.length > 0 ? (
-                            <>
-                              <h3 style={{ margin: 0, color: "#ef4444", textAlign: "center" }}>⚠️ IPs Detected via WebRTC:</h3>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "center" }}>
-                                {leakIPs.map((ip, i) => (
-                                  <span key={i} style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "0.5rem 1rem", borderRadius: "8px", fontWeight: "bold" }}>{ip}</span>
-                                ))}
-                              </div>
-                            </>
-                         ) : (
-                            <div style={{ textAlign: "center" }}>
-                              <h3 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>✅ No Leaks Detected</h3>
-                              <p style={{ color: "#9ca3af", marginTop: "0.5rem" }}>Your identity is completely hidden.</p>
-                            </div>
-                         )}
-                      </div>
-                      <button onClick={checkWebRTC} disabled={isCheckingLeak} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isCheckingLeak ? "not-allowed" : "pointer" }}>
-                         {isCheckingLeak ? "Scanning..." : "Check for Leaks"}
-                      </button>
-                    </div>
-                  )}
+              {/* Tools view */}
+              <div style={{ background: "#0c0c14", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <h3 style={{ margin: "0 0 1.2rem 0", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                  <button onClick={() => setActiveTool("speed")} style={{ padding: "1.2rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", color: "#FFF", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>🚀</div>
+                    <strong>Speed Test</strong>
+                  </button>
+                  <button onClick={() => setActiveTool("ip")} style={{ padding: "1.2rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", color: "#FFF", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>🌍</div>
+                    <strong>IP Info</strong>
+                  </button>
                 </div>
-              ) : (
-                /* TOOLS MENU GRID */
-                <div>
-                  <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🚀</div>
-                        <div>
-                          <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>Speed Test</h4>
-                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Check tunnel speed</p>
-                        </div>
-                      </div>
-                      <div style={{ color: "#6366f1", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
-                    </div>
+              </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🌍</div>
-                        <div>
-                          <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>IP & Location</h4>
-                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Verify IP is hidden</p>
-                        </div>
-                      </div>
-                      <div style={{ color: "#22c55e", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
-                    </div>
+            </div>
+          )}
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>⚡</div>
-                        <div>
-                          <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>Latency Test</h4>
-                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Game stability</p>
-                        </div>
+          {/* 2. STORE TAB */}
+          {activeTab === "buy" && (
+            <div className="animate-fade-in">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
+                {ALL_PACKAGES.map((pkg) => (
+                  <div key={pkg.id} style={{ background: "#0c0c14", padding: "1.5rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+                        <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={20} height={20} alt={pkg.isp} />
+                        <span style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.08)", padding: "2px 8px", borderRadius: "6px" }}>{pkg.type === "router" ? "Router" : "Mobile"}</span>
                       </div>
-                      <div style={{ color: "#f59e0b", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
+                      <h3 style={{ margin: "0 0 0.5rem 0", color: "#FFF" }}>{pkg.name}</h3>
+                      <p style={{ color: "#818cf8", fontWeight: "bold", margin: "0 0 0.5rem 0" }}>{pkg.ispPrice}</p>
+                      <p style={{ color: "#9ca3af", fontSize: "0.85rem" }}>{pkg.desc}</p>
                     </div>
-
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🛡️</div>
-                        <div>
-                          <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>WebRTC Leak</h4>
-                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Advanced privacy scan</p>
-                        </div>
-                      </div>
-                      <div style={{ color: "#ef4444", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
-                    </div>
-
+                    <button onClick={() => handleSelectPackage(pkg)} style={{ marginTop: "1rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                      Select & Configure →
+                    </button>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3. MY VPNS TAB */}
+          {activeTab === "configs" && (
+            <div className="animate-fade-in flex flex-col gap-4">
+              <h2 style={{ margin: 0, color: "#FFF" }}>My Configurations</h2>
+              
+              {/* REVIEW NOTICE (ONLY SHOWN IF SUSPENDED) */}
+              {user?.vpnStatus === "Suspended" && (
+                <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
+                  </div>
+                  {receiptLink && (
+                    <a href={receiptLink} target="_blank" rel="noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
+                      View Uploaded Receipt ↗
+                    </a>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* =======================
-              2. STORE TAB
-          ======================== */}
-          {activeTab === "buy" && (
-             <div className="animate-fade-in">
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
-                 <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === "All" ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
-                   All ISPs
-                 </button>
-                 {Object.keys(ISP_LOGOS).map(isp => (
-                   <button key={isp} onClick={() => setActiveIsp(isp)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === isp ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
-                     <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={isp} />
-                     {isp}
-                   </button>
-                 ))}
-               </div>
-
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
-                 <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "transparent", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
-                 {hasRouter && <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>}
-                 {hasMobile && <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>}
-               </div>
-
-               {activeNetworkType === "mobile" && (
-                 <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                   <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
-                   <div>
-                     <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
-                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                       SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
-                     </p>
-                   </div>
-                 </div>
-               )}
-
-               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-                 {ALL_PACKAGES
-                   .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
-                   .map((pkg) => (
-                   <div key={pkg.id} style={{ position: "relative", zIndex: 10, background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
-                     <div style={{ flex: 1 }}>
-                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
-                         <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
-                           {pkg.statusText}
-                         </span>
-                         <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "#818cf8", border: "1px solid rgba(129,140,248,0.3)", padding: "4px 10px", borderRadius: "20px" }}>
-                           <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={14} height={14} style={{ borderRadius: "50%" }} alt={pkg.isp} />
-                           {pkg.type === "router" ? "Router Package" : "Mobile Sim"}
-                         </span>
-                       </div>
-                       
-                       <h3 style={{ margin: "0 0 0.4rem 0", fontSize: "1.25rem", color: "#FFF", wordBreak: "break-word" }}>{pkg.name}</h3>
-                       <div style={{ marginBottom: "1rem", color: "#818cf8", fontSize: "0.85rem", fontWeight: "bold" }}>
-                         ISP Package Price: <span style={{ color: "#FFF" }}>{pkg.ispPrice}</span>
-                       </div>
-                       <p style={{ color: pkg.statusType === 'warn' ? "#f87171" : "#9ca3af", fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 0.8rem 0" }}>{pkg.desc}</p>
-                       <p style={{ color: "#818cf8", fontSize: "0.8rem", fontWeight: "bold", margin: 0 }}>💡 {pkg.devices}</p>
-                     </div>
-
-                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer", position: "relative", zIndex: 20 }} className="hover-scale-card">
-                       Select & Configure VPN →
-                     </button>
-                   </div>
-                 ))}
-               </div>
-             </div>
-          )}
-
-          {/* =======================
-              3. MY VPNS TAB
-          ======================== */}
-          {activeTab === "configs" && (
-            <div className="animate-fade-in flex flex-col gap-6">
-               <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
-               
-               {user?.vpnStatus === "Suspended" && (
-                 <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
-                   <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
-                     <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
-                   </div>
-                   {receiptLink && (
-                      <a href={receiptLink} target="_blank" rel="noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
-                        View Uploaded Receipt ↗
-                      </a>
-                   )}
-                 </div>
-               )}
-
-               {/* 🚀 PENDING PACKAGES CARD (AWAITING VERIFICATION APPEARS HERE WITHOUT OVERWRITING ACTIVE ONES) */}
-               {pendingOrders.length > 0 && (
-                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
-                   {pendingOrders.map((po: any, idx: number) => (
-                     <div key={idx} style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.2rem 1.5rem", borderRadius: "14px", color: "#f59e0b" }}>
-                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                           <span style={{ fontSize: "1.5rem" }}>⏳</span>
-                           <div>
-                             <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{po.package || "New VPN Plan"} (Pending Verification)</h4>
-                             <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#f59e0b" }}>Receipt submitted. Waiting for Admin approval...</p>
-                           </div>
-                         </div>
-                         {po.receipt && (
-                           <a href={po.receipt} target="_blank" rel="noreferrer" style={{ color: "#818cf8", textDecoration: "underline", fontSize: "0.85rem", fontWeight: "bold" }}>
-                             View Uploaded Receipt ↗
-                           </a>
-                         )}
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               )}
-
-               {/* ACTIVE CONFIGURATIONS */}
-               {activeConfigs.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    {activeConfigs.map((cfg, idx) => (
-                      <div key={idx} style={{ background: "rgba(15,15,24,0.85)", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                         <div style={{ background: "rgba(99,102,241,0.08)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#818cf8" }}>📦 {cfg.name}</h3>
-                            <button onClick={() => handleCopyCleanCode(cfg.code)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>📋 Copy Code</button>
-                         </div>
-                         <div style={{ padding: "1.5rem" }}>
-                            <code style={{ color: user?.vpnStatus === "Suspended" ? "#9ca3af" : "#22c55e", fontSize: "0.85rem", fontFamily: "monospace", wordBreak: "break-all", whiteSpace: "pre-wrap" }}>
-                              {cfg.code}
-                            </code>
-                         </div>
+              {/* PENDING PACKAGES CARD */}
+              {pendingOrders.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
+                  {pendingOrders.map((po: any, idx: number) => (
+                    <div key={idx} style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.2rem 1.5rem", borderRadius: "14px", color: "#f59e0b" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ fontSize: "1.5rem" }}>⏳</span>
+                          <div>
+                            <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{po.package || "New VPN Plan"} (Pending Verification)</h4>
+                            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#f59e0b" }}>Receipt submitted. Waiting for Admin approval...</p>
+                          </div>
+                        </div>
+                        {po.receipt && (
+                          <a href={po.receipt} target="_blank" rel="noreferrer" style={{ color: "#818cf8", textDecoration: "underline", fontSize: "0.85rem", fontWeight: "bold" }}>
+                            View Uploaded Receipt ↗
+                          </a>
+                        )}
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ACTIVE CONFIGURATIONS */}
+              {activeConfigs.length > 0 ? (
+                activeConfigs.map((cfg, idx) => (
+                  <div key={idx} style={{ background: "#0c0c14", padding: "1.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+                      <h4 style={{ margin: 0, color: "#818cf8" }}>{cfg.name}</h4>
+                      <button onClick={() => handleCopyCleanCode(cfg.code)} style={{ background: "#4f46e5", color: "#FFF", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>Copy</button>
+                    </div>
+                    <code style={{ fontSize: "0.8rem", color: "#22c55e", wordBreak: "break-all" }}>{cfg.code}</code>
                   </div>
-               ) : pendingOrders.length === 0 && user?.vpnStatus !== "Suspended" ? (
-                  <div style={{ padding: "3rem", textAlign: "center", background: "rgba(15,15,24,0.7)", borderRadius: "16px" }}>
-                     <p style={{ color: "#9ca3af" }}>No active configurations assigned yet.</p>
-                     <button onClick={() => setActiveTab("buy")} style={{ marginTop: "1rem", background: "#6366f1", color: "#FFF", border: "none", padding: "0.8rem 1.8rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>Buy from Store</button>
-                  </div>
-               ) : null}
+                ))
+              ) : pendingOrders.length === 0 && user?.vpnStatus !== "Suspended" ? (
+                <div style={{ padding: "3rem", textAlign: "center", background: "rgba(15,15,24,0.7)", borderRadius: "16px" }}>
+                  <p style={{ color: "#9ca3af" }}>No active configurations assigned yet.</p>
+                  <button onClick={() => setActiveTab("buy")} style={{ marginTop: "1rem", background: "#6366f1", color: "#FFF", border: "none", padding: "0.8rem 1.8rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>Buy from Store</button>
+                </div>
+              ) : null}
             </div>
           )}
 
-          {/* =======================
-              4. PAYMENTS TAB (ISOLATED TO CURRENT USER)
-          ======================== */}
+          {/* 4. PAYMENTS TAB (ISOLATED TO CURRENT USER) */}
           {activeTab === "payments" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h2 style={{ marginBottom: "0.5rem", color: "#FFF" }}>My Payment History ({new Date().getFullYear()})</h2>
-              <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem" }}>Payments are stored safely in your account record.</p>
-              
+            <div className="animate-fade-in" style={{ background: "#0c0c14", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h2 style={{ margin: "0 0 1.5rem 0", color: "#FFF" }}>My Payment History</h2>
               {payments.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "3rem 0" }}>
-                  <span style={{ fontSize: "3rem" }}>🧾</span>
-                  <h3 style={{ color: "#9ca3af", marginTop: "1rem" }}>No payments made yet.</h3>
-                </div>
+                <p style={{ color: "#9ca3af" }}>No payments recorded yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {payments.map((p, idx) => (
-                    <div key={idx} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                       <div>
-                         <p style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontWeight: "bold" }}>{p.package}</p>
-                         <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>{new Date(p.date).toLocaleDateString()} at {new Date(p.date).toLocaleTimeString()}</p>
-                       </div>
-                       <div style={{ textAlign: "right" }}>
-                         <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p.amount}</h3>
-                         <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "5px" }}>
-                           <span style={{ fontSize: "0.75rem", background: p.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p.status}</span>
-                           {p.receipt && (
-                             <a href={p.receipt} target="_blank" rel="noreferrer" download style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "10px", transition: "0.2s" }} className="hover:bg-white/20">⬇️ Download Slip</a>
-                           )}
-                         </div>
-                       </div>
+                    <div key={idx} style={{ background: "rgba(255,255,255,0.02)", padding: "1rem 1.2rem", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div>
+                        <h4 style={{ margin: 0, color: "#FFF" }}>{p.package}</h4>
+                        <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>{new Date(p.date).toLocaleString()}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <h3 style={{ margin: 0, color: "#22c55e" }}>Rs. {p.amount}</h3>
+                        <a href={p.receipt} target="_blank" rel="noreferrer" style={{ fontSize: "0.75rem", color: "#818cf8" }}>View Slip ↗</a>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1003,167 +751,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* =======================
-              5. ACHIEVEMENTS TAB
-          ======================== */}
-          {activeTab === "achievements" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h2 style={{ marginBottom: "0.5rem", color: "#FFF", textAlign: "center" }}>Achievements</h2>
-              <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem", textAlign: "center" }}>Complete hidden tasks around the dashboard to unlock these achievements!</p>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-                <div style={{ background: achievements.legion ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.legion ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
-                   <div style={{ fontSize: "3rem", filter: achievements.legion ? "none" : "grayscale(100%) opacity(30%)" }}>🚀</div>
-                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.legion ? "#FFF" : "#6b7280" }}>Be a part of LEGION</h3>
-                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Unlock by successfully uploading your first payment slip.</p>
-                </div>
-                <div style={{ background: achievements.nolimits ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.nolimits ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
-                   <div style={{ fontSize: "3rem", filter: achievements.nolimits ? "none" : "grayscale(100%) opacity(30%)" }}>♾️</div>
-                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.nolimits ? "#FFF" : "#6b7280" }}>No More Limitations</h3>
-                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Purchase an Unlimited package and break the limits.</p>
-                </div>
-                <div style={{ background: achievements.organized ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.organized ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
-                   <div style={{ fontSize: "3rem", filter: achievements.organized ? "none" : "grayscale(100%) opacity(30%)" }}>🎨</div>
-                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.organized ? "#FFF" : "#6b7280" }}>Organized Person</h3>
-                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Personalize your profile by changing your avatar.</p>
-                </div>
-                <div style={{ background: achievements.dedicated ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.dedicated ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
-                   <div style={{ fontSize: "3rem", filter: achievements.dedicated ? "none" : "grayscale(100%) opacity(30%)" }}>⏳</div>
-                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.dedicated ? "#FFF" : "#6b7280" }}>Dedicated User</h3>
-                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Stay active on the dashboard for more than 10 minutes.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* =======================
-              6. PROFILE TAB 
-          ======================== */}
+          {/* 5. PROFILE TAB */}
           {activeTab === "profile" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover" }} />
-                  <h3 style={{ margin: "1rem 0 0.2rem 0", color: "#FFF", fontSize: "1.2rem" }}>{safeName}</h3>
-                  {isVerified ? (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.85rem", color: "#818cf8", fontWeight: "bold" }}>
-                      Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={16} height={16} />
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Free User</span>
-                  )}
-                  
-                  {initialUser?.googleImage && avatar !== initialUser.googleImage && (
-                    <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem", transition: "0.2s" }} className="hover:bg-white/10">
-                      Restore Google Image
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.2rem", borderRadius: "12px" }}>
-                  <h4 style={{ textAlign: "center", color: "#9ca3af", margin: "0 0 1rem 0", fontSize: "0.9rem" }}>Choose Preset Avatar</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(45px, 1fr))", gap: "0.8rem", justifyItems: "center" }}>
-                    {AVAILABLE_AVATARS.map((gifPath) => (
-                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", border: avatar === gifPath ? "3px solid #6366f1" : "3px solid transparent", overflow: "hidden", transition: "transform 0.2s" }} className="hover:scale-110">
-                        <img src={gifPath} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label><input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
-              </div>
-            </div>
-          )}
-
-          {/* SIM WARNING MODAL */}
-          {simWarningModal && (
-            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
-              <div style={{ width: "100%", maxWidth: "500px", padding: "2rem", background: "#10101a", border: "1px solid rgba(239,68,68,0.5)", borderRadius: "16px", textAlign: "center" }}>
-                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
-                 <h2 style={{ color: "#FFF", marginBottom: "1rem" }}>Important Notice</h2>
-                 <p style={{ color: "#9ca3af", lineHeight: 1.6, marginBottom: "2rem" }}>
-                   SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
-                 </p>
-                 <div style={{ display: "flex", gap: "1rem" }}>
-                   <button onClick={() => setSimWarningModal(null)} style={{ flex: 1, padding: "1rem", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
-                   <button onClick={() => proceedToCheckout(simWarningModal)} style={{ flex: 1, padding: "1rem", background: "#ef4444", color: "#FFF", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: "pointer" }}>I Understand</button>
-                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* CHECKOUT MODAL */}
-          {modalPackage && !simWarningModal && (
-            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
-              <div style={{ width: "100%", maxWidth: "560px", padding: "2rem", background: "#10101a", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", maxHeight: "90vh", overflowY: "auto" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                  <h3 style={{ margin: 0, color: "#818cf8" }}>Step {checkoutStep} of 3</h3>
-                  <button onClick={closeCheckout} disabled={isUploading} style={{ background: "none", border: "none", color: "#9ca3af", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
-                </div>
-
-                {checkoutStep === 1 && (
-                  <div>
-                    <h2 style={{ fontSize: "1.4rem", margin: "0 0 0.5rem 0" }}>Configure VPN Quota</h2>
-                    <p style={{ color: "#818cf8", marginBottom: "1.5rem", fontWeight: "bold", background: "rgba(99,102,241,0.1)", padding: "0.8rem", borderRadius: "8px" }}>📦 {modalPackage.name}</p>
-                    
-                    <label style={{ display: "block", marginBottom: "0.8rem", fontSize: "0.85rem", color: "#9ca3af" }}>Choose Data Quota & Pricing:</label>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", marginBottom: "2rem" }}>
-                      {Object.entries(modalPackage.type === "router" ? ROUTER_CONFIG_PRICES : MOBILE_CONFIG_PRICES).map(([quota, price]) => (
-                        <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ display: "flex", justifyContent: "space-between", padding: "1.2rem", background: selectedQuota === quota ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.03)", border: "1px solid", borderColor: selectedQuota === quota ? "#818cf8" : "rgba(255,255,255,0.1)", borderRadius: "12px", color: "#FFF", cursor: "pointer", textAlign: "left", fontSize: "1.1rem" }}>
-                          <span style={{ fontWeight: selectedQuota === quota ? "bold" : "normal" }}>{quota}</span>
-                          <strong style={{ color: "#22c55e" }}>Rs. {price as number}</strong>
-                        </button>
-                      ))}
-                    </div>
-
-                    <button onClick={() => setCheckoutStep(2)} disabled={!selectedQuota} style={{ width: "100%", padding: "1.2rem", background: selectedQuota ? "linear-gradient(90deg, #4f46e5, #7c3aed)" : "rgba(255,255,255,0.1)", color: selectedQuota ? "#FFF" : "rgba(255,255,255,0.3)", fontWeight: "bold", fontSize: "1.1rem", cursor: selectedQuota ? "pointer" : "not-allowed", borderRadius: "12px", border: "none" }}>Next: Payment Details →</button>
-                  </div>
-                )}
-
-                {checkoutStep === 2 && (
-                  <div>
-                    <h2 style={{ fontSize: "1.4rem", margin: "0 0 0.5rem 0" }}>Bank Transfer Details</h2>
-                    <p style={{ color: "#9ca3af", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Transfer <strong style={{ color: "#22c55e" }}>Rs. {modalPackage.type === "router" ? ROUTER_CONFIG_PRICES[selectedQuota!] : MOBILE_CONFIG_PRICES[selectedQuota!]}</strong> to the following account:</p>
-                    
-                    <div style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "12px", padding: "1.5rem", marginBottom: "2rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>BANK</span><strong>{BANK_ACCOUNT.bankName}</strong></div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>ACCOUNT NAME</span><strong>{BANK_ACCOUNT.accountName}</strong></div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>ACCOUNT NO.</span><strong style={{ color: "#22c55e", fontSize: "1.2rem", letterSpacing: "1px" }}>{BANK_ACCOUNT.accountNo}</strong></div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>BRANCH</span><strong>{BANK_ACCOUNT.branch}</strong></div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "1rem" }}>
-                      <button onClick={() => setCheckoutStep(1)} style={{ flex: 1, padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: "pointer" }}>← Back</button>
-                      <button onClick={() => setCheckoutStep(3)} style={{ flex: 2, padding: "1rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: "pointer" }}>Next: Upload Slip →</button>
-                    </div>
-                  </div>
-                )}
-
-                {checkoutStep === 3 && (
-                  <div>
-                    <h2 style={{ fontSize: "1.4rem", margin: "0 0 0.5rem 0" }}>Upload Payment Slip</h2>
-                    <p style={{ color: "#9ca3af", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Upload your receipt to verify payment and activate your VPN account.</p>
-                    
-                    <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: "pointer" }}>
-                      <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" disabled={isUploading} />
-                      <label htmlFor="slip-upload" style={{ cursor: "pointer", display: "block" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>📁</div>
-                        <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8" }}>{isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip image"}</h4>
-                        <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
-                      </label>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "1rem" }}>
-                      <button onClick={() => setCheckoutStep(2)} disabled={isUploading} style={{ flex: 1, padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: "pointer" }}>← Back</button>
-                      <button onClick={() => { handleConfirmOrder(); setTimeout(() => window.open(`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi, I just submitted an order for ${modalPackage?.name}. Please verify.`)}`, "_blank"), 1000); }} disabled={!slipFile || isUploading} style={{ flex: 2, padding: "1rem", background: slipFile ? "linear-gradient(90deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.1)", color: slipFile ? "#FFF" : "#6b7280", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: slipFile && !isUploading ? "pointer" : "not-allowed" }}>
-                        {isUploading ? "Uploading to Cloudinary..." : "🚀 Submit Order"}
-                      </button>
-                    </div>
-                  </div>
-                )}
+            <div className="animate-fade-in" style={{ background: "#0c0c14", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", maxWidth: "500px", margin: "0 auto", textAlign: "center" }}>
+              <img src={avatar || `https://ui-avatars.com/api/?name=${safeName}`} alt="Profile" style={{ width: "90px", height: "90px", borderRadius: "50%", margin: "0 auto 1rem", border: "3px solid #6366f1" }} />
+              <h2 style={{ margin: 0, color: "#FFF" }}>{safeName}</h2>
+              <p style={{ color: "#9ca3af", margin: "0.3rem 0 1.5rem" }}>{safeEmail}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(40px, 1fr))", gap: "0.5rem" }}>
+                {AVAILABLE_AVATARS.map((gif) => (
+                  <img key={gif} src={gif} onClick={() => handleAvatarSelect(gif)} alt="avatar" style={{ width: "45px", height: "45px", borderRadius: "50%", cursor: "pointer", border: avatar === gif ? "2px solid #6366f1" : "none" }} />
+                ))}
               </div>
             </div>
           )}
@@ -1171,28 +768,53 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       </main>
 
-      {/* Floating Taskbar */}
+      {/* CHECKOUT MODAL */}
+      {modalPackage && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1rem" }}>
+          <div style={{ background: "#11111a", padding: "2rem", borderRadius: "16px", maxWidth: "450px", width: "100%", border: "1px solid rgba(99,102,241,0.3)" }}>
+            <h3 style={{ margin: "0 0 1rem 0", color: "#FFF" }}>Configure {modalPackage.name}</h3>
+            
+            {checkoutStep === 1 && (
+              <div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                  {Object.entries(currentQuotaList).map(([quota, price]) => (
+                    <button key={quota} onClick={() => setSelectedQuota(quota)} style={{ padding: "0.8rem", borderRadius: "8px", background: selectedQuota === quota ? "#4f46e5" : "rgba(255,255,255,0.05)", border: "none", color: "#FFF", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+                      <span>{quota}</span>
+                      <strong>Rs. {price}</strong>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setCheckoutStep(2)} disabled={!selectedQuota} style={{ width: "100%", padding: "0.8rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>Next →</button>
+              </div>
+            )}
+
+            {checkoutStep === 2 && (
+              <div>
+                <p style={{ color: "#9ca3af" }}>Transfer <strong>Rs. {currentQuotaList[selectedQuota!]}</strong> to:</p>
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "8px", marginBottom: "1rem" }}>
+                  <p style={{ margin: 0 }}>Bank: {BANK_ACCOUNT.bankName}</p>
+                  <p style={{ margin: "0.2rem 0" }}>Account: <strong>{BANK_ACCOUNT.accountNo}</strong></p>
+                  <p style={{ margin: 0 }}>Name: {BANK_ACCOUNT.accountName}</p>
+                </div>
+                <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ marginBottom: "1rem", width: "100%" }} />
+                <button onClick={handleConfirmOrder} disabled={!slipFile || isUploading} style={{ width: "100%", padding: "0.8rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                  {isUploading ? "Uploading to Cloudinary..." : "Submit Payment Slip"}
+                </button>
+              </div>
+            )}
+            <button onClick={closeCheckout} style={{ width: "100%", marginTop: "0.5rem", background: "none", border: "none", color: "#9ca3af", cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER TASKBAR */}
       <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.4rem", background: "rgba(10,10,18,0.92)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50px", zIndex: 100 }}>
-        {tabs.map(tab => {
-          if (tab.isLink) return <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}><span>{tab.icon}</span></Link>;
-          const isActive = activeTab === tab.id;
-          return (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setActiveTool(null); }} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.5rem" : "0", padding: isActive ? "0 1rem" : "0", height: "42px", minWidth: isActive ? "auto" : "42px", width: isActive ? "auto" : "42px", justifyContent: "center", background: isActive ? "rgba(99,102,241,0.25)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "none", cursor: "pointer", transition: "all 0.2s ease" }}>
-              <span>{tab.icon}</span>{isActive && <span style={{ fontWeight: "bold", fontSize: "0.85rem" }}>{tab.label}</span>}
-            </button>
-          );
-        })}
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: activeTab === tab.id ? "0.5rem" : "0", padding: activeTab === tab.id ? "0 1rem" : "0", height: "42px", minWidth: "42px", justifyContent: "center", background: activeTab === tab.id ? "rgba(99,102,241,0.25)" : "transparent", color: activeTab === tab.id ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "none", cursor: "pointer" }}>
+            <span>{tab.icon}</span>{activeTab === tab.id && <span style={{ fontWeight: "bold", fontSize: "0.85rem" }}>{tab.label}</span>}
+          </button>
+        ))}
       </nav>
-      <style>{`
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media (max-width: 395px) {
-          .mobile-hide-name { display: none !important; }
-        }
-        .hover-scale-card { transition: transform 0.2s; }
-        .hover-scale-card:hover { transform: scale(1.02); }
-      `}</style>
     </div>
   );
 }
