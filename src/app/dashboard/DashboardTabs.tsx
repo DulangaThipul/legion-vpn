@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
 import DashboardMatrix from "@/components/DashboardMatrix";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "@/lib/firebase";
 
 const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${i + 1}.gif`);
 
@@ -79,8 +77,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   useEffect(() => {
     if (metaData.alert) {
       const userDismissKey = `legion_dismissed_alert_${user?.id || user?.email}`;
-      const dismissed = localStorage.getItem(userDismissKey);
-      if (dismissed !== metaData.alert) {
+      const dismissedAlert = localStorage.getItem(userDismissKey);
+      if (dismissedAlert !== metaData.alert) {
         setShowCenterAlert(true);
       }
     }
@@ -132,7 +130,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 🚀 Parse Configurations without stripping existing ones
   const parseConfigs = (rawText: string | null) => {
     if (!rawText) return [];
-    const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
+    const regex = /(?:🟢\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:🟢\s*)?\[|$)/g;
     let matches = [...rawText.matchAll(regex)];
     let configs = [];
     if (matches.length > 0) {
@@ -150,7 +148,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   // 🚀 STRIP BRACKETS [...] BEFORE COPYING
   const handleCopyCleanCode = (text: string) => {
-    const cleanCode = text.replace(/(?:📦\s*)?\[[\s\S]*?\]\s*/g, "").trim();
+    const cleanCode = text.replace(/(?:🟢\s*)?\[[\s\S]*?\]\s*/g, "").trim();
     navigator.clipboard.writeText(cleanCode);
     alert("Copied to clipboard!");
   };
@@ -177,12 +175,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return () => clearInterval(intervalId);
   }, [activeTab, activeTool]);
 
-  // Speed Test Engine
+  // SPEED TEST ENGINE
   const [stState, setStState] = useState<"idle" | "finding" | "downloading" | "uploading" | "done">("idle");
   const [stPing, setStPing] = useState("--");
   const [stDown, setStDown] = useState("0.00");
   const [stUp, setStUp] = useState("0.00");
   const [gaugeValue, setGaugeValue] = useState(0); 
+
+  const speedToGauge = (speed: number) => Math.min(speed / 150, 1);
 
   const startSpeedTest = async () => {
     setStState("finding"); setStPing("--"); setStDown("0.00"); setStUp("0.00"); setGaugeValue(0);
@@ -240,7 +240,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 resolve(null);
             } else {
                 setStUp(currentUp.toFixed(2));
-                setGaugeValue(Math.min(currentUp / 150, 1));
+                setGaugeValue(speedToGauge(currentUp));
             }
         }, 100);
     });
@@ -262,42 +262,45 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setSelectedQuota(null);
   };
 
-  // 🚀 SUBMIT ORDER WITH GOOGLE FIREBASE STORAGE
+  // 🚀 SUBMIT ORDER WITH CLOUDINARY DIRECT UPLOAD
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
 
     try {
-      let fileUrl = "";
+      // 1. Direct Upload to Cloudinary using Unsigned Preset
+      const formData = new FormData();
+      formData.append("file", slipFile);
+      formData.append("upload_preset", "legion_slips");
 
-      // 1. Upload directly to Firebase Storage
-      try {
-        const storageRef = ref(storage, `payment_slips/${Date.now()}_${slipFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`);
-        await uploadBytes(storageRef, slipFile);
-        fileUrl = await getDownloadURL(storageRef);
-      } catch {
-        // Safe fallback if Firebase config is incomplete
-        const formData = new FormData();
-        formData.append("file", slipFile);
-        const uploadRes = await fetch("https://tmpfiles.org/api/v1/upload", { method: "POST", body: formData });
-        const data = await uploadRes.json();
-        fileUrl = data?.data?.url || "";
+      const uploadRes = await fetch("https://api.cloudinary.com/v1_1/ddox7uqkb/image/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Upload Failed");
+      const data = await uploadRes.json();
+      const fileUrl = data.secure_url;
+
+      if (!fileUrl) throw new Error("Failed to obtain slip URL");
+
+      unlockAchievement("legion", "Be a part of LEGION");
+      if (modalPackage?.name.toLowerCase().includes("unlimited") || selectedQuota?.toLowerCase().includes("unlimited")) {
+        unlockAchievement("nolimits", "No More Limitations");
       }
-
-      if (!fileUrl) throw new Error("Failed to get slip URL");
 
       const amount = currentQuotaList[selectedQuota!] || 0;
 
-      // 2. Save order to Prisma Database without overwriting current configs
+      // 2. Save order to Prisma Database without overwriting active configs
       const res = await submitClientPaymentOrder({
         packageName: modalPackage?.name || "Custom Plan",
         amount,
-        receiptUrl: fileUrl
+        receiptUrl: fileUrl,
       });
 
       if (res?.success) {
         setUser(res.user);
-        alert("Order Submitted! Your receipt was uploaded to Firebase and sent to Admin for review.");
+        alert("Order Submitted! Your receipt was uploaded to Cloudinary and sent to Admin for review.");
       } else {
         alert("Order submitted. Waiting for verification.");
       }
@@ -374,7 +377,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* 🚀 CENTER BIG CUSTOM POPUP MODAL (SHOWN ONCE PER ALERT) */}
+      {/* 🚀 CENTER BIG CUSTOM POPUP MODAL */}
       {showCenterAlert && metaData.alert && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
           <div style={{ background: "#11111a", border: "1px solid rgba(99,102,241,0.5)", borderRadius: "20px", padding: "2.5rem 2rem", maxWidth: "480px", width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.8)", animation: "fadeInUp 0.3s ease" }}>
@@ -499,12 +502,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 3. MY VPNS TAB (SHOWS BOTH PENDING AND ACTIVE CONFIGS) */}
+          {/* 3. MY VPNS TAB */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-4">
               <h2 style={{ margin: 0, color: "#FFF" }}>My Configurations</h2>
               
-              {/* 🚀 PENDING PACKAGES SECTION (ONLY AWAITING VERIFICATION APPEARS HERE) */}
+              {/* PENDING ORDERS */}
               {pendingOrders.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
                   {pendingOrders.map((po: any, idx: number) => (
@@ -528,13 +531,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
               )}
 
-              {/* 🚀 ACTIVE CONFIGURATIONS (DISPLAYED NORMALLY WITHOUT BEING OVERWRITTEN) */}
+              {/* ACTIVE CONFIGS */}
               {activeConfigs.length > 0 ? (
                 activeConfigs.map((cfg, idx) => (
                   <div key={idx} style={{ background: "#0c0c14", padding: "1.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
                       <h4 style={{ margin: 0, color: "#818cf8" }}>{cfg.name}</h4>
-                      {/* 🚀 STRIPS ALL BRACKETS [...] BEFORE COPYING */}
                       <button onClick={() => handleCopyCleanCode(cfg.code)} style={{ background: "#4f46e5", color: "#FFF", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>Copy</button>
                     </div>
                     <code style={{ fontSize: "0.8rem", color: "#22c55e", wordBreak: "break-all" }}>{cfg.code}</code>
@@ -549,7 +551,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 4. PAYMENTS TAB (ISOLATED TO CURRENT USER) */}
+          {/* 4. PAYMENTS TAB (ISOLATED) */}
           {activeTab === "payments" && (
             <div className="animate-fade-in" style={{ background: "#0c0c14", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ margin: "0 0 1.5rem 0", color: "#FFF" }}>My Payment History</h2>
@@ -591,7 +593,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       </main>
 
-      {/* CHECKOUT MODAL (SLIP UPLOAD USING FIREBASE) */}
+      {/* CHECKOUT MODAL */}
       {modalPackage && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1rem" }}>
           <div style={{ background: "#11111a", padding: "2rem", borderRadius: "16px", maxWidth: "450px", width: "100%", border: "1px solid rgba(99,102,241,0.3)" }}>
@@ -621,7 +623,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
                 <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ marginBottom: "1rem", width: "100%" }} />
                 <button onClick={handleConfirmOrder} disabled={!slipFile || isUploading} style={{ width: "100%", padding: "0.8rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                  {isUploading ? "Uploading to Firebase..." : "Submit Payment Slip"}
+                  {isUploading ? "Uploading slip..." : "Submit Payment Slip"}
                 </button>
               </div>
             )}
