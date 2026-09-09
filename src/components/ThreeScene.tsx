@@ -16,7 +16,7 @@ export default function ThreeScene() {
     let renderer: THREE.WebGLRenderer | null = null;
     let isCleanedUp = false;
 
-    // 🚀 1. WEBGL INITIALIZATION
+    // 🚀 1. WEBGL INITIALIZATION (SAFE & OPTIMIZED)
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
@@ -25,103 +25,59 @@ export default function ThreeScene() {
         powerPreference: "high-performance",
       });
     } catch {
-      run2DFallback(canvas);
       return;
     }
 
-    if (!renderer) {
-      run2DFallback(canvas);
-      return;
-    }
+    if (!renderer) return;
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000); // සම්පූර්ණ කළු පාට අහස (Dark Sky)
 
     // 🚀 2. CAMERA SETUP
     const camera = new THREE.PerspectiveCamera(
       60,
-      (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
+      window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    camera.position.set(0, 2.0, 3.8);
+    camera.position.set(0, 1.5, 4);
     camera.lookAt(0, 0, 0);
 
-    // 🚀 3. REAL SPIRAL MILKY WAY GALAXY (LARGE GLOWING STARS & ARMS)
-    const starCount = 2200; 
-    const positions = new Float32Array(starCount * 3);
-    const colors = new Float32Array(starCount * 3);
+    // 🚀 3. MATRIX DIGITAL CLOUDS (GRID PARTICLES)
+    const particleCount = 2500;
+    const positions = new Float32Array(particleCount * 3);
+    const scales = new Float32Array(particleCount);
 
-    // ගැලැක්සියේ මැද Core එකේ වර්ණය (රන්වන්/සුදු) සහ පිටත බාහු වල වර්ණය (නිල්/පර්පල්)
-    const colorInside = new THREE.Color("#fff5cb");
-    const colorOutside = new THREE.Color("#818cf8");
-
-    for (let i = 0; i < starCount; i++) {
+    for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
-      
-      // සැබෑ ගැලැක්සි සර්පිලාකාර සමීකරණය (Logarithmic Spiral Arms - Arms 4 ක්)
-      const radius = Math.random() * 5.0;
-      const spinAngle = radius * 1.4;
-      const branchAngle = ((i % 4) * Math.PI * 2) / 4; 
-      
-      const theta = branchAngle + spinAngle + (Math.random() - 0.5) * 0.4;
+      // වලාකුළු මෙන් පහළ තට්ටුවක පැතිරී යන සේ සකස් කිරීම
+      positions[i3] = (Math.random() - 0.5) * 8;     // X axis (Width)
+      positions[i3 + 1] = -0.5 + Math.random() * 1.2; // Y axis (Height - පහළ වලාකුළු මට්ටම)
+      positions[i3 + 2] = (Math.random() - 0.5) * 6;  // Z axis (Depth)
 
-      const x = Math.cos(theta) * radius + (Math.random() - 0.5) * 0.4;
-      const y = (Math.random() - 0.5) * (0.6 / (radius + 0.3)); // මැද ඝනකම් තැටියක් වීම
-      const z = Math.sin(theta) * radius + (Math.random() - 0.5) * 0.4;
-
-      positions[i3] = x;
-      positions[i3 + 1] = y;
-      positions[i3 + 2] = z;
-
-      // තාරකා වල වර්ණ මිශ්‍ර කිරීම (Core සිට පිටතට)
-      const mixedColor = colorInside.clone();
-      mixedColor.lerp(colorOutside, radius / 5.0);
-      
-      colors[i3] = mixedColor.r;
-      colors[i3 + 1] = mixedColor.g;
-      colors[i3 + 2] = mixedColor.b;
+      scales[i] = Math.random();
     }
 
-    const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    starGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    const cloudGeometry = new THREE.BufferGeometry();
+    cloudGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-    const starMaterial = new THREE.PointsMaterial({
-      size: 0.11, // 🚀 ඔබ ඉල්ලූ පරිදි තාරකා ප්‍රමාණය හොඳින් පෙනෙන පරිදි විශාල කර ඇත
+    // Matrix Green & Cyberpunk Cyan වර්ණ සහිත Glowing Particles
+    const cloudMaterial = new THREE.PointsMaterial({
+      color: 0x00ff66, // Matrix Neon Green
+      size: 0.05,
       transparent: true,
-      opacity: 0.95,
+      opacity: 0.85,
       depthWrite: false,
-      sizeAttenuation: true,
-      vertexColors: true, // වර්ණ විවිධත්වය සක්‍රීය කිරීම
-      blending: THREE.AdditiveBlending, // තාරකා එකිනෙක මත බබළන ස්වභාවය
+      blending: THREE.AdditiveBlending,
     });
 
-    const starPoints = new THREE.Points(starGeometry, starMaterial);
-    
-    // ගැලැක්සිය 3D පෙනුම සඳහා මඳක් ඇල කර තැබීම
-    const galaxyGroup = new THREE.Group();
-    galaxyGroup.rotation.x = Math.PI / 5;
-    galaxyGroup.add(starPoints);
-    scene.add(galaxyGroup);
+    const cloudPoints = new THREE.Points(cloudGeometry, cloudMaterial);
+    scene.add(cloudPoints);
 
-    // 🚀 4. 3D WIREFRAME ICOSAHEDRON (ගැලැක්සියේ හරය/Core එක ලෙස මැද පිහිටයි)
-    const shapeGroup = new THREE.Group();
-    const shapeGeometry = new THREE.IcosahedronGeometry(0.7, 1);
-    const shapeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.45,
-    });
-
-    const shapeMesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
-    shapeGroup.add(shapeMesh);
-    scene.add(shapeGroup);
-
-    // 🚀 5. MOUSE PARALLAX & AUTO MOVEMENT
+    // 🚀 4. MOUSE PARALLAX INTERACTION
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
@@ -134,11 +90,11 @@ export default function ThreeScene() {
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
-    // 🚀 6. RESIZE LISTENER
+    // 🚀 5. RESIZE LISTENER
     const handleResize = () => {
-      if (!container || !renderer || isCleanedUp) return;
-      const width = container.clientWidth || window.innerWidth;
-      const height = container.clientHeight || window.innerHeight;
+      if (!renderer || isCleanedUp) return;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
@@ -146,26 +102,42 @@ export default function ThreeScene() {
 
     window.addEventListener("resize", handleResize);
 
-    // 🚀 7. RENDER LOOP (GALAXY ROTATION)
+    // 🚀 6. ANIMATION LOOP (WAVE & MATRIX MOTION)
+    const clock = new THREE.Clock();
+
     const animate = () => {
       if (isCleanedUp) return;
       animationFrameId = requestAnimationFrame(animate);
 
-      targetX += (mouseX * 0.4 - targetX) * 0.05;
-      targetY += (mouseY * 0.4 - targetY) * 0.05;
+      const elapsedTime = clock.getElapsedTime();
 
-      // 🌌 සැබෑ ගැලැක්සියක් මෙන් මුළු තාරකා පද්ධතියම ස්වයංක්‍රීයව පරිභ්‍රමණය වීම
-      galaxyGroup.rotation.y += 0.002; 
+      // Mouse smoothing
+      targetX += (mouseX * 0.5 - targetX) * 0.05;
+      targetY += (mouseY * 0.5 - targetY) * 0.05;
 
-      // Parallax effect
-      galaxyGroup.rotation.x = (Math.PI / 5) + targetY * 0.25;
-      galaxyGroup.rotation.z = targetX * 0.25;
+      // වලාකුළු වල රැළි ස්වභාවය (Wave motion like rolling clouds)
+      const positionAttribute = cloudGeometry.attributes.position as THREE.BufferAttribute;
+      const vertex = new THREE.Vector3();
 
-      // Core wireframe rotation
-      shapeMesh.rotation.x += 0.004;
-      shapeMesh.rotation.y += 0.007;
-      shapeGroup.rotation.x = targetY;
-      shapeGroup.rotation.y = targetX;
+      for (let i = 0; i < particleCount; i++) {
+        positionAttribute.getX(i);
+        const z = positionAttribute.getZ(i);
+
+        // Sine wave එකක් මඟින් වලාකුළු මෘදුව ගමන් කරවීම
+        const y = -0.5 + Math.sin(elapsedTime * 0.8 + positionAttribute.getX(i) * 1.5) * 0.15;
+        positionAttribute.setY(i, y);
+
+        // ඉදිරියට ගලා යන හැඟීමක් ලබා දීම
+        let newZ = z + 0.003;
+        if (newZ > 3) newZ = -3;
+        positionAttribute.setZ(i, newZ);
+      }
+      positionAttribute.needsUpdate = true;
+
+      // Camera rotation based on mouse
+      camera.position.x = targetX * 0.8;
+      camera.position.y = 1.5 + targetY * 0.4;
+      camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
     };
@@ -179,47 +151,11 @@ export default function ThreeScene() {
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
 
-      starGeometry.dispose();
-      starMaterial.dispose();
-      shapeGeometry.dispose();
-      shapeMaterial.dispose();
-      if (renderer) {
-        renderer.dispose();
-      }
+      cloudGeometry.dispose();
+      cloudMaterial.dispose();
+      renderer?.dispose();
     };
   }, []);
-
-  const run2DFallback = (canvas: HTMLCanvasElement) => {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    const width = (canvas.width = window.innerWidth);
-    const height = (canvas.height = window.innerHeight);
-
-    const stars = Array.from({ length: 120 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: Math.random() * 2.5,
-      alpha: Math.random(),
-      speed: Math.random() * 0.02 + 0.005,
-    }));
-
-    const render = () => {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#818cf8";
-      for (const s of stars) {
-        s.alpha += s.speed;
-        ctx.globalAlpha = Math.abs(Math.sin(s.alpha));
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-  };
 
   return (
     <div
