@@ -150,19 +150,19 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setShowCenterAlert(false);
   };
 
-  // 🚀 CRASH-PROOF CONFIG PARSER
+  // 🚀 CRASH-PROOF CONFIG PARSER (SAFE AGAINST CRASHES & DELETIONS)
   const parseConfigs = (rawText: string | null) => {
-    if (!rawText || !rawText.trim()) return [];
+    if (!rawText || typeof rawText !== "string" || !rawText.trim()) return [];
     
-    // JSON Array Format (Admin Deletion Friendly)
+    // 1. JSON Array Format (Admin Deletion Safe)
     try {
       if (rawText.trim().startsWith("[") || rawText.trim().startsWith("{")) {
         const parsed = JSON.parse(rawText);
         if (Array.isArray(parsed)) {
           return parsed
-            .filter((item: any) => item && typeof item === "object" && item.code && item.code.trim().length > 0)
+            .filter((item: any) => item && typeof item === "object" && typeof item.code === "string" && item.code.trim().length > 0)
             .map((item: any, idx: number) => ({
-              name: item.name?.trim() || `Server ${idx + 1}`,
+              name: (typeof item.name === "string" && item.name.trim()) ? item.name.trim() : `Server ${idx + 1}`,
               code: item.code.trim()
             }))
             .filter(c => !c.name.toLowerCase().includes("payment verifying"));
@@ -170,28 +170,36 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     } catch {}
 
-    // Plain Text Blocks: 📦 [ Name ]\nvless://...
-    const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
-    let matches = [...rawText.matchAll(regex)];
-    let configs = [];
-    if (matches.length > 0) {
-      configs = matches
-        .map(m => ({ name: m[1].trim(), code: m[2].trim() }))
-        .filter(c => !c.name.toLowerCase().includes("payment verifying") && c.code.length > 0);
-    } else if (!rawText.includes("Payment Verifying")) {
-      const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
-      if (vlessLinks) configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link }));
-      else if (rawText.trim().length > 5) configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
+    // 2. Plain Text Blocks: 📦 [ Name ]\nvless://...
+    try {
+      const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
+      let matches = [...rawText.matchAll(regex)];
+      let configs = [];
+      if (matches.length > 0) {
+        configs = matches
+          .filter(m => m && m[1] !== undefined && m[2] !== undefined)
+          .map(m => ({
+            name: (m[1] || "").trim(),
+            code: (m[2] || "").trim()
+          }))
+          .filter(c => !c.name.toLowerCase().includes("payment verifying") && c.code.length > 0);
+      } else if (!rawText.includes("Payment Verifying")) {
+        const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
+        if (vlessLinks) configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link.trim() }));
+        else if (rawText.trim().length > 5) configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
+      }
+      return configs;
+    } catch {
+      return [];
     }
-    return configs;
   };
 
   const activeConfigs = parseConfigs(user?.vpnConfigKey);
 
   // Safe Receipt Link Extractor for Review Notice
-  const pendingOrders = metaData.pendingOrders || [];
-  const receiptMatch = (user?.vpnConfigKey || "").match(/Receipt:\s*(https?:\/\/[^\s]+)/i);
-  const receiptLink = receiptMatch ? receiptMatch[1] : (pendingOrders?.[0]?.receipt || null);
+  const pendingOrders = Array.isArray(metaData.pendingOrders) ? metaData.pendingOrders : [];
+  const receiptMatch = typeof user?.vpnConfigKey === "string" ? user.vpnConfigKey.match(/Receipt:\s*(https?:\/\/[^\s]+)/i) : null;
+  const receiptLink = receiptMatch ? receiptMatch[1] : (pendingOrders[0]?.receipt || null);
 
   const isVerified = metaData.isPremium || payments.length > 0 || Boolean(activeConfigs.length > 0);
   const safeName = user?.name || "Premium User";
@@ -214,6 +222,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   // 🚀 STRIP BRACKETS [...] BEFORE COPYING
   const handleCopyCleanCode = (text: string) => {
+    if (!text || typeof text !== "string") return;
     const cleanCode = text.replace(/(?:📦\s*)?\[[\s\S]*?\]\s*/g, "").trim();
     navigator.clipboard.writeText(cleanCode);
     alert("Copied to clipboard!");
@@ -765,7 +774,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                              <h2 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>{pingStats.min} ms</h2>
                            </div>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
-                             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Max Ping</p>
+                             <p style={{ margin: "0 0 0.5rem 0", color: "#ef4444", fontSize: "1.5rem" }}>Max Ping</p>
                              <h2 style={{ margin: 0, color: "#ef4444", fontSize: "1.5rem" }}>{pingStats.max} ms</h2>
                            </div>
                          </div>
@@ -867,7 +876,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB
+              2. STORE TAB (100% FIXED)
           ======================== */}
           {activeTab === "buy" && (
              <div className="animate-fade-in">
@@ -875,9 +884,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === "All" ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
                    All ISPs
                  </button>
+                 {/* 🚀 BUG FIXED: ISP_LOGOS[isp] instead of undefined ISP_LOGOS[pkg] */}
                  {Object.keys(ISP_LOGOS).map(isp => (
                    <button key={isp} onClick={() => setActiveIsp(isp)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === isp ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
-                     <img src={ISP_LOGOS[pkg as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={isp} />
+                     <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={isp} />
                      {isp}
                    </button>
                  ))}
@@ -954,20 +964,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* PENDING PACKAGES CARD (ONLY ACTIVE IF WAITING FOR APPROVAL) */}
+               {/* PENDING PACKAGES CARD (AWAITING VERIFICATION APPEARS HERE WITHOUT OVERWRITING ACTIVE ONES) */}
                {pendingOrders.length > 0 && (
                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
                    {pendingOrders.map((po: any, idx: number) => (
-                     <div key={po.id || idx} style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.2rem 1.5rem", borderRadius: "14px", color: "#f59e0b" }}>
+                     <div key={po?.id || idx} style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.2rem 1.5rem", borderRadius: "14px", color: "#f59e0b" }}>
                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                            <span style={{ fontSize: "1.5rem" }}>⏳</span>
                            <div>
-                             <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{po.package || "New VPN Plan"} (Pending Verification)</h4>
+                             <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{po?.package || "New VPN Plan"} (Pending Verification)</h4>
                              <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#f59e0b" }}>Receipt submitted. Waiting for Admin approval...</p>
                            </div>
                          </div>
-                         {po.receipt && (
+                         {po?.receipt && (
                            <a href={po.receipt} target="_blank" rel="noreferrer" style={{ color: "#818cf8", textDecoration: "underline", fontSize: "0.85rem", fontWeight: "bold" }}>
                              View Uploaded Receipt ↗
                            </a>
@@ -1020,16 +1030,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {payments.map((p, idx) => (
-                    <div key={p.id || idx} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                    <div key={p?.id || idx} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                        <div>
-                         <p style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontWeight: "bold" }}>{p.package}</p>
-                         <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>{new Date(p.date).toLocaleDateString()} at {new Date(p.date).toLocaleTimeString()}</p>
+                         <p style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontWeight: "bold" }}>{p?.package || "VPN Plan"}</p>
+                         <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>{p?.date ? new Date(p.date).toLocaleString() : "Date recorded"}</p>
                        </div>
                        <div style={{ textAlign: "right" }}>
-                         <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p.amount}</h3>
+                         <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                          <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "5px" }}>
-                           <span style={{ fontSize: "0.75rem", background: p.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p.status}</span>
-                           {p.receipt && (
+                           <span style={{ fontSize: "0.75rem", background: p?.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p?.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p?.status || "Verifying"}</span>
+                           {p?.receipt && (
                              <a href={p.receipt} target="_blank" rel="noreferrer" download style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "10px", transition: "0.2s" }} className="hover:bg-white/20">⬇️ Download Slip</a>
                            )}
                          </div>
@@ -1133,7 +1143,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 🚀 CLEAN SINGLE CHECKOUT MODAL (FIXED STORE) */}
+          {/* 🚀 CHECKOUT MODAL */}
           {modalPackage && !simWarningModal && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
               <div style={{ width: "100%", maxWidth: "560px", padding: "2rem", background: "#10101a", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", maxHeight: "90vh", overflowY: "auto" }}>
