@@ -60,7 +60,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
   
-  // 🚀 STEP 2: FULL-SCREEN ACHIEVEMENT MODAL STATE (REPLACES BOTTOM TOAST)
+  // 🚀 FULL-SCREEN ACHIEVEMENT MODAL STATE
   const [unlockedAchModal, setUnlockedAchModal] = useState<{ title: string; name: string; desc: string } | null>(null);
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return () => clearInterval(hb);
   }, []);
 
-  // 🚀 STEP 2: USER-ISOLATED ACHIEVEMENTS WITH FULL-SCREEN MODAL
+  // 🚀 USER-ISOLATED ACHIEVEMENTS
   const userIdentifier = user?.id || user?.email || "guest_user";
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     });
   };
 
-  // 🚀 CENTER POPUP ALERT
+  // 🚀 CENTER POPUP ALERT (DISMISSED STATE SAVED PER USER)
   const [showCenterAlert, setShowCenterAlert] = useState(false);
 
   useEffect(() => {
@@ -206,25 +206,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
 
-  // 🚀 STEP 1: FIX REVIEW BANNER DISAPPEARING AFTER ADMIN VERIFIES
+  // 🚀 FIX: REAL-TIME VERIFICATION & REVIEW STATUS CHECK
+  // Banner will disappear automatically if payment is verified or deleted in Admin panel
   const pendingOrders = useMemo(() => {
-    return (Array.isArray(metaData.pendingOrders) ? metaData.pendingOrders : []).filter((po: any) => {
-      const matchingPayment = (metaData.payments || []).find((p: any) => p.id === po.id || p.date === po.date || p.receipt === po.receipt);
-      if (matchingPayment && matchingPayment.status === "Verified") return false;
-      if (matchingPayment && matchingPayment.status === "Verifying") return true;
-      return false;
-    });
-  }, [metaData.pendingOrders, metaData.payments]);
-
-  const hasVerifyingPayment = useMemo(() => {
-    return Array.isArray(metaData.payments) && metaData.payments.some((p: any) => p?.status === "Verifying");
+    return (Array.isArray(metaData.payments) ? metaData.payments : []).filter((p: any) => p?.status === "Verifying");
   }, [metaData.payments]);
 
-  // Notice only shows if there's actual pending orders AND no active configs
-  const hasPendingReview = (pendingOrders.length > 0 || hasVerifyingPayment) && activeConfigs.length === 0;
+  const hasPendingReview = pendingOrders.length > 0 && activeConfigs.length === 0;
 
-  const receiptMatch = typeof user?.vpnConfigKey === "string" ? user.vpnConfigKey.match(/Receipt:\s*(https?:\/\/[^\s]+)/i) : null;
-  const receiptLink = receiptMatch ? receiptMatch[1] : (pendingOrders[0]?.receipt || (Array.isArray(metaData.payments) ? metaData.payments.find((p: any) => p?.status === "Verifying")?.receipt : null));
+  const receiptLink = useMemo(() => {
+    if (pendingOrders.length > 0 && pendingOrders[0]?.receipt) {
+      return pendingOrders[0].receipt;
+    }
+    return null;
+  }, [pendingOrders]);
 
   const isVerified = metaData.isPremium || payments.length > 0 || Boolean(activeConfigs.length > 0);
   const safeName = user?.name || "Premium User";
@@ -255,16 +250,28 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     alert("Copied to clipboard!");
   };
 
-  // 🚀 STEP 3: RELIABLE CLOUDINARY DOWNLOAD URL CONVERTER
-  const getDownloadUrl = (url: string) => {
+  // 🚀 FIX: CLOUDINARY DIRECT VIEW & DOWNLOAD HANDLER (ELIMINATES "Failed to load PDF document")
+  const getCleanReceiptUrl = (url: string | null, forceDownload = false) => {
     if (!url) return "#";
-    if (url.includes("cloudinary.com") && url.includes("/upload/")) {
-      return url.replace("/upload/", "/upload/fl_attachment/");
+    let target = url;
+
+    // Convert PDF deliveries to JPG so browser renders it seamlessly without PDF viewer failures
+    if (target.includes("cloudinary.com")) {
+      if (target.toLowerCase().endsWith(".pdf")) {
+        target = target.replace(/\.pdf$/i, ".jpg");
+      }
+      if (forceDownload) {
+        if (!target.includes("/fl_attachment")) {
+          target = target.replace("/upload/", "/upload/fl_attachment/");
+        }
+      } else {
+        target = target.replace("/upload/fl_attachment/", "/upload/");
+      }
     }
-    return url;
+    return target;
   };
 
-  // IP Connection Checker (Optimized interval: 20s)
+  // IP Connection Checker
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -362,7 +369,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const cancelTest = () => { setStState("idle"); setGaugeValue(0); };
 
-  // 🚀 FIXED: LATENCY PING TEST
+  // LATENCY PING TEST
   const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
   const [isPinging, setIsPinging] = useState(false);
 
@@ -412,7 +419,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
-  // 🚀 FIXED: WEBRTC LEAK TEST
+  // WEBRTC LEAK TEST
   const [leakIPs, setLeakIPs] = useState<string[]>([]);
   const [isCheckingLeak, setIsCheckingLeak] = useState(false);
 
@@ -474,7 +481,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setSelectedQuota(null);
   };
 
-  // 🚀 CLOUDINARY DIRECT UPLOAD
+  // CLOUDINARY DIRECT UPLOAD
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
@@ -992,7 +999,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* 🚀 HARDWARE ACCELERATED GRID FOR BUDGET DEVICES */}
+               {/* HARDWARE ACCELERATED GRID FOR BUDGET DEVICES */}
                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
                  {ALL_PACKAGES
                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
@@ -1027,47 +1034,23 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. MY VPNS TAB (STEP 1 FIXED)
+              3. MY VPNS TAB (BUG FIXED)
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
                <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
                
-               {/* 🚀 STEP 1: ONLY SHOWN IF PAYMENT IS VERIFYING AND NO ACTIVE CONFIGS */}
+               {/* 🚀 STEP 1 FIX: REVIEW BANNER ONLY SHOWN WHEN PAYMENT IS ACTUALLY PENDING */}
                {hasPendingReview && (
                  <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
                    <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
                      <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
                    </div>
                    {receiptLink && (
-                      <a href={getDownloadUrl(receiptLink)} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
+                      <a href={getCleanReceiptUrl(receiptLink, false)} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
                         View Uploaded Receipt ↗
                       </a>
                    )}
-                 </div>
-               )}
-
-               {/* PENDING PACKAGES CARD (ONLY REAL UNVERIFIED ORDERS APPEAR HERE) */}
-               {pendingOrders.length > 0 && (
-                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
-                   {pendingOrders.map((po: any, idx: number) => (
-                     <div key={po?.id || idx} style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1.2rem 1.5rem", borderRadius: "14px", color: "#f59e0b" }}>
-                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                           <span style={{ fontSize: "1.5rem" }}>⏳</span>
-                           <div>
-                             <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{po?.package || "New VPN Plan"} (Pending Verification)</h4>
-                             <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#f59e0b" }}>Receipt submitted. Waiting for Admin approval...</p>
-                           </div>
-                         </div>
-                         {po?.receipt && (
-                           <a href={getDownloadUrl(po.receipt)} target="_blank" rel="noopener noreferrer" style={{ color: "#818cf8", textDecoration: "underline", fontSize: "0.85rem", fontWeight: "bold" }}>
-                             View Uploaded Receipt ↗
-                           </a>
-                         )}
-                       </div>
-                     </div>
-                   ))}
                  </div>
                )}
 
@@ -1088,8 +1071,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </div>
                     ))}
                   </div>
-               ) : !hasPendingReview && (
-                  /* 🚀 SHOWN WHEN NO CONFIGS AVAILABLE */
+               ) : (
+                  /* 🚀 STEP 1 FIX: ALWAYS SHOWN WHEN CONFIGS ARE EMPTY (NOTHING BLANK) */
                   <div style={{ padding: "3rem", textAlign: "center", background: "#0e0e17", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
                      <p style={{ color: "#9ca3af", fontSize: "1.05rem", margin: "0 0 1rem 0" }}>No active configurations assigned yet.</p>
                      <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
@@ -1099,7 +1082,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              4. PAYMENTS TAB (STEP 3 CLOUDINARY DOWNLOAD FIXED)
+              4. PAYMENTS TAB
           ======================== */}
           {activeTab === "payments" && (
             <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -1123,10 +1106,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                          <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                          <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "5px" }}>
                            <span style={{ fontSize: "0.75rem", background: p?.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p?.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p?.status || "Verifying"}</span>
-                           {/* 🚀 STEP 3: DIRECT DOWNLOAD FIXED WITH fl_attachment */}
+                           {/* 🚀 STEP 3 FIX: CLOUDINARY DOWNLOAD ATTACHMENT */}
                            {p?.receipt && (
                              <a 
-                               href={getDownloadUrl(p.receipt)} 
+                               href={getCleanReceiptUrl(p.receipt, true)} 
                                target="_blank" 
                                rel="noopener noreferrer" 
                                style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "8px" }}
