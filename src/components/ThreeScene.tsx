@@ -25,7 +25,6 @@ export default function ThreeScene() {
         powerPreference: "high-performance",
       });
     } catch {
-      // Graceful fallback: 2D Canvas Starfield if WebGL is disabled/blocked by browser
       run2DFallback(canvas);
       return;
     }
@@ -35,13 +34,12 @@ export default function ThreeScene() {
       return;
     }
 
-    // Set pixel ratio capped at 1.5 (prevents overheating on budget high-DPI screens)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
 
     const scene = new THREE.Scene();
 
-    // 🚀 2. CAMERA SETUP (POSITIONED TO NEVER CLIP WIREFRAME)
+    // 🚀 2. CAMERA SETUP
     const camera = new THREE.PerspectiveCamera(
       60,
       (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
@@ -50,8 +48,8 @@ export default function ThreeScene() {
     );
     camera.position.z = 2.8;
 
-    // 🚀 3. OPTIMIZED STARFIELD (PURE JS - ZERO EXTERNAL BUNDLE CRASHES)
-    const starCount = 700; // Optimal particle count for smooth 60fps on mobile
+    // 🚀 3. 3D ENHANCED & LARGER STARFIELD
+    const starCount = 800; 
     const positions = new Float32Array(starCount * 3);
 
     for (let i = 0; i < starCount * 3; i += 3) {
@@ -59,7 +57,8 @@ export default function ThreeScene() {
       const v = Math.random();
       const theta = u * 2.0 * Math.PI;
       const phi = Math.acos(2.0 * v - 1.0);
-      const r = Math.cbrt(Math.random()) * 2.5;
+      // තාරකා වල ගැඹුර වැඩි කිරීමට radius එක තරමක් පුළුල් කර ඇත
+      const r = Math.cbrt(Math.random()) * 3.2;
 
       positions[i] = r * Math.sin(phi) * Math.cos(theta);
       positions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
@@ -71,10 +70,11 @@ export default function ThreeScene() {
 
     const starMaterial = new THREE.PointsMaterial({
       color: 0x818cf8,
-      size: 0.018,
+      size: 0.045, // 🚀 තාරකා ප්‍රමාණය මඳක් විශාල කර ඇත (Larger Stars)
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.9,
       depthWrite: false,
+      sizeAttenuation: true, // 3D පෙනුම වැඩි කිරීමට දුර අනුව ප්‍රමාණය වෙනස් වේ
     });
 
     const starPoints = new THREE.Points(starGeometry, starMaterial);
@@ -87,14 +87,14 @@ export default function ThreeScene() {
       color: 0xffffff,
       wireframe: true,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.4,
     });
 
     const shapeMesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
     shapeGroup.add(shapeMesh);
     scene.add(shapeGroup);
 
-    // 🚀 5. MOUSE INTERACTION TRACKING
+    // 🚀 5. 3D MOUSE PARALLAX TRACKING
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
@@ -119,19 +119,22 @@ export default function ThreeScene() {
 
     window.addEventListener("resize", handleResize);
 
-    // 🚀 7. RENDER LOOP
+    // 🚀 7. DYNAMIC 3D RENDER LOOP
     const animate = () => {
       if (isCleanedUp) return;
       animationFrameId = requestAnimationFrame(animate);
 
-      // Starfield rotation
-      starPoints.rotation.x -= 0.0004;
-      starPoints.rotation.y -= 0.0007;
+      // Smooth mouse interpolation for 3D depth effect
+      targetX += (mouseX * 0.5 - targetX) * 0.05;
+      targetY += (mouseY * 0.5 - targetY) * 0.05;
 
-      // Smooth mouse interpolation
-      targetX += (mouseX * 0.4 - targetX) * 0.05;
-      targetY += (mouseY * 0.4 - targetY) * 0.05;
+      // Starfield 3D rotation & parallax reaction
+      starPoints.rotation.x -= 0.0005;
+      starPoints.rotation.y -= 0.0008;
+      starPoints.rotation.x += (targetY * 0.2 - starPoints.rotation.x) * 0.03;
+      starPoints.rotation.y += (targetX * 0.2 - starPoints.rotation.y) * 0.03;
 
+      // Icosahedron rotation & parallax reaction
       shapeMesh.rotation.x += 0.004;
       shapeMesh.rotation.y += 0.006;
       shapeGroup.rotation.x = targetY;
@@ -159,7 +162,6 @@ export default function ThreeScene() {
     };
   }, []);
 
-  // 🚀 2D CANVAS FALLBACK IF BROWSER SHIELDS BLOCK WEBGL
   const run2DFallback = (canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -171,7 +173,7 @@ export default function ThreeScene() {
     const stars = Array.from({ length: 120 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      radius: Math.random() * 1.5,
+      radius: Math.random() * 2.2,
       alpha: Math.random(),
       speed: Math.random() * 0.02 + 0.005,
     }));
