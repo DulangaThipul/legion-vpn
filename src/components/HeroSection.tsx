@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ThreeScene from "./ThreeScene";
+import dynamic from "next/dynamic";
 import GoogleSignIn from "./GoogleSignIn";
+
+// 🚀 මෙන්න මෙහෙම dynamic import කළ විට Server එකේදී Canvas render නොවී Client එකේදී පමණක් render වී Black screen එක හැදෙනවා
+const ThreeScene = dynamic(() => import("./ThreeScene"), { ssr: false });
 
 const ubuntuLogs = [
   "Linux version 5.15.0-101-generic (buildd@lcy02-amd64) (gcc 11.4.0)",
@@ -42,8 +45,6 @@ export default function HeroSection() {
   const [renderedLogs, setRenderedLogs] = useState<string[]>([]);
   const [slashes, setSlashes] = useState("");
   const [exit, setExit] = useState(false);
-  
-  // Wait for fade out transition before removing from DOM
   const [unmountOverlay, setUnmountOverlay] = useState(false);
 
   useEffect(() => {
@@ -58,7 +59,6 @@ export default function HeroSection() {
       } else {
         clearInterval(logInterval);
         
-        // Start adding slashes next to the final message
         let slashCount = 0;
         const slashInterval = setInterval(() => {
           if (slashCount < 3) {
@@ -66,16 +66,14 @@ export default function HeroSection() {
             slashCount++;
           } else {
             clearInterval(slashInterval);
-            
-            // Hold before fading out (Total duration ~ 4s)
             setTimeout(() => {
               setExit(true);
-              setTimeout(() => setUnmountOverlay(true), 500); // 0.5s transition wait
+              setTimeout(() => setUnmountOverlay(true), 500);
             }, 1200);
           }
         }, 200);
       }
-    }, 70); // Adjusted for a 4-second total duration
+    }, 70);
 
     return () => clearInterval(logInterval);
   }, []);
@@ -84,7 +82,6 @@ export default function HeroSection() {
     <section style={{ position: "relative", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
       <ThreeScene />
       
-      {/* Ubuntu Terminal Boot Overlay */}
       {!unmountOverlay && (
         <div style={{
           position: "fixed",
@@ -99,7 +96,6 @@ export default function HeroSection() {
           transition: "opacity 0.5s ease-in-out",
           opacity: exit ? 0 : 1,
           overflow: "hidden",
-          overflowX: "hidden",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -123,7 +119,7 @@ export default function HeroSection() {
                 <div key={i} style={{ 
                   fontWeight: isLastLine ? "bold" : "normal",
                   fontSize: isLastLine ? "clamp(0.85rem, 1.8vw, 1.1rem)" : "inherit",
-                  marginTop: isLastLine ? "1rem" : "0" // Give a little space before climax message
+                  marginTop: isLastLine ? "1rem" : "0"
                 }}>
                   {log}
                   {isLastLine && (
@@ -139,7 +135,6 @@ export default function HeroSection() {
         </div>
       )}
 
-      {/* Main Content with Full Screen Radial Gradient Behind */}
       <div style={{
         position: "absolute",
         top: 0,
