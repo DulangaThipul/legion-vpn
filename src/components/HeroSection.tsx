@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import GoogleSignIn from "./GoogleSignIn";
 
-// 🚀 මෙන්න මෙහෙම dynamic import කළ විට Server එකේදී Canvas render නොවී Client එකේදී පමණක් render වී Black screen එක හැදෙනවා
+// 🚀 අන්න මේ විදිහට SSR false කරලා import කරන්න ඕනේ, නැත්නම් GitHub Pages වලදී Page crash වෙනවා
 const ThreeScene = dynamic(() => import("./ThreeScene"), { ssr: false });
 
 const ubuntuLogs = [
