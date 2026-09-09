@@ -5,46 +5,39 @@ import * as THREE from "three";
 
 export default function ThreeScene() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    let animId: number;
+    let animationFrameId: number;
     let renderer: THREE.WebGLRenderer | null = null;
-    let isDisposed = false;
+    let isCleanedUp = false;
 
     try {
-      // 🚀 0 වන ප්‍රමාණයන් (Zero dimensions) මඟහරවා ගැනීමට Window size සෘජුවම ලබා දී ඇත
       const width = window.innerWidth || 800;
       const height = window.innerHeight || 600;
 
-      renderer = new THREE.WebGLRenderer({
-        canvas,
-        alpha: true,
-        antialias: false,
-        powerPreference: "high-performance",
-      });
-
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-      renderer.setSize(width, height);
-
+      // Scene & Camera Setup
       const scene = new THREE.Scene();
-      
-      // Camera (ප්‍රථම කේතයේ තිබූ පරිදිම position [0, 0, 1] ලෙස සකසා ඇත)
-      const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-      camera.position.set(0, 0, 1);
+      const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+      camera.position.z = 1.2;
 
-      // Lights (ප්‍රථම කේතයේ තිබූ පරිදිම)
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      // Renderer Setup
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      container.appendChild(renderer.domElement);
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
       directionalLight.position.set(10, 10, 5);
       scene.add(directionalLight);
 
-      // 1. Star Background (හරියටම මුල් කේතයේ තිබූ 5001 points සහ radius 1.5)
+      // 1. Star Background (Exact original 5,001 points)
       const count = 5001;
       const positions = new Float32Array(count);
       for (let i = 0; i < count; i += 3) {
@@ -66,17 +59,15 @@ export default function ThreeScene() {
         size: 0.015,
         transparent: true,
         depthWrite: false,
-        sizeAttenuation: true,
       });
 
       const starPoints = new THREE.Points(starGeometry, starMaterial);
       const starGroup = new THREE.Group();
-      starGroup.rotation.z = Math.PI / 4; // Original 45-degree tilt
+      starGroup.rotation.z = Math.PI / 4;
       starGroup.add(starPoints);
       scene.add(starGroup);
 
-      // 2. Wireframe Shape (Original Icosahedron args={[1, 1]} සහ opacity 0.5)
-      const shapeGroup = new THREE.Group();
+      // 2. Wireframe Icosahedron Shape
       const icosaGeometry = new THREE.IcosahedronGeometry(1, 1);
       const icosaMaterial = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -84,55 +75,48 @@ export default function ThreeScene() {
         transparent: true,
         opacity: 0.5,
       });
+      const icosaMesh = new THREE.Mesh(icosaGeometry, icosaMaterial);
 
-      const shapeMesh = new THREE.Mesh(icosaGeometry, icosaMaterial);
-      shapeGroup.add(shapeMesh);
+      const shapeGroup = new THREE.Group();
+      shapeGroup.add(icosaMesh);
       scene.add(shapeGroup);
 
-      // Mouse tracking offset
+      // Mouse Tracking
       let mouseX = 0;
       let mouseY = 0;
-
       const handleMouseMove = (e: MouseEvent) => {
         mouseX = (e.clientX / window.innerWidth) * 2 - 1;
         mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
       };
-
       window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
-      // Window Resize Listener
+      // Window Resize
       const handleResize = () => {
-        if (!renderer || isDisposed) return;
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        camera.aspect = w / h;
+        if (!container || !renderer || isCleanedUp) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
+        renderer.setSize(window.innerWidth, window.innerHeight);
       };
-
       window.addEventListener("resize", handleResize);
 
-      // Animation Loop (මුල් කේතයේ තිබූ පරිදිම rotation speeds සහ interpolation)
+      // Animation Loop
       const clock = new THREE.Clock();
-
       const animate = () => {
-        if (isDisposed) return;
-        animId = requestAnimationFrame(animate);
-
+        if (isCleanedUp) return;
+        animationFrameId = requestAnimationFrame(animate);
         const delta = Math.min(clock.getDelta(), 0.1);
 
-        // Star rotation (-delta/10, -delta/15)
+        // Star rotation
         starGroup.rotation.x -= delta / 10;
         starGroup.rotation.y -= delta / 15;
 
-        // Wireframe rotation (+delta*0.2, +delta*0.3)
-        shapeMesh.rotation.x += delta * 0.2;
-        shapeMesh.rotation.y += delta * 0.3;
+        // Wireframe rotation
+        icosaMesh.rotation.x += delta * 0.2;
+        icosaMesh.rotation.y += delta * 0.3;
 
-        // Smooth mouse tracking interpolation
+        // Mouse interpolation
         const targetX = (mouseY * Math.PI) / 5;
         const targetY = (mouseX * Math.PI) / 5;
-
         shapeGroup.rotation.x += (targetX - shapeGroup.rotation.x) * 0.05;
         shapeGroup.rotation.y += (targetY - shapeGroup.rotation.y) * 0.05;
 
@@ -142,19 +126,21 @@ export default function ThreeScene() {
       animate();
 
       return () => {
-        isDisposed = true;
-        cancelAnimationFrame(animId);
+        isCleanedUp = true;
+        cancelAnimationFrame(animationFrameId);
         window.removeEventListener("mousemove", handleMouseMove);
         window.removeEventListener("resize", handleResize);
-
         starGeometry.dispose();
         starMaterial.dispose();
         icosaGeometry.dispose();
         icosaMaterial.dispose();
         renderer?.dispose();
+        if (container && renderer?.domElement && container.contains(renderer.domElement)) {
+          container.removeChild(renderer.domElement);
+        }
       };
     } catch (err) {
-      console.error("ThreeJS Render Error:", err);
+      console.error("Three.js init error:", err);
     }
   }, []);
 
@@ -165,21 +151,12 @@ export default function ThreeScene() {
         position: "absolute",
         top: 0,
         left: 0,
-        width: "100%",
-        height: "100%",
+        right: 0,
+        bottom: 0,
         zIndex: 0,
         pointerEvents: "none",
         overflow: "hidden",
       }}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "block",
-        }}
-      />
-    </div>
+    />
   );
 }
