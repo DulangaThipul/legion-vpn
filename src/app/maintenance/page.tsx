@@ -30,7 +30,8 @@ export default function MaintenancePage() {
         </h1>
         
         <p style={{ color: "rgba(255, 255, 255, 0.6)", lineHeight: "1.6", marginBottom: "2rem", fontSize: "1rem" }}>
-          LEGION VPN පද්ධතියේ වැඩිදියුණු කිරීමේ කටයුත්තක් (Maintenance) සිදුවෙමින් පවතින බැවින් තාවකාලිකව අක්‍රිය කර ඇත. කෙටි වේලාවකින් නැවත පැමිණෙන්න!
+          LEGION VPN Web එකේ Maintenancement එකක් සිදුවෙමින් පවතින බැවින් තාවකාලිකව අක්‍රිය කර ඇත. කෙටි වේලාවකින් නැවත පැමිණෙන්න
+          FOR Oder Configs +44 116 350 4152 Whatsapp...
         </p>
 
         <div style={{
