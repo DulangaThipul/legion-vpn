@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
@@ -59,22 +59,26 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const [payments, setPayments] = useState<any[]>([]);
   const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
-  const [toastMsg, setToastMsg] = useState<{title: string, desc: string} | null>(null);
+  
+  // 🚀 STEP 2: FULL-SCREEN ACHIEVEMENT MODAL STATE (REPLACES BOTTOM TOAST)
+  const [unlockedAchModal, setUnlockedAchModal] = useState<{ title: string; name: string; desc: string } | null>(null);
 
-  // 🚀 LIVE STATE SYNC: Admin Panel එකෙන් දත්ත වෙනස් කළ විට Dashboard එක Live Sync වීම
   useEffect(() => {
     setUser(initialUser);
   }, [initialUser]);
 
   // 🚀 METADATA DECODER
-  let metaData = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[] };
-  if (user?.subscriptionLink) {
-    try {
-      metaData = { ...metaData, ...JSON.parse(user.subscriptionLink) };
-    } catch {
-      metaData.alert = user.subscriptionLink;
+  let metaData = useMemo(() => {
+    let data = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[] };
+    if (user?.subscriptionLink) {
+      try {
+        data = { ...data, ...JSON.parse(user.subscriptionLink) };
+      } catch {
+        data.alert = user.subscriptionLink;
+      }
     }
-  }
+    return data;
+  }, [user?.subscriptionLink]);
 
   // 🚀 USER-ISOLATED PAYMENT HISTORY
   useEffect(() => {
@@ -83,18 +87,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     } else {
       setPayments([]);
     }
-  }, [user?.subscriptionLink]);
+  }, [metaData.payments]);
 
-  // 🚀 REAL-TIME ONLINE HEARTBEAT (EVERY 15 SECONDS)
+  // 🚀 REAL-TIME ONLINE HEARTBEAT (EVERY 20 SECONDS)
   useEffect(() => {
     sendClientHeartbeat();
     const hb = setInterval(() => {
       sendClientHeartbeat();
-    }, 15000);
+    }, 20000);
     return () => clearInterval(hb);
   }, []);
 
-  // 🚀 USER-ISOLATED ACHIEVEMENTS
+  // 🚀 STEP 2: USER-ISOLATED ACHIEVEMENTS WITH FULL-SCREEN MODAL
   const userIdentifier = user?.id || user?.email || "guest_user";
 
   useEffect(() => {
@@ -104,27 +108,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const hasSeenWelcome = localStorage.getItem(welcomeKey);
     if (!hasSeenWelcome) {
       setTimeout(() => {
-        setToastMsg({ title: "Achievement Unlocked! 🏆", desc: "You know the Secret to Bypass Internet" });
+        setUnlockedAchModal({
+          title: "Achievement Unlocked! 🏆",
+          name: "Secret Master",
+          desc: "You know the Secret to Bypass Internet."
+        });
         localStorage.setItem(welcomeKey, "true");
-        setTimeout(() => setToastMsg(null), 5000);
-      }, 2000);
+      }, 1500);
     }
 
     const savedAch = JSON.parse(localStorage.getItem(achKey) || "{}");
     setAchievements({ legion: false, nolimits: false, organized: false, dedicated: false, ...savedAch });
 
-    const timer = setTimeout(() => { unlockAchievement("dedicated", "Dedicated User"); }, 600000);
+    const timer = setTimeout(() => { 
+      unlockAchievement("dedicated", "Dedicated User", "Stay active on the dashboard for more than 10 minutes."); 
+    }, 600000);
     return () => clearTimeout(timer);
   }, [userIdentifier]);
 
-  const unlockAchievement = (key: keyof typeof achievements, title: string) => {
+  const unlockAchievement = (key: keyof typeof achievements, name: string, desc: string) => {
     const achKey = `legion_achievements_${userIdentifier}`;
     setAchievements(prev => {
       if (prev[key]) return prev;
       const next = { ...prev, [key]: true };
       localStorage.setItem(achKey, JSON.stringify(next));
-      setToastMsg({ title: "Achievement Unlocked! 🏆", desc: title });
-      setTimeout(() => setToastMsg(null), 4000);
+      setUnlockedAchModal({
+        title: "Achievement Unlocked! 🏆",
+        name: name,
+        desc: desc
+      });
       return next;
     });
   };
@@ -192,13 +204,25 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
-  const activeConfigs = parseConfigs(user?.vpnConfigKey);
+  const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
 
-  // 🚀 PENDING VERIFICATION CHECK (Only true if there is an actual slip/order pending)
-  const pendingOrders = Array.isArray(metaData.pendingOrders) ? metaData.pendingOrders : [];
-  const hasVerifyingPayment = Array.isArray(metaData.payments) && metaData.payments.some((p: any) => p?.status === "Verifying");
-  const hasPendingReview = pendingOrders.length > 0 || hasVerifyingPayment;
-  
+  // 🚀 STEP 1: FIX REVIEW BANNER DISAPPEARING AFTER ADMIN VERIFIES
+  const pendingOrders = useMemo(() => {
+    return (Array.isArray(metaData.pendingOrders) ? metaData.pendingOrders : []).filter((po: any) => {
+      const matchingPayment = (metaData.payments || []).find((p: any) => p.id === po.id || p.date === po.date || p.receipt === po.receipt);
+      if (matchingPayment && matchingPayment.status === "Verified") return false;
+      if (matchingPayment && matchingPayment.status === "Verifying") return true;
+      return false;
+    });
+  }, [metaData.pendingOrders, metaData.payments]);
+
+  const hasVerifyingPayment = useMemo(() => {
+    return Array.isArray(metaData.payments) && metaData.payments.some((p: any) => p?.status === "Verifying");
+  }, [metaData.payments]);
+
+  // Notice only shows if there's actual pending orders AND no active configs
+  const hasPendingReview = (pendingOrders.length > 0 || hasVerifyingPayment) && activeConfigs.length === 0;
+
   const receiptMatch = typeof user?.vpnConfigKey === "string" ? user.vpnConfigKey.match(/Receipt:\s*(https?:\/\/[^\s]+)/i) : null;
   const receiptLink = receiptMatch ? receiptMatch[1] : (pendingOrders[0]?.receipt || (Array.isArray(metaData.payments) ? metaData.payments.find((p: any) => p?.status === "Verifying")?.receipt : null));
 
@@ -212,16 +236,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
-  const availablePackages = ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
-  const hasRouter = availablePackages.some(p => p.type === "router");
-  const hasMobile = availablePackages.some(p => p.type === "mobile");
+  const availablePackages = useMemo(() => {
+    return ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
+  }, [activeIsp]);
+
+  const hasRouter = useMemo(() => availablePackages.some(p => p.type === "router"), [availablePackages]);
+  const hasMobile = useMemo(() => availablePackages.some(p => p.type === "mobile"), [availablePackages]);
 
   useEffect(() => {
     if (!hasRouter && activeNetworkType === "router") setActiveNetworkType("all");
     if (!hasMobile && activeNetworkType === "mobile") setActiveNetworkType("all");
-  }, [activeIsp, hasRouter, hasMobile, activeNetworkType]);
+  }, [hasRouter, hasMobile, activeNetworkType]);
 
-  // 🚀 STRIP BRACKETS [...] BEFORE COPYING
   const handleCopyCleanCode = (text: string) => {
     if (!text || typeof text !== "string") return;
     const cleanCode = text.replace(/(?:📦\s*)?\[[\s\S]*?\]\s*/g, "").trim();
@@ -229,6 +255,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     alert("Copied to clipboard!");
   };
 
+  // 🚀 STEP 3: RELIABLE CLOUDINARY DOWNLOAD URL CONVERTER
+  const getDownloadUrl = (url: string) => {
+    if (!url) return "#";
+    if (url.includes("cloudinary.com") && url.includes("/upload/")) {
+      return url.replace("/upload/", "/upload/fl_attachment/");
+    }
+    return url;
+  };
+
+  // IP Connection Checker (Optimized interval: 20s)
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -246,7 +282,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     checkConnection(); 
     let intervalId: NodeJS.Timeout;
     if (activeTab === "dashboard" || activeTool === "ip" || activeTool === "speed") {
-      intervalId = setInterval(checkConnection, 4000); 
+      intervalId = setInterval(checkConnection, 20000); 
     }
     return () => clearInterval(intervalId);
   }, [activeTab, activeTool]);
@@ -326,7 +362,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const cancelTest = () => { setStState("idle"); setGaugeValue(0); };
 
-  // 🚀 LATENCY PING TEST (REACTIVE & NO-CORS FAILSAFE)
+  // 🚀 FIXED: LATENCY PING TEST
   const [pingStats, setPingStats] = useState<{min: number, max: number, avg: number, jitter: number} | null>(null);
   const [isPinging, setIsPinging] = useState(false);
 
@@ -350,11 +386,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             img.onload = () => resolve(null);
             img.onerror = () => resolve(null);
             img.src = "https://www.cloudflare.com/favicon.ico?" + Date.now() + Math.random();
-            setTimeout(resolve, 1500);
+            setTimeout(resolve, 1200);
           });
           pings.push(Math.max(1, performance.now() - start));
         }
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 80));
       }
 
       if (pings.length > 0) {
@@ -376,7 +412,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
-  // 🚀 WEBRTC LEAK TEST (SAFE CANDIDATE PARSING)
+  // 🚀 FIXED: WEBRTC LEAK TEST
   const [leakIPs, setLeakIPs] = useState<string[]>([]);
   const [isCheckingLeak, setIsCheckingLeak] = useState(false);
 
@@ -416,13 +452,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         try {
           rtc.close();
         } catch {}
-      }, 3000);
+      }, 2500);
     } catch {
       setIsCheckingLeak(false);
     }
   };
 
-  // 🚀 STORE SELECTION HANDLERS
+  // STORE SELECTION HANDLERS
   const handleSelectPackage = (pkg: any) => {
     if (pkg.type === "mobile") {
       setSimWarningModal(pkg);
@@ -438,7 +474,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setSelectedQuota(null);
   };
 
-  // 🚀 CLOUDINARY DIRECT UPLOAD (UNSIGNED PRESET: legion_slips)
+  // 🚀 CLOUDINARY DIRECT UPLOAD
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
@@ -459,9 +495,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       if (!fileUrl) throw new Error("Failed to obtain slip URL");
 
-      unlockAchievement("legion", "Be a part of LEGION");
+      unlockAchievement("legion", "Be a part of LEGION", "Unlock by successfully uploading your first payment slip.");
       if (modalPackage?.name.toLowerCase().includes("unlimited") || selectedQuota?.toLowerCase().includes("unlimited")) {
-        unlockAchievement("nolimits", "No More Limitations");
+        unlockAchievement("nolimits", "No More Limitations", "Purchase an Unlimited package and break the limits.");
       }
 
       const amount = currentQuotaList[selectedQuota!] || 0;
@@ -503,7 +539,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       const newAvatar = gifPath === "" ? (initialUser?.googleImage || null) : gifPath;
       setAvatar(newAvatar);
       await updateUserAvatar(newAvatar);
-      unlockAchievement("organized", "Organized Person");
+      unlockAchievement("organized", "Organized Person", "Personalize your profile by changing your avatar.");
       router.refresh();
     } catch {
     } finally {
@@ -542,24 +578,69 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const currentQuotaList = modalPackage?.type === "router" ? ROUTER_CONFIG_PRICES : MOBILE_CONFIG_PRICES;
 
   return (
-    <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#050508", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
       
-      {/* TOAST NOTIFICATION WITH SOUND */}
-      {toastMsg && (
-        <div style={{ position: "fixed", bottom: "100px", right: "20px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 1.5rem", borderRadius: "12px", zIndex: 9999, boxShadow: "0 10px 30px rgba(99,102,241,0.5)", animation: "fadeInUp 0.3s ease", display: "flex", gap: "15px", alignItems: "center" }}>
-          <audio autoPlay src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=success-1-6297.mp3" />
-          <span style={{ fontSize: "2rem" }}>🏆</span>
-          <div>
-            <h4 style={{ margin: 0, color: "#FFF", fontSize: "1rem" }}>{toastMsg.title}</h4>
-            <p style={{ margin: 0, color: "#d1d5db", fontSize: "0.85rem" }}>{toastMsg.desc}</p>
+      {/* 🚀 STEP 2: FULL-SCREEN POPUP WINDOW WHEN ACHIEVEMENTS UNLOCK */}
+      {unlockedAchModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.85)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100000,
+          padding: "1.5rem"
+        }}>
+          <div style={{
+            background: "#10101c",
+            border: "1px solid rgba(129, 140, 248, 0.4)",
+            borderRadius: "24px",
+            padding: "2.5rem 2rem",
+            maxWidth: "460px",
+            width: "100%",
+            textAlign: "center",
+            boxShadow: "0 25px 50px -12px rgba(99, 102, 241, 0.4)",
+            animation: "fadeInUp 0.3s ease",
+            position: "relative"
+          }}>
+            <audio autoPlay src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=success-1-6297.mp3" />
+            <div style={{ fontSize: "4.5rem", marginBottom: "1rem", filter: "drop-shadow(0 0 15px rgba(234,179,8,0.5))" }}>🏆</div>
+            <h2 style={{ color: "#FFF", fontSize: "1.6rem", margin: "0 0 0.5rem 0", fontWeight: "bold" }}>
+              {unlockedAchModal.title}
+            </h2>
+            <p style={{ color: "#818cf8", fontSize: "1.2rem", fontWeight: "bold", margin: "0 0 0.8rem 0" }}>
+              {unlockedAchModal.name}
+            </p>
+            <p style={{ color: "#9ca3af", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
+              {unlockedAchModal.desc}
+            </p>
+            <button
+              onClick={() => setUnlockedAchModal(null)}
+              style={{
+                background: "linear-gradient(90deg, #4f46e5, #7c3aed)",
+                color: "#FFF",
+                border: "none",
+                padding: "0.9rem 3.5rem",
+                borderRadius: "12px",
+                fontSize: "1.05rem",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 8px 20px rgba(99,102,241,0.4)",
+                transition: "transform 0.15s ease"
+              }}
+            >
+              Awesome, OK!
+            </button>
           </div>
         </div>
       )}
 
-      {/* CENTER BIG CUSTOM POPUP MODAL */}
+      {/* CENTER BIG CUSTOM POPUP MODAL (ADMIN ALERT) */}
       {showCenterAlert && metaData.alert && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
           <div style={{ background: "#11111a", border: "1px solid rgba(99,102,241,0.5)", borderRadius: "20px", padding: "2.5rem 2rem", maxWidth: "480px", width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.8)", animation: "fadeInUp 0.3s ease" }}>
             <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>
               {metaData.alert.split(" ")[0] || "📢"}
@@ -605,14 +686,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginBottom: "1rem" }}>
-                <div onClick={() => window.open("https://wa.me/+441163504152?text=I%20need%20a%20Free%20Test%20Plan", "_blank")} style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(20,184,166,0.05) 100%)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                <div onClick={() => window.open("https://wa.me/+441163504152?text=I%20need%20a%20Free%20Test%20Plan", "_blank")} style={{ background: "#0c1712", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
                   <div style={{ fontSize: "2.5rem" }}>🎁</div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.1rem" }}>Claim Free Test Plan</h3>
                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>Experience our premium speeds with a 3GB trial.</p>
                   </div>
                 </div>
-                <div onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(168,85,247,0.05) 100%)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                <div onClick={() => setActiveTab("buy")} style={{ background: "#10101d", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
                   <div style={{ fontSize: "2.5rem" }}>🛒</div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.1rem" }}>Buy Premium Config</h3>
@@ -623,7 +704,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {hasActivePlan && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem" }}>
-                  <div style={{ background: isVpnConnected === true ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", borderRadius: "16px", padding: "1.8rem", color: "#FFF" }}>
+                  <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.8rem", color: "#FFF" }}>
                     <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📡 LIVE CONNECTION</p>
                     <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
                       <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block" }}></span>
@@ -632,7 +713,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
                   </div>
 
-                  <div style={{ background: isExpired ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", borderRadius: "16px", padding: "1.8rem", color: "#FFF" }}>
+                  <div style={{ background: isExpired ? "#dc2626" : "#6d28d9", borderRadius: "16px", padding: "1.8rem", color: "#FFF" }}>
                     <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>⏳ EXPIRES IN</p>
                     <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
                     <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
@@ -642,7 +723,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {/* ACTIVE TOOL VIEW */}
               {activeTool ? (
-                <div style={{ background: "rgba(15,15,24,0.95)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ background: "#0e0e17", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                     <h2 style={{ margin: 0, color: "#FFF", fontSize: "1.3rem" }}>
                       {activeTool === "speed" && "🚀 Legion Network Speedtest"}
@@ -771,7 +852,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                              <h2 style={{ margin: 0, color: "#f59e0b", fontSize: "2rem" }}>{pingStats.jitter} <span style={{fontSize:"1rem", color:"#9ca3af"}}>ms</span></h2>
                            </div>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
-                             <p style={{ margin: "0 0 0.5rem 0", color: "#9ca3af" }}>Min Ping</p>
+                             <p style={{ margin: "0 0 0.5rem 0", color: "#22c55e", fontSize: "1.5rem" }}>Min Ping</p>
                              <h2 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>{pingStats.min} ms</h2>
                            </div>
                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "1.5rem", borderRadius: "12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -826,7 +907,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div>
                   <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🚀</div>
                         <div>
@@ -837,7 +918,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#6366f1", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🌍</div>
                         <div>
@@ -848,7 +929,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#22c55e", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>⚡</div>
                         <div>
@@ -859,7 +940,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#f59e0b", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(15, 15, 20, 0.6)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "all 0.3s", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🛡️</div>
                         <div>
@@ -877,16 +958,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB
+              2. STORE TAB (OPTIMIZED FOR LOW-END DEVICES)
           ======================== */}
           {activeTab === "buy" && (
-             <div className="animate-fade-in">
+             <div className="animate-fade-in store-container">
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
-                 <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === "All" ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
+                 <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "#0e0e17", color: activeIsp === "All" ? "#FFF" : "#9ca3af" }}>
                    All ISPs
                  </button>
                  {Object.keys(ISP_LOGOS).map(isp => (
-                   <button key={isp} onClick={() => setActiveIsp(isp)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "rgba(15,15,24,0.6)", color: activeIsp === isp ? "#FFF" : "#9ca3af", transition: "all 0.2s" }}>
+                   <button key={isp} onClick={() => setActiveIsp(isp)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "#0e0e17", color: activeIsp === isp ? "#FFF" : "#9ca3af" }}>
                      <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={isp} />
                      {isp}
                    </button>
@@ -900,7 +981,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                </div>
 
                {activeNetworkType === "mobile" && (
-                 <div style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                 <div style={{ background: "#0e1022", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
                    <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
                    <div>
                      <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
@@ -911,11 +992,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
+               {/* 🚀 HARDWARE ACCELERATED GRID FOR BUDGET DEVICES */}
                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
                  {ALL_PACKAGES
                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
                    .map((pkg) => (
-                   <div key={pkg.id} style={{ position: "relative", zIndex: 10, background: "rgba(15,15,24,0.85)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
+                   <div key={pkg.id} className="optimized-card" style={{ background: "#0d0d17", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
                      <div style={{ flex: 1 }}>
                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
                          <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
@@ -935,7 +1017,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                        <p style={{ color: "#818cf8", fontSize: "0.8rem", fontWeight: "bold", margin: 0 }}>💡 {pkg.devices}</p>
                      </div>
 
-                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer", position: "relative", zIndex: 20 }} className="hover-scale-card">
+                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>
                        Select & Configure VPN →
                      </button>
                    </div>
@@ -945,27 +1027,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. MY VPNS TAB (CRASH-PROOF & DELETION-SAFE)
+              3. MY VPNS TAB (STEP 1 FIXED)
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
                <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
                
-               {/* 🚀 REVIEW NOTICE (ONLY SHOWN IF ACTUALLY PENDING REVIEW) */}
+               {/* 🚀 STEP 1: ONLY SHOWN IF PAYMENT IS VERIFYING AND NO ACTIVE CONFIGS */}
                {hasPendingReview && (
                  <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
                    <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
                      <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
                    </div>
                    {receiptLink && (
-                      <a href={receiptLink} target="_blank" rel="noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
+                      <a href={getDownloadUrl(receiptLink)} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
                         View Uploaded Receipt ↗
                       </a>
                    )}
                  </div>
                )}
 
-               {/* PENDING PACKAGES CARD */}
+               {/* PENDING PACKAGES CARD (ONLY REAL UNVERIFIED ORDERS APPEAR HERE) */}
                {pendingOrders.length > 0 && (
                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "0.5rem" }}>
                    {pendingOrders.map((po: any, idx: number) => (
@@ -979,7 +1061,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                            </div>
                          </div>
                          {po?.receipt && (
-                           <a href={po.receipt} target="_blank" rel="noreferrer" style={{ color: "#818cf8", textDecoration: "underline", fontSize: "0.85rem", fontWeight: "bold" }}>
+                           <a href={getDownloadUrl(po.receipt)} target="_blank" rel="noopener noreferrer" style={{ color: "#818cf8", textDecoration: "underline", fontSize: "0.85rem", fontWeight: "bold" }}>
                              View Uploaded Receipt ↗
                            </a>
                          )}
@@ -989,7 +1071,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* ACTIVE CONFIGURATIONS & NO CONFIGS FALLBACK */}
+               {/* ACTIVE CONFIGURATIONS */}
                {activeConfigs.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     {activeConfigs.map((cfg, idx) => (
@@ -1006,9 +1088,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </div>
                     ))}
                   </div>
-               ) : (
-                  /* 🚀 ALWAYS SHOWN WHEN CONFIGS ARE DELETED / EMPTY */
-                  <div style={{ padding: "3rem", textAlign: "center", background: "rgba(15,15,24,0.7)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
+               ) : !hasPendingReview && (
+                  /* 🚀 SHOWN WHEN NO CONFIGS AVAILABLE */
+                  <div style={{ padding: "3rem", textAlign: "center", background: "#0e0e17", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
                      <p style={{ color: "#9ca3af", fontSize: "1.05rem", margin: "0 0 1rem 0" }}>No active configurations assigned yet.</p>
                      <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
                   </div>
@@ -1017,10 +1099,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              4. PAYMENTS TAB (ISOLATED & SYNCED TO CURRENT USER)
+              4. PAYMENTS TAB (STEP 3 CLOUDINARY DOWNLOAD FIXED)
           ======================== */}
           {activeTab === "payments" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ marginBottom: "0.5rem", color: "#FFF" }}>My Payment History ({new Date().getFullYear()})</h2>
               <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem" }}>Payments are stored safely in your account record.</p>
               
@@ -1032,7 +1114,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {payments.map((p, idx) => (
-                    <div key={p?.id || idx} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                    <div key={p?.id || idx} style={{ background: "#08080f", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                        <div>
                          <p style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontWeight: "bold" }}>{p?.package || "VPN Plan"}</p>
                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>{p?.date ? new Date(p.date).toLocaleString() : "Date recorded"}</p>
@@ -1041,8 +1123,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                          <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                          <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "5px" }}>
                            <span style={{ fontSize: "0.75rem", background: p?.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p?.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p?.status || "Verifying"}</span>
+                           {/* 🚀 STEP 3: DIRECT DOWNLOAD FIXED WITH fl_attachment */}
                            {p?.receipt && (
-                             <a href={p.receipt} target="_blank" rel="noreferrer" download style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "10px", transition: "0.2s" }} className="hover:bg-white/20">⬇️ Download Slip</a>
+                             <a 
+                               href={getDownloadUrl(p.receipt)} 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", color: "#FFF", textDecoration: "none", padding: "4px 10px", borderRadius: "8px" }}
+                             >
+                               ⬇️ Download Slip
+                             </a>
                            )}
                          </div>
                        </div>
@@ -1057,27 +1147,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               5. ACHIEVEMENTS TAB
           ======================== */}
           {activeTab === "achievements" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ marginBottom: "0.5rem", color: "#FFF", textAlign: "center" }}>Achievements</h2>
-              <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem", textAlign: "center" }}>Complete hidden tasks around the dashboard to unlock these achievements!</p>
+              <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem", textAlign: "center" }}>Complete milestones across the dashboard to unlock these achievements!</p>
               
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-                <div style={{ background: achievements.legion ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.legion ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                <div style={{ background: achievements.legion ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.legion ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
                    <div style={{ fontSize: "3rem", filter: achievements.legion ? "none" : "grayscale(100%) opacity(30%)" }}>🚀</div>
                    <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.legion ? "#FFF" : "#6b7280" }}>Be a part of LEGION</h3>
                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Unlock by successfully uploading your first payment slip.</p>
                 </div>
-                <div style={{ background: achievements.nolimits ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.nolimits ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                <div style={{ background: achievements.nolimits ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.nolimits ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
                    <div style={{ fontSize: "3rem", filter: achievements.nolimits ? "none" : "grayscale(100%) opacity(30%)" }}>♾️</div>
                    <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.nolimits ? "#FFF" : "#6b7280" }}>No More Limitations</h3>
                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Purchase an Unlimited package and break the limits.</p>
                 </div>
-                <div style={{ background: achievements.organized ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.organized ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                <div style={{ background: achievements.organized ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.organized ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
                    <div style={{ fontSize: "3rem", filter: achievements.organized ? "none" : "grayscale(100%) opacity(30%)" }}>🎨</div>
                    <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.organized ? "#FFF" : "#6b7280" }}>Organized Person</h3>
                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Personalize your profile by changing your avatar.</p>
                 </div>
-                <div style={{ background: achievements.dedicated ? "rgba(99,102,241,0.15)" : "rgba(0,0,0,0.4)", border: `1px solid ${achievements.dedicated ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                <div style={{ background: achievements.dedicated ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.dedicated ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
                    <div style={{ fontSize: "3rem", filter: achievements.dedicated ? "none" : "grayscale(100%) opacity(30%)" }}>⏳</div>
                    <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.dedicated ? "#FFF" : "#6b7280" }}>Dedicated User</h3>
                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Stay active on the dashboard for more than 10 minutes.</p>
@@ -1090,7 +1180,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               6. PROFILE TAB 
           ======================== */}
           {activeTab === "profile" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(15,15,24,0.85)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 
@@ -1106,7 +1196,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                   
                   {initialUser?.googleImage && avatar !== initialUser.googleImage && (
-                    <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem", transition: "0.2s" }} className="hover:bg-white/10">
+                    <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem" }}>
                       Restore Google Image
                     </button>
                   )}
@@ -1116,14 +1206,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <h4 style={{ textAlign: "center", color: "#9ca3af", margin: "0 0 1rem 0", fontSize: "0.9rem" }}>Choose Preset Avatar</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(45px, 1fr))", gap: "0.8rem", justifyItems: "center" }}>
                     {AVAILABLE_AVATARS.map((gifPath) => (
-                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", border: avatar === gifPath ? "3px solid #6366f1" : "3px solid transparent", overflow: "hidden", transition: "transform 0.2s" }} className="hover:scale-110">
+                      <div key={gifPath} onClick={() => handleAvatarSelect(gifPath)} style={{ width: "50px", height: "50px", borderRadius: "50%", cursor: isUpdating ? "not-allowed" : "pointer", border: avatar === gifPath ? "3px solid #6366f1" : "3px solid transparent", overflow: "hidden" }}>
                         <img src={gifPath} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label><input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
+                <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label><input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "#08080f", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
               </div>
             </div>
           )}
@@ -1145,7 +1235,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 🚀 CHECKOUT MODAL */}
+          {/* CHECKOUT MODAL */}
           {modalPackage && !simWarningModal && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
               <div style={{ width: "100%", maxWidth: "560px", padding: "2rem", background: "#10101a", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", maxHeight: "90vh", overflowY: "auto" }}>
@@ -1222,26 +1312,40 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       </main>
 
       {/* Floating Taskbar */}
-      <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.4rem", background: "rgba(10,10,18,0.92)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50px", zIndex: 100 }}>
+      <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.4rem", background: "rgba(10,10,18,0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50px", zIndex: 100 }}>
         {tabs.map(tab => {
           if (tab.isLink) return <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}><span>{tab.icon}</span></Link>;
           const isActive = activeTab === tab.id;
           return (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setActiveTool(null); }} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.5rem" : "0", padding: isActive ? "0 1rem" : "0", height: "42px", minWidth: "42px", width: isActive ? "auto" : "42px", justifyContent: "center", background: isActive ? "rgba(99,102,241,0.25)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "none", cursor: "pointer", transition: "all 0.2s ease" }}>
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setActiveTool(null); }} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.5rem" : "0", padding: isActive ? "0 1rem" : "0", height: "42px", minWidth: "42px", width: isActive ? "auto" : "42px", justifyContent: "center", background: isActive ? "rgba(99,102,241,0.25)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "none", cursor: "pointer" }}>
               <span>{tab.icon}</span>{isActive && <span style={{ fontWeight: "bold", fontSize: "0.85rem" }}>{tab.label}</span>}
             </button>
           );
         })}
       </nav>
+      
+      {/* 🚀 STEP 4: HARDWARE ACCELERATION & ZERO-LAG STYLES FOR BUDGET DEVICES */}
       <style>{`
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .store-container {
+          contain: layout paint;
+        }
+
+        .optimized-card {
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          contain: content;
+        }
+
         @media (max-width: 395px) {
           .mobile-hide-name { display: none !important; }
         }
-        .hover-scale-card { transition: transform 0.2s; }
-        .hover-scale-card:hover { transform: scale(1.02); }
       `}</style>
     </div>
   );
