@@ -15,7 +15,7 @@ const ISP_LOGOS = {
   SLT: "https://files.catbox.moe/86zkr9.webp"
 };
 
-const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "WDT WARAKAWATHTHA", accountNo: "8029138148", branch: "Yatiyanthota" };
+const BANK_ACCOUNT = { bankName: "HNB (Hatton National Bank)", accountName: "KUMARA W W K P", accountNo: "173020085590", branch: "Ginigathhena" };
 
 const ALL_PACKAGES = [
   { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "Home Broadband & Router Zoom unlimited bypass." },
