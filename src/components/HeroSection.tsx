@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import GoogleSignIn from "./GoogleSignIn";
 
-// 🚀 ThreeScene එක SSR Crash වීම වැළැක්වීමට dynamic import කර ඇත
+// ThreeScene SSR Crash වීම වැළැක්වීමට dynamic import කර ඇත
 const ThreeScene = dynamic(() => import("./ThreeScene"), { ssr: false });
 
 const ubuntuLogs = [
@@ -46,17 +46,32 @@ export default function HeroSection() {
   const [slashes, setSlashes] = useState("");
   const [exit, setExit] = useState(false);
   const [unmountOverlay, setUnmountOverlay] = useState(false);
+  const [skipBoot, setSkipBoot] = useState(false);
 
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isSmallScreen = window.matchMedia("(max-width: 768px)").matches;
+
+    // The terminal boot sequence is a nice branding moment on desktop, but
+    // it also stands ~2.5s between a visitor and the actual page. On phones
+    // and for reduced-motion users, skip straight to the real content.
+    if (prefersReducedMotion || isSmallScreen) {
+      setSkipBoot(true);
+      setUnmountOverlay(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipBoot) return;
+
     let currentIdx = 0;
     const logInterval = setInterval(() => {
       if (currentIdx < ubuntuLogs.length) {
-        // 🚀 slice මගින් array එක සුරක්ෂිතව step-by-step ගොඩනැගේ (হිරවීම් සිදු නොවේ)
         setRenderedLogs(ubuntuLogs.slice(0, currentIdx + 1));
         currentIdx++;
       } else {
         clearInterval(logInterval);
-        
+
         let slashCount = 0;
         const slashInterval = setInterval(() => {
           if (slashCount < 3) {
@@ -74,12 +89,12 @@ export default function HeroSection() {
     }, 50);
 
     return () => clearInterval(logInterval);
-  }, []);
+  }, [skipBoot]);
 
   return (
     <section style={{ position: "relative", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#030307" }}>
       <ThreeScene />
-      
+
       {/* Ubuntu Terminal Boot Overlay */}
       {!unmountOverlay && (
         <div style={{
@@ -157,17 +172,18 @@ export default function HeroSection() {
         alignItems: "center"
       }}>
         <h1 style={{ 
-          fontSize: "5rem", 
+          fontSize: "clamp(2.25rem, 8vw, 5rem)", 
           marginBottom: "1rem", 
           textShadow: "0 5px 30px rgba(0,0,0,1), 0 0 20px rgba(255,255,255,0.4)" 
         }}>
           LEGION VPN
         </h1>
         <p style={{ 
-          fontSize: "1.5rem", 
+          fontSize: "clamp(1rem, 3.5vw, 1.5rem)", 
           color: "#e0e0e0", 
           maxWidth: "600px", 
           margin: "0 auto 3rem auto",
+          padding: "0 1rem",
           textShadow: "0 2px 10px rgba(0,0,0,1)" 
         }}>
           Uncompromising speed. Unbreakable security. Total privacy.
