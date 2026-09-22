@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const VIDEO_SRC = "https://files.catbox.moe/w6juhp.mp4";
+const VIDEO_SRC = "https://files.catbox.moe/rnii1l.m4v";
 
 // Add a real poster image at this path (public/hero-poster.jpg). A still
 // frame pulled straight from the video works well, e.g.:
@@ -12,18 +12,26 @@ const POSTER_SRC = "/hero-poster.jpg";
 export default function ThreeScene() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [canPlayVideo, setCanPlayVideo] = useState(false);
+  // Desktop sees the full frame centered; mobile crops in on the right side
+  // of the frame instead of the (less interesting) middle.
+  const [objectPosition, setObjectPosition] = useState("center center");
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const isSmallScreen = window.matchMedia("(max-width: 768px)").matches;
     const connection = (navigator as any).connection;
     const isDataConstrained =
       !!connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || ""));
 
-    // An autoplaying full-screen video is one of the heaviest things a phone
-    // can be asked to decode, and it burns real mobile data. Serve a static
-    // poster instead on small screens, reduced-motion, and slow connections.
-    setCanPlayVideo(!prefersReducedMotion && !isSmallScreen && !isDataConstrained);
+    // The video is shown on mobile too now (just cropped differently) — only
+    // skip it for accessibility (reduced motion) and genuinely constrained
+    // connections.
+    setCanPlayVideo(!prefersReducedMotion && !isDataConstrained);
+
+    const mobileQuery = window.matchMedia("(max-width: 768px)");
+    const updatePosition = () => setObjectPosition(mobileQuery.matches ? "right center" : "center center");
+    updatePosition();
+    mobileQuery.addEventListener("change", updatePosition);
+    return () => mobileQuery.removeEventListener("change", updatePosition);
   }, []);
 
   useEffect(() => {
@@ -67,15 +75,13 @@ export default function ThreeScene() {
           poster={POSTER_SRC}
           style={{
             position: "absolute",
-            top: "50%",
-            left: "50%",
-            minWidth: "100%",
-            minHeight: "100%",
-            width: "auto",
-            height: "auto",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
             objectFit: "cover",
-            transform: "translate3d(-50%, -50%, 0)",
-            willChange: "transform",
+            objectPosition,
+            transition: "object-position 0.2s ease",
             backfaceVisibility: "hidden",
             pointerEvents: "none",
           }}
@@ -94,6 +100,7 @@ export default function ThreeScene() {
             width: "100%",
             height: "100%",
             objectFit: "cover",
+            objectPosition,
           }}
         />
       )}
