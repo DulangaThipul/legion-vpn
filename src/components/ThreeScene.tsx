@@ -9,10 +9,16 @@ const VIDEO_SRC = "https://files.catbox.moe/rnii1l.m4v";
 //   ffmpeg -i source.mp4 -ss 00:00:01 -vframes 1 -q:v 3 hero-poster.jpg
 const POSTER_SRC = "/hero-poster.jpg";
 
+// How far in from the right edge the mobile crop sits, in pixels.
+// Raise this to shift the visible crop further left; lower it to push
+// closer to the right edge. Adjust freely — this is the only number
+// you need to touch to re-tune the mobile crop.
+const MOBILE_CROP_OFFSET_PX = 100;
+
 export default function ThreeScene() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [canPlayVideo, setCanPlayVideo] = useState(false);
-  // Desktop sees the full frame centered; mobile crops in on the right side
+  // Desktop sees the full frame centered; mobile crops in near the right side
   // of the frame instead of the (less interesting) middle.
   const [objectPosition, setObjectPosition] = useState("center center");
 
@@ -28,7 +34,8 @@ export default function ThreeScene() {
     setCanPlayVideo(!prefersReducedMotion && !isDataConstrained);
 
     const mobileQuery = window.matchMedia("(max-width: 768px)");
-    const updatePosition = () => setObjectPosition(mobileQuery.matches ? "right center" : "center center");
+    const updatePosition = () =>
+      setObjectPosition(mobileQuery.matches ? `calc(100% - ${MOBILE_CROP_OFFSET_PX}px) center` : "center center");
     updatePosition();
     mobileQuery.addEventListener("change", updatePosition);
     return () => mobileQuery.removeEventListener("change", updatePosition);
