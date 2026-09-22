@@ -13,7 +13,7 @@ const POSTER_SRC = "/hero-poster.jpg";
 // Raise this to shift the visible crop further left; lower it to push
 // closer to the right edge. Adjust freely — this is the only number
 // you need to touch to re-tune the mobile crop.
-const MOBILE_CROP_OFFSET_PX = 100;
+const MOBILE_CROP_OFFSET_PX = -200;
 
 export default function ThreeScene() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
