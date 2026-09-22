@@ -9,10 +9,10 @@ const VIDEO_SRC = "https://files.catbox.moe/rnii1l.m4v";
 //   ffmpeg -i source.mp4 -ss 00:00:01 -vframes 1 -q:v 3 hero-poster.jpg
 const POSTER_SRC = "/hero-poster.jpg";
 
-// How far in from the right edge the mobile crop sits, in pixels.
-// Raise this to shift the visible crop further left; lower it to push
-// closer to the right edge. Adjust freely — this is the only number
-// you need to touch to re-tune the mobile crop.
+// How far the mobile crop sits from the right edge, in pixels.
+//   100  -> shifts the visible crop 100px toward the LEFT
+//  -100  -> shifts the visible crop 100px toward the RIGHT (past the edge)
+// This is the only number you need to touch to re-tune the mobile crop.
 const MOBILE_CROP_OFFSET_PX = -200;
 
 export default function ThreeScene() {
