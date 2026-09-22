@@ -13,7 +13,7 @@ const POSTER_SRC = "/hero-poster.jpg";
 //   100  -> shifts the visible crop 100px toward the LEFT
 //  -100  -> shifts the visible crop 100px toward the RIGHT (past the edge)
 // This is the only number you need to touch to re-tune the mobile crop.
-const MOBILE_CROP_OFFSET_PX = 300;
+const MOBILE_CROP_OFFSET_PX = -300;
 
 export default function ThreeScene() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -35,7 +35,7 @@ export default function ThreeScene() {
 
     const mobileQuery = window.matchMedia("(max-width: 768px)");
     const updatePosition = () =>
-      setObjectPosition(mobileQuery.matches ? `calc(100% - ${MOBILE_CROP_OFFSET_PX}px) center` : "center center");
+      setObjectPosition(mobileQuery.matches ? `calc(100% + ${MOBILE_CROP_OFFSET_PX}px) center` : "center center");
     updatePosition();
     mobileQuery.addEventListener("change", updatePosition);
     return () => mobileQuery.removeEventListener("change", updatePosition);
