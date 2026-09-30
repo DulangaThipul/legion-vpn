@@ -7,7 +7,7 @@ const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/image/upload/v1790791832
 // Add a real poster image at this path (public/hero-poster.jpg). A still
 // frame pulled straight from the video works well, e.g.:
 //   ffmpeg -i source.mp4 -ss 00:00:01 -vframes 1 -q:v 3 hero-poster.jpg
-const POSTER_SRC = "https://res.cloudinary.com/ddox7uqkb/image/upload/v1790791832/download_2_osmygw.jpg";
+const POSTER_SRC = "https://res.cloudinary.com/ddox7uqkb/image/upload/v1790792316/Gemini_Generated_Image_7ho6pk7ho6pk7ho6_eh5ej1.jpg";
 
 // How far the mobile crop sits from the right edge, in pixels.
 //   100  -> shifts the visible crop 100px toward the LEFT
