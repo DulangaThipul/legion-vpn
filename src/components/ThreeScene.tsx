@@ -2,18 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/video/upload/v1790793175/ebc40a525684279646afa0080a0f10b8_xnfobr.mp4";
+const VIDEO_SRC = "";
 
 // Add a real poster image at this path (public/hero-poster.jpg). A still
 // frame pulled straight from the video works well, e.g.:
 //   ffmpeg -i source.mp4 -ss 00:00:01 -vframes 1 -q:v 3 hero-poster.jpg
-const POSTER_SRC = "https://res.cloudinary.com/ddox7uqkb/image/upload/v1790792316/Gemini_Generated_Image_7ho6pk7ho6pk7ho6_eh5ej1.jpg";
+const POSTER_SRC = "https://res.cloudinary.com/ddox7uqkb/image/upload/v1790795701/download_3_vdixj9.jpg";
 
 // How far the mobile crop sits from the right edge, in pixels.
 //   100  -> shifts the visible crop 100px toward the LEFT
 //  -100  -> shifts the visible crop 100px toward the RIGHT (past the edge)
 // This is the only number you need to touch to re-tune the mobile crop.
-const MOBILE_CROP_OFFSET_PX = 500;
+const MOBILE_CROP_OFFSET_PX = 250;
 
 export default function ThreeScene() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
