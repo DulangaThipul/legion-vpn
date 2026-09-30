@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/video/upload/v1790798789/dark-queen.1920x1080_yizzxy.mp4";
+const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/video/upload/v1790798934/katana-girl-in-shadows.1920x1080_wumo5v.mp4";
 
 // Add a real poster image at this path (public/hero-poster.jpg). A still
 // frame pulled straight from the video works well, e.g.:
