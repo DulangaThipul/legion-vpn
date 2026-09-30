@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/video/upload/v1790792923/From_Klickpin.com-_Calm_peaceful_sayings_and_clever_inspiration_for_beginners_for_modern_quote_boards-pin-id-2603712282285043_mcjkst.mp4";
+const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/video/upload/v1790793175/ebc40a525684279646afa0080a0f10b8_xnfobr.mp4";
 
 // Add a real poster image at this path (public/hero-poster.jpg). A still
 // frame pulled straight from the video works well, e.g.:
