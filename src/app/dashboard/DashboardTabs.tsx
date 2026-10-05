@@ -34,7 +34,7 @@ const ALL_PACKAGES = [
 ];
 
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
-const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config": 100, "50 GB Config": 150, "100 GB Config": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
+const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (SG Budget VPN)": 100, "50 GB Config (SG Budget VPN)": 150, "100 GB Config (SG Budget VPN)": 200, "200 GB Config (SG Premium Fast)": 300, "300 GB Config (SG Premium Fast)": 400, "Unlimited + USA Bonus (SG Premium Ultra Fast)": 700 };
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
