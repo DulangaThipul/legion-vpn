@@ -33,7 +33,7 @@ const ALL_PACKAGES = [
   { id: "slt-router-zoom", isp: "SLT", type: "router", name: "SLT Router Zoom", ispPrice: "Rs. 235 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT 4G Wireless Router Zoom package bypass." }
 ];
 
-const ROUTER_CONFIG_PRICES: Record<string, number> = { "100 GB (Budget)": 200, "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
+const ROUTER_CONFIG_PRICES: Record<string, number> = { "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
 const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (Budget)": 100, "50 GB Config (Budget)": 150, "100 GB Config (Budget)": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
