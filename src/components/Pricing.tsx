@@ -8,7 +8,7 @@ export default function Pricing() {
   const [activePlan, setActivePlan] = useState<number | null>(null);
   const plans = [
     {
-      price: "RS 250",
+      price: "RS 200",
       period: "Monthly",
       features: [
         "Singapore Server Locations",
@@ -32,7 +32,7 @@ export default function Pricing() {
       popular: true
     },
     {
-      price: "RS 350",
+      price: "RS 300",
       period: "Monthly",
       features: [
         "Singapore Server Locations",
