@@ -19,6 +19,24 @@ const PACKAGE_LIST = [
   "Custom / Special Package"
 ];
 
+const DATA_PACKAGE_OPTIONS = [
+  "20 GB",
+  "30 GB",
+  "40 GB",
+  "50 GB",
+  "60 GB",
+  "75 GB",
+  "80 GB",
+  "100 GB",
+  "120 GB",
+  "150 GB",
+  "200 GB",
+  "250 GB",
+  "300 GB",
+  "500 GB",
+  "Unlimited"
+];
+
 const AVAILABLE_RANKS = ["Auto", "Bronze", "Silver", "Gold", "Platinum", "Diamond"];
 
 function safeParseDate(val: any): Date | null {
@@ -182,7 +200,17 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string, updates: any) => void }) {
   const userId = user.id || user._id;
 
-  let metaData = { alert: "", isPremium: false, payments: [] as any[], lastSeen: 0, customRank: "", bonusPurchases: 0 };
+  let metaData = { 
+    alert: "", 
+    isPremium: false, 
+    payments: [] as any[], 
+    lastSeen: 0, 
+    customRank: "", 
+    bonusPurchases: 0,
+    dataTotal: "Unlimited",
+    dataUsed: "0 GB"
+  };
+
   if (user?.subscriptionLink) {
     try {
       metaData = { ...metaData, ...JSON.parse(user.subscriptionLink) };
@@ -235,6 +263,21 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       ...metaData,
       customRank: selectedRank === "Auto" ? "" : selectedRank,
       bonusPurchases: Number(bonusPurchasesInput) || 0
+    };
+    onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+  };
+
+  // 📊 DATA USAGE CONTROLS (NEW)
+  const [selectedDataTotal, setSelectedDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
+  const [dataUsedInput, setDataUsedInput] = useState<string>(metaData.dataUsed || "0 GB");
+
+  const handleSaveDataUsage = () => {
+    const rawVal = dataUsedInput.trim();
+    const formattedUsed = rawVal ? (rawVal.toLowerCase().includes("gb") || rawVal.toLowerCase().includes("mb") ? rawVal : `${rawVal} GB`) : "0 GB";
+    const updatedMeta = {
+      ...metaData,
+      dataTotal: selectedDataTotal,
+      dataUsed: formattedUsed
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
@@ -426,7 +469,47 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* 🏆 RANK & PURCHASES MANAGEMENT CARD (NEW) */}
+      {/* 📊 DATA USAGE MANAGEMENT CARD (NEW) */}
+      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(59, 130, 246, 0.25)" }}>
+        <h3 style={{ margin: "0 0 1rem 0", color: "#3b82f6", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+          <span>📊</span> Data Usage Management
+        </h3>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Package Total Data</p>
+            <select 
+              value={selectedDataTotal} 
+              onChange={(e) => setSelectedDataTotal(e.target.value)}
+              style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", color: "#3b82f6", fontWeight: "bold", fontSize: "0.95rem", outline: "none" }}
+            >
+              {DATA_PACKAGE_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual Input)</p>
+            <input 
+              type="text" 
+              placeholder="e.g. 15.5 GB"
+              value={dataUsedInput} 
+              onChange={(e) => setDataUsedInput(e.target.value)}
+              style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold", fontSize: "0.95rem", boxSizing: "border-box", outline: "none" }}
+            />
+          </div>
+        </div>
+
+        <button 
+          onClick={handleSaveDataUsage}
+          style={{ background: "linear-gradient(90deg, #2563eb, #3b82f6)", color: "#FFF", border: "none", padding: "0.6rem 1.6rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 14px rgba(37,99,235,0.3)" }}
+        >
+          💾 Save Data Usage
+        </button>
+      </div>
+
+      {/* 🏆 RANK & PURCHASES MANAGEMENT CARD */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(234, 179, 8, 0.2)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#eab308", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
           <span>🏆</span> Rank & Purchases Management
