@@ -67,9 +67,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setUser(initialUser);
   }, [initialUser]);
 
-  // 🚀 METADATA DECODER
+  // 🚀 METADATA DECODER (lastSeen එකතු කර ඇත)
   let metaData = useMemo(() => {
-    let data = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[] };
+    let data = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[], lastSeen: 0 };
     if (user?.subscriptionLink) {
       try {
         data = { ...data, ...JSON.parse(user.subscriptionLink) };
@@ -206,8 +206,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
 
-  // 🚀 FIX: REAL-TIME VERIFICATION & REVIEW STATUS CHECK
-  // Banner will disappear automatically if payment is verified or deleted in Admin panel
+  // 🚀 REAL-TIME VERIFICATION & REVIEW STATUS CHECK
   const pendingOrders = useMemo(() => {
     return (Array.isArray(metaData.payments) ? metaData.payments : []).filter((p: any) => p?.status === "Verifying");
   }, [metaData.payments]);
@@ -221,7 +220,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return null;
   }, [pendingOrders]);
 
-  const isVerified = metaData.isPremium || payments.length > 0 || Boolean(activeConfigs.length > 0);
+  // 🚀 FIX: Admin Panel එකෙන් Premium ඉවත් කළ විට නිවැරදිව Free User බවට පත්වේ
+  const isVerified = Boolean(metaData.isPremium);
   const safeName = user?.name || "Premium User";
   const safeEmail = user?.email || "";
   
@@ -250,12 +250,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     alert("Copied to clipboard!");
   };
 
-  // 🚀 FIX: CLOUDINARY DIRECT VIEW & DOWNLOAD HANDLER (ELIMINATES "Failed to load PDF document")
+  // 🚀 CLOUDINARY DIRECT VIEW & DOWNLOAD HANDLER
   const getCleanReceiptUrl = (url: string | null, forceDownload = false) => {
     if (!url) return "#";
     let target = url;
 
-    // Convert PDF deliveries to JPG so browser renders it seamlessly without PDF viewer failures
     if (target.includes("cloudinary.com")) {
       if (target.toLowerCase().endsWith(".pdf")) {
         target = target.replace(/\.pdf$/i, ".jpg");
@@ -543,7 +542,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (isUpdating) return;
     setIsUpdating(true);
     try {
-      const newAvatar = gifPath === "" ? (initialUser?.googleImage || null) : gifPath;
+      const newAvatar = gifPath === "" ? (initialUser?.image || initialUser?.googleImage || null) : gifPath;
       setAvatar(newAvatar);
       await updateUserAvatar(newAvatar);
       unlockAchievement("organized", "Organized Person", "Personalize your profile by changing your avatar.");
@@ -588,7 +587,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     <div style={{ minHeight: "100vh", background: "#050508", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
       
-      {/* 🚀 STEP 2: FULL-SCREEN POPUP WINDOW WHEN ACHIEVEMENTS UNLOCK */}
+      {/* 🚀 FULL-SCREEN POPUP WINDOW WHEN ACHIEVEMENTS UNLOCK */}
       {unlockedAchModal && (
         <div style={{
           position: "fixed",
@@ -965,7 +964,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB (OPTIMIZED FOR LOW-END DEVICES)
+              2. STORE TAB
           ======================== */}
           {activeTab === "buy" && (
              <div className="animate-fade-in store-container">
@@ -999,7 +998,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* HARDWARE ACCELERATED GRID FOR BUDGET DEVICES */}
                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
                  {ALL_PACKAGES
                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
@@ -1034,13 +1032,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. MY VPNS TAB (BUG FIXED)
+              3. MY VPNS TAB
           ======================== */}
           {activeTab === "configs" && (
             <div className="animate-fade-in flex flex-col gap-6">
                <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
                
-               {/* 🚀 STEP 1 FIX: REVIEW BANNER ONLY SHOWN WHEN PAYMENT IS ACTUALLY PENDING */}
                {hasPendingReview && (
                  <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
                    <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
@@ -1054,7 +1051,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  </div>
                )}
 
-               {/* ACTIVE CONFIGURATIONS */}
                {activeConfigs.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     {activeConfigs.map((cfg, idx) => (
@@ -1072,7 +1068,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     ))}
                   </div>
                ) : (
-                  /* 🚀 STEP 1 FIX: ALWAYS SHOWN WHEN CONFIGS ARE EMPTY (NOTHING BLANK) */
                   <div style={{ padding: "3rem", textAlign: "center", background: "#0e0e17", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
                      <p style={{ color: "#9ca3af", fontSize: "1.05rem", margin: "0 0 1rem 0" }}>No active configurations assigned yet.</p>
                      <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
@@ -1106,7 +1101,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                          <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e" }}>Rs. {p?.amount || 0}</h3>
                          <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "5px" }}>
                            <span style={{ fontSize: "0.75rem", background: p?.status === "Verified" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)", color: p?.status === "Verified" ? "#22c55e" : "#f59e0b", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>{p?.status || "Verifying"}</span>
-                           {/* 🚀 STEP 3 FIX: CLOUDINARY DOWNLOAD ATTACHMENT */}
                            {p?.receipt && (
                              <a 
                                href={getCleanReceiptUrl(p.receipt, true)} 
@@ -1160,7 +1154,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              6. PROFILE TAB 
+              6. PROFILE TAB (LAST LOGIN DATE & TIME එකතු කර ඇත)
           ======================== */}
           {activeTab === "profile" && (
             <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -1178,7 +1172,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Free User</span>
                   )}
                   
-                  {initialUser?.googleImage && avatar !== initialUser.googleImage && (
+                  {(initialUser?.image || initialUser?.googleImage) && avatar !== (initialUser?.image || initialUser?.googleImage) && (
                     <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem" }}>
                       Restore Google Image
                     </button>
@@ -1196,7 +1190,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 </div>
 
-                <div><label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label><input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "#08080f", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none" }} /></div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Email</label>
+                  <input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "#08080f", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none", boxSizing: "border-box" }} />
+                </div>
+
+                {/* 🚀 CUSTOMER LAST LOGIN DATE & TIME */}
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Last Login / Activity Recorded</label>
+                  <input 
+                    type="text" 
+                    value={metaData.lastSeen ? `${new Date(metaData.lastSeen).toLocaleDateString()} at ${new Date(metaData.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : "Currently Active"} 
+                    readOnly 
+                    style={{ width: "100%", padding: "0.9rem", background: "#08080f", border: "1px solid rgba(255,255,255,0.1)", color: "#818cf8", borderRadius: "8px", outline: "none", boxSizing: "border-box", fontWeight: "bold" }} 
+                  />
+                </div>
+
               </div>
             </div>
           )}
@@ -1307,7 +1316,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         })}
       </nav>
       
-      {/* 🚀 STEP 4: HARDWARE ACCELERATION & ZERO-LAG STYLES FOR BUDGET DEVICES */}
+      {/* STYLES */}
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
