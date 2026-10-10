@@ -36,15 +36,6 @@ const ALL_PACKAGES = [
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
 const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (Budget)": 100, "50 GB Config (Budget)": 150, "100 GB Config (Budget)": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
 
-// 🏆 RANKS CONFIGURATION
-const RANKS = [
-  { name: "Bronze", min: 0, color: "#d97706", badgeBg: "rgba(217, 119, 6, 0.15)", border: "#d97706", icon: "🥉" },
-  { name: "Silver", min: 5, color: "#94a3b8", badgeBg: "rgba(148, 163, 184, 0.15)", border: "#94a3b8", icon: "⭐" },
-  { name: "Gold", min: 15, color: "#eab308", badgeBg: "rgba(234, 179, 8, 0.15)", border: "#eab308", icon: "🏆" },
-  { name: "Platinum", min: 30, color: "#06b6d4", badgeBg: "rgba(6, 182, 212, 0.15)", border: "#06b6d4", icon: "💎" },
-  { name: "Diamond", min: 50, color: "#a855f7", badgeBg: "rgba(168, 85, 247, 0.15)", border: "#a855f7", icon: "👑" },
-];
-
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -62,22 +53,23 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // 🎁 FREE TEST PLAN POPUP STATE
-  const [freeTestModal, setFreeTestModal] = useState(false);
-
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user?.image || null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [payments, setPayments] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState({ legion: false, nolimits: false, organized: false, dedicated: false });
+  
+  // 🚀 FULL-SCREEN ACHIEVEMENT MODAL STATE
+  const [unlockedAchModal, setUnlockedAchModal] = useState<{ title: string; name: string; desc: string } | null>(null);
 
   useEffect(() => {
     setUser(initialUser);
   }, [initialUser]);
 
-  // 🚀 METADATA DECODER
+  // 🚀 METADATA DECODER (lastSeen එකතු කර ඇත)
   let metaData = useMemo(() => {
-    let data = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[], lastSeen: 0, customRank: "", bonusPurchases: 0 };
+    let data = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[], lastSeen: 0 };
     if (user?.subscriptionLink) {
       try {
         data = { ...data, ...JSON.parse(user.subscriptionLink) };
@@ -106,7 +98,48 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return () => clearInterval(hb);
   }, []);
 
+  // 🚀 USER-ISOLATED ACHIEVEMENTS
   const userIdentifier = user?.id || user?.email || "guest_user";
+
+  useEffect(() => {
+    const welcomeKey = `legion_welcome_${userIdentifier}`;
+    const achKey = `legion_achievements_${userIdentifier}`;
+
+    const hasSeenWelcome = localStorage.getItem(welcomeKey);
+    if (!hasSeenWelcome) {
+      setTimeout(() => {
+        setUnlockedAchModal({
+          title: "Achievement Unlocked! 🏆",
+          name: "Secret Master",
+          desc: "You know the Secret to Bypass Internet."
+        });
+        localStorage.setItem(welcomeKey, "true");
+      }, 1500);
+    }
+
+    const savedAch = JSON.parse(localStorage.getItem(achKey) || "{}");
+    setAchievements({ legion: false, nolimits: false, organized: false, dedicated: false, ...savedAch });
+
+    const timer = setTimeout(() => { 
+      unlockAchievement("dedicated", "Dedicated User", "Stay active on the dashboard for more than 10 minutes."); 
+    }, 600000);
+    return () => clearTimeout(timer);
+  }, [userIdentifier]);
+
+  const unlockAchievement = (key: keyof typeof achievements, name: string, desc: string) => {
+    const achKey = `legion_achievements_${userIdentifier}`;
+    setAchievements(prev => {
+      if (prev[key]) return prev;
+      const next = { ...prev, [key]: true };
+      localStorage.setItem(achKey, JSON.stringify(next));
+      setUnlockedAchModal({
+        title: "Achievement Unlocked! 🏆",
+        name: name,
+        desc: desc
+      });
+      return next;
+    });
+  };
 
   // 🚀 CENTER POPUP ALERT (DISMISSED STATE SAVED PER USER)
   const [showCenterAlert, setShowCenterAlert] = useState(false);
@@ -128,49 +161,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
     setShowCenterAlert(false);
   };
-
-  // 🏆 RANK CALCULATION LOGIC
-  const verifiedCount = useMemo(() => {
-    return payments.filter((p: any) => p?.status === "Verified").length;
-  }, [payments]);
-
-  const totalPurchases = useMemo(() => {
-    return verifiedCount + (Number(metaData.bonusPurchases) || 0);
-  }, [verifiedCount, metaData.bonusPurchases]);
-
-  const { currentRank, nextRank, progressPercent, purchasesNeeded } = useMemo(() => {
-    let curRank = RANKS[0];
-    if (metaData.customRank) {
-      const found = RANKS.find(r => r.name.toLowerCase() === metaData.customRank.toLowerCase());
-      if (found) curRank = found;
-    } else {
-      for (let i = RANKS.length - 1; i >= 0; i--) {
-        if (totalPurchases >= RANKS[i].min) {
-          curRank = RANKS[i];
-          break;
-        }
-      }
-    }
-
-    const curIndex = RANKS.findIndex(r => r.name === curRank.name);
-    const nxtRank = curIndex < RANKS.length - 1 ? RANKS[curIndex + 1] : null;
-
-    let needed = 0;
-    let pct = 100;
-    if (nxtRank) {
-      needed = Math.max(0, nxtRank.min - totalPurchases);
-      const span = nxtRank.min - curRank.min;
-      const progressInLevel = Math.max(0, totalPurchases - curRank.min);
-      pct = Math.min(100, Math.round((progressInLevel / span) * 100));
-    }
-
-    return {
-      currentRank: curRank,
-      nextRank: nxtRank,
-      progressPercent: pct,
-      purchasesNeeded: needed,
-    };
-  }, [totalPurchases, metaData.customRank]);
 
   // 🚀 CRASH-PROOF CONFIG PARSER
   const parseConfigs = (rawText: string | null) => {
@@ -230,6 +220,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return null;
   }, [pendingOrders]);
 
+  // 🚀 FIX: Admin Panel එකෙන් Premium ඉවත් කළ විට නිවැරදිව Free User බවට පත්වේ
   const isVerified = Boolean(metaData.isPremium);
   const safeName = user?.name || "Premium User";
   const safeEmail = user?.email || "";
@@ -510,6 +501,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       if (!fileUrl) throw new Error("Failed to obtain slip URL");
 
+      unlockAchievement("legion", "Be a part of LEGION", "Unlock by successfully uploading your first payment slip.");
+      if (modalPackage?.name.toLowerCase().includes("unlimited") || selectedQuota?.toLowerCase().includes("unlimited")) {
+        unlockAchievement("nolimits", "No More Limitations", "Purchase an Unlimited package and break the limits.");
+      }
+
       const amount = currentQuotaList[selectedQuota!] || 0;
 
       const res = await submitClientPaymentOrder({
@@ -549,6 +545,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       const newAvatar = gifPath === "" ? (initialUser?.image || initialUser?.googleImage || null) : gifPath;
       setAvatar(newAvatar);
       await updateUserAvatar(newAvatar);
+      unlockAchievement("organized", "Organized Person", "Personalize your profile by changing your avatar.");
       router.refresh();
     } catch {
     } finally {
@@ -571,13 +568,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     );
   }
 
-  // 🚀 TABS: Achievements replaced by Rank Progress
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
     { id: "buy", label: "Store", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg> },
     { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
     { id: "payments", label: "Payments", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg> },
-    { id: "rank", label: "Rank Progress", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg> },
+    { id: "achievements", label: "Achievements", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg> },
     { id: "profile", label: "Profile", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> }
   ];
 
@@ -588,33 +584,62 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const currentQuotaList = modalPackage?.type === "router" ? ROUTER_CONFIG_PRICES : MOBILE_CONFIG_PRICES;
 
   return (
-    // 🚀 MATRIX BACKGROUND VISIBILITY FIXED: background set to transparent so canvas shines through
-    <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#050508", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
-
-      {/* 🎁 POPUP MODAL: CLAIM FREE TEST PLAN */}
-      {freeTestModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
-          <div style={{ background: "#10101c", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "20px", padding: "2.5rem 2rem", maxWidth: "480px", width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.8)", animation: "fadeInUp 0.3s ease" }}>
-            <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>🎁</div>
-            <h2 style={{ color: "#FFF", fontSize: "1.5rem", margin: "0 0 0.8rem 0" }}>Claim Free 3GB Test Plan</h2>
-            <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
-              අපගේ Ultra-Fast VIP VPN සේවාව නොමිලේ අත්හදා බැලීමට <strong>3GB Free Test Plan</strong> එකක් ලබාගත හැක. පහත බටන් එක ක්ලික් කර WhatsApp හරහා අපගේ Support වෙත සෘජුවම Request එකක් යොමු කරන්න.
+      
+      {/* 🚀 FULL-SCREEN POPUP WINDOW WHEN ACHIEVEMENTS UNLOCK */}
+      {unlockedAchModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.85)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100000,
+          padding: "1.5rem"
+        }}>
+          <div style={{
+            background: "#10101c",
+            border: "1px solid rgba(129, 140, 248, 0.4)",
+            borderRadius: "24px",
+            padding: "2.5rem 2rem",
+            maxWidth: "460px",
+            width: "100%",
+            textAlign: "center",
+            boxShadow: "0 25px 50px -12px rgba(99, 102, 241, 0.4)",
+            animation: "fadeInUp 0.3s ease",
+            position: "relative"
+          }}>
+            <audio autoPlay src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=success-1-6297.mp3" />
+            <div style={{ fontSize: "4.5rem", marginBottom: "1rem", filter: "drop-shadow(0 0 15px rgba(234,179,8,0.5))" }}>🏆</div>
+            <h2 style={{ color: "#FFF", fontSize: "1.6rem", margin: "0 0 0.5rem 0", fontWeight: "bold" }}>
+              {unlockedAchModal.title}
+            </h2>
+            <p style={{ color: "#818cf8", fontSize: "1.2rem", fontWeight: "bold", margin: "0 0 0.8rem 0" }}>
+              {unlockedAchModal.name}
             </p>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button onClick={() => setFreeTestModal(false)} style={{ flex: 1, padding: "0.9rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" }}>
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  setFreeTestModal(false);
-                  window.open("https://wa.me/+441163504152?text=I%20need%20a%20Free%20Test%20Plan", "_blank");
-                }} 
-                style={{ flex: 1.5, padding: "0.9rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", color: "#000", border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 10px 25px rgba(34,197,94,0.3)" }}
-              >
-                Request via WhatsApp 💬
-              </button>
-            </div>
+            <p style={{ color: "#9ca3af", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
+              {unlockedAchModal.desc}
+            </p>
+            <button
+              onClick={() => setUnlockedAchModal(null)}
+              style={{
+                background: "linear-gradient(90deg, #4f46e5, #7c3aed)",
+                color: "#FFF",
+                border: "none",
+                padding: "0.9rem 3.5rem",
+                borderRadius: "12px",
+                fontSize: "1.05rem",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 8px 20px rgba(99,102,241,0.4)",
+                transition: "transform 0.15s ease"
+              }}
+            >
+              Awesome, OK!
+            </button>
           </div>
         </div>
       )}
@@ -667,15 +692,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginBottom: "1rem" }}>
-                {/* 🚀 CLAIM FREE TEST PLAN: Opens Pop-up instead of immediate redirect */}
-                <div onClick={() => setFreeTestModal(true)} style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                <div onClick={() => window.open("https://wa.me/+441163504152?text=I%20need%20a%20Free%20Test%20Plan", "_blank")} style={{ background: "#0c1712", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
                   <div style={{ fontSize: "2.5rem" }}>🎁</div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.1rem" }}>Claim Free Test Plan</h3>
                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>Experience our premium speeds with a 3GB trial.</p>
                   </div>
                 </div>
-                <div onClick={() => setActiveTab("buy")} style={{ background: "rgba(16, 16, 29, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                <div onClick={() => setActiveTab("buy")} style={{ background: "#10101d", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
                   <div style={{ fontSize: "2.5rem" }}>🛒</div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.1rem" }}>Buy Premium Config</h3>
@@ -705,7 +729,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {/* ACTIVE TOOL VIEW */}
               {activeTool ? (
-                <div style={{ background: "rgba(14, 14, 23, 0.8)", backdropFilter: "blur(12px)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ background: "#0e0e17", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                     <h2 style={{ margin: 0, color: "#FFF", fontSize: "1.3rem" }}>
                       {activeTool === "speed" && "🚀 Legion Network Speedtest"}
@@ -889,7 +913,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div>
                   <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🚀</div>
                         <div>
@@ -900,7 +924,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#6366f1", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🌍</div>
                         <div>
@@ -911,7 +935,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#22c55e", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>⚡</div>
                         <div>
@@ -922,7 +946,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#f59e0b", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
-                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
+                    <div className="hover-scale-card" style={{ padding: "1.5rem", background: "#0e0e17", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🛡️</div>
                         <div>
@@ -963,7 +987,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                </div>
 
                {activeNetworkType === "mobile" && (
-                 <div style={{ background: "rgba(14, 16, 34, 0.8)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                 <div style={{ background: "#0e1022", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
                    <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
                    <div>
                      <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
@@ -978,7 +1002,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                  {ALL_PACKAGES
                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
                    .map((pkg) => (
-                   <div key={pkg.id} className="optimized-card" style={{ background: "rgba(13, 13, 23, 0.85)", backdropFilter: "blur(12px)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
+                   <div key={pkg.id} className="optimized-card" style={{ background: "#0d0d17", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
                      <div style={{ flex: 1 }}>
                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
                          <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
@@ -1030,7 +1054,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                {activeConfigs.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     {activeConfigs.map((cfg, idx) => (
-                      <div key={idx} style={{ background: "rgba(12, 12, 20, 0.85)", backdropFilter: "blur(12px)", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                      <div key={idx} style={{ background: "#0c0c14", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
                          <div style={{ background: "rgba(99,102,241,0.08)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#818cf8" }}>📦 {cfg.name}</h3>
                             <button onClick={() => handleCopyCleanCode(cfg.code)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>📋 Copy Code</button>
@@ -1044,7 +1068,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     ))}
                   </div>
                ) : (
-                  <div style={{ padding: "3rem", textAlign: "center", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ padding: "3rem", textAlign: "center", background: "#0e0e17", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
                      <p style={{ color: "#9ca3af", fontSize: "1.05rem", margin: "0 0 1rem 0" }}>No active configurations assigned yet.</p>
                      <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
                   </div>
@@ -1056,7 +1080,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               4. PAYMENTS TAB
           ======================== */}
           {activeTab === "payments" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(14, 14, 23, 0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ marginBottom: "0.5rem", color: "#FFF" }}>My Payment History ({new Date().getFullYear()})</h2>
               <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem" }}>Payments are stored safely in your account record.</p>
               
@@ -1068,7 +1092,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {payments.map((p, idx) => (
-                    <div key={p?.id || idx} style={{ background: "rgba(8, 8, 15, 0.8)", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                    <div key={p?.id || idx} style={{ background: "#08080f", border: "1px solid rgba(255,255,255,0.05)", padding: "1.2rem", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                        <div>
                          <p style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontWeight: "bold" }}>{p?.package || "VPN Plan"}</p>
                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>{p?.date ? new Date(p.date).toLocaleString() : "Date recorded"}</p>
@@ -1097,220 +1121,56 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              5. 🏆 RANK PROGRESS TAB (REPLACES ACHIEVEMENTS)
+              5. ACHIEVEMENTS TAB
           ======================== */}
-          {activeTab === "rank" && (
-            <div style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }} className="animate-fade-in">
+          {activeTab === "achievements" && (
+            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h2 style={{ marginBottom: "0.5rem", color: "#FFF", textAlign: "center" }}>Achievements</h2>
+              <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem", textAlign: "center" }}>Complete milestones across the dashboard to unlock these achievements!</p>
               
-              {/* User Profile Summary Card */}
-              <div style={{ 
-                background: "linear-gradient(135deg, rgba(20, 15, 35, 0.85) 0%, rgba(10, 10, 18, 0.85) 100%)", 
-                backdropFilter: "blur(16px)", 
-                border: "1px solid rgba(168, 85, 247, 0.2)", 
-                borderRadius: "20px", 
-                padding: "1.8rem 2rem", 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "1.2rem",
-                boxShadow: "0 20px 40px rgba(0,0,0,0.5)"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
-                  <div style={{ position: "relative" }}>
-                    <img 
-                      src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} 
-                      alt="Avatar" 
-                      style={{ width: "70px", height: "70px", borderRadius: "50%", border: `3px solid ${currentRank.color}`, objectFit: "cover" }} 
-                    />
-                  </div>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                      <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "bold", color: "#FFF" }}>{safeName}</h2>
-                      <span onClick={() => setActiveTab("profile")} style={{ cursor: "pointer", fontSize: "0.9rem", color: "#9ca3af" }} title="Edit Profile">✏️</span>
-                      
-                      {/* Current Rank Badge */}
-                      <span style={{ 
-                        display: "inline-flex", 
-                        alignItems: "center", 
-                        gap: "6px", 
-                        background: currentRank.badgeBg, 
-                        border: `1px solid ${currentRank.border}`, 
-                        padding: "3px 12px", 
-                        borderRadius: "20px", 
-                        fontSize: "0.85rem", 
-                        color: currentRank.color, 
-                        fontWeight: "bold" 
-                      }}>
-                        <span>{currentRank.icon}</span>
-                        <span>{currentRank.name}</span>
-                      </span>
-                    </div>
-                    <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: "0.85rem" }}>✉ {safeEmail}</p>
-                  </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                <div style={{ background: achievements.legion ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.legion ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                   <div style={{ fontSize: "3rem", filter: achievements.legion ? "none" : "grayscale(100%) opacity(30%)" }}>🚀</div>
+                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.legion ? "#FFF" : "#6b7280" }}>Be a part of LEGION</h3>
+                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Unlock by successfully uploading your first payment slip.</p>
                 </div>
-
-                <div style={{ textAlign: "right" }}>
-                  <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Verified Orders</p>
-                  <h3 style={{ margin: "2px 0 0 0", fontSize: "1.6rem", color: "#22c55e", fontWeight: "bold" }}>{totalPurchases}</h3>
+                <div style={{ background: achievements.nolimits ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.nolimits ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                   <div style={{ fontSize: "3rem", filter: achievements.nolimits ? "none" : "grayscale(100%) opacity(30%)" }}>♾️</div>
+                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.nolimits ? "#FFF" : "#6b7280" }}>No More Limitations</h3>
+                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Purchase an Unlimited package and break the limits.</p>
+                </div>
+                <div style={{ background: achievements.organized ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.organized ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                   <div style={{ fontSize: "3rem", filter: achievements.organized ? "none" : "grayscale(100%) opacity(30%)" }}>🎨</div>
+                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.organized ? "#FFF" : "#6b7280" }}>Organized Person</h3>
+                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Personalize your profile by changing your avatar.</p>
+                </div>
+                <div style={{ background: achievements.dedicated ? "rgba(99,102,241,0.15)" : "#08080f", border: `1px solid ${achievements.dedicated ? "#818cf8" : "rgba(255,255,255,0.05)"}`, padding: "1.5rem", borderRadius: "12px", textAlign: "center" }}>
+                   <div style={{ fontSize: "3rem", filter: achievements.dedicated ? "none" : "grayscale(100%) opacity(30%)" }}>⏳</div>
+                   <h3 style={{ margin: "1rem 0 0.5rem 0", color: achievements.dedicated ? "#FFF" : "#6b7280" }}>Dedicated User</h3>
+                   <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Stay active on the dashboard for more than 10 minutes.</p>
                 </div>
               </div>
-
-              {/* Rank Progress Main Card (Exact theme to reference image) */}
-              <div style={{ 
-                background: "rgba(10, 10, 18, 0.88)", 
-                backdropFilter: "blur(16px)", 
-                border: "1px solid rgba(255, 255, 255, 0.08)", 
-                borderRadius: "24px", 
-                padding: "2rem",
-                boxShadow: "0 25px 50px rgba(0,0,0,0.6)"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1.8rem" }}>
-                  <span style={{ fontSize: "1.4rem" }}>🏆</span>
-                  <h3 style={{ margin: 0, fontSize: "1.3rem", fontWeight: "bold", color: "#FFF" }}>Rank Progress</h3>
-                </div>
-
-                {/* Current & Next Rank Boxes */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ 
-                      width: "52px", 
-                      height: "52px", 
-                      borderRadius: "14px", 
-                      background: currentRank.badgeBg, 
-                      border: `1px solid ${currentRank.border}`, 
-                      display: "flex", 
-                      alignItems: "center", 
-                      justifyContent: "center", 
-                      fontSize: "1.6rem" 
-                    }}>
-                      {currentRank.icon}
-                    </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: "1.1rem", color: currentRank.color, fontWeight: "bold" }}>{currentRank.name}</h4>
-                      <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#9ca3af" }}>Current Rank</p>
-                    </div>
-                  </div>
-
-                  {nextRank ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", textAlign: "right" }}>
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: "1.1rem", color: nextRank.color, fontWeight: "bold" }}>{nextRank.name}</h4>
-                        <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#9ca3af" }}>Next Rank</p>
-                      </div>
-                      <div style={{ 
-                        width: "52px", 
-                        height: "52px", 
-                        borderRadius: "14px", 
-                        background: nextRank.badgeBg, 
-                        border: `1px solid ${nextRank.border}`, 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        fontSize: "1.6rem" 
-                      }}>
-                        {nextRank.icon}
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "right" }}>
-                      <span style={{ background: "rgba(168, 85, 247, 0.2)", color: "#a855f7", padding: "6px 14px", borderRadius: "12px", fontWeight: "bold", fontSize: "0.85rem", border: "1px solid rgba(168, 85, 247, 0.4)" }}>
-                        👑 Max Level Reached
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress Bar with Labels */}
-                <div style={{ marginBottom: "1.2rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "8px", fontWeight: "bold" }}>
-                    <span style={{ color: currentRank.color }}>{currentRank.name}</span>
-                    <span style={{ color: nextRank ? nextRank.color : currentRank.color }}>{nextRank ? nextRank.name : "Max"}</span>
-                  </div>
-
-                  <div style={{ width: "100%", height: "10px", background: "rgba(255,255,255,0.06)", borderRadius: "10px", overflow: "hidden", position: "relative" }}>
-                    <div style={{ 
-                      width: `${progressPercent}%`, 
-                      height: "100%", 
-                      background: `linear-gradient(90deg, ${currentRank.color}, ${nextRank ? nextRank.color : currentRank.color})`, 
-                      borderRadius: "10px",
-                      transition: "width 0.4s ease" 
-                    }} />
-                  </div>
-                </div>
-
-                {/* Purchases text */}
-                <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "0.9rem", margin: "0 0 2rem 0" }}>
-                  {nextRank ? (
-                    <>
-                      <strong style={{ color: "#FFF" }}>{purchasesNeeded} more {purchasesNeeded === 1 ? 'purchase' : 'purchases'}</strong> to reach {nextRank.name}
-                    </>
-                  ) : (
-                    <strong style={{ color: "#a855f7" }}>You are at the Highest Rank (Diamond)!</strong>
-                  )}
-                </p>
-
-                {/* All Ranks Legend Pill Badges */}
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1.5rem" }}>
-                  <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.9rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>All Ranks</h4>
-                  
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem" }}>
-                    {RANKS.map((r) => {
-                      const isCurrent = r.name === currentRank.name;
-                      return (
-                        <div 
-                          key={r.name} 
-                          style={{ 
-                            display: "inline-flex", 
-                            alignItems: "center", 
-                            gap: "8px", 
-                            background: isCurrent ? r.badgeBg : "rgba(255,255,255,0.02)", 
-                            border: `1.5px solid ${isCurrent ? r.border : "rgba(255,255,255,0.08)"}`, 
-                            padding: "6px 14px", 
-                            borderRadius: "30px",
-                            boxShadow: isCurrent ? `0 0 15px ${r.badgeBg}` : "none",
-                            transition: "all 0.2s ease"
-                          }}
-                        >
-                          <span>{r.icon}</span>
-                          <span style={{ color: isCurrent ? r.color : "#9ca3af", fontWeight: isCurrent ? "bold" : "normal", fontSize: "0.85rem" }}>
-                            {r.name} ({r.min}+)
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-              </div>
-
             </div>
           )}
 
           {/* =======================
-              6. PROFILE TAB
+              6. PROFILE TAB (LAST LOGIN DATE & TIME එකතු කර ඇත)
           ======================== */}
           {activeTab === "profile" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "rgba(14, 14, 23, 0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "600px", margin: "0 auto", borderRadius: "16px", background: "#0e0e17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 style={{ marginBottom: "2rem", textAlign: "center" }}>Edit Profile</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: `4px solid ${currentRank.color}`, objectFit: "cover" }} />
+                  <img src={avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}`} alt="Current Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid #6366f1", objectFit: "cover" }} />
                   <h3 style={{ margin: "1rem 0 0.2rem 0", color: "#FFF", fontSize: "1.2rem" }}>{safeName}</h3>
-                  
-                  <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: currentRank.badgeBg, border: `1px solid ${currentRank.border}`, color: currentRank.color, fontSize: "0.8rem", padding: "2px 10px", borderRadius: "20px", fontWeight: "bold" }}>
-                      {currentRank.icon} {currentRank.name} Rank
+                  {isVerified ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.85rem", color: "#818cf8", fontWeight: "bold" }}>
+                      Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={16} height={16} />
                     </span>
-                    {isVerified ? (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", color: "#818cf8", fontWeight: "bold", background: "rgba(99,102,241,0.15)", padding: "2px 10px", borderRadius: "20px" }}>
-                        Premium User <img src="https://files.catbox.moe/mq2edy.png" alt="Verified" width={14} height={14} />
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: "0.8rem", color: "#9ca3af", background: "rgba(255,255,255,0.05)", padding: "2px 10px", borderRadius: "20px" }}>Free User</span>
-                    )}
-                  </div>
+                  ) : (
+                    <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>Free User</span>
+                  )}
                   
                   {(initialUser?.image || initialUser?.googleImage) && avatar !== (initialUser?.image || initialUser?.googleImage) && (
                     <button onClick={() => handleAvatarSelect("")} style={{ marginTop: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.5rem 1rem", borderRadius: "8px", color: "#cbd5e1", cursor: "pointer", fontSize: "0.85rem" }}>
@@ -1335,6 +1195,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <input type="email" value={safeEmail} readOnly style={{ width: "100%", padding: "0.9rem", background: "#08080f", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", outline: "none", boxSizing: "border-box" }} />
                 </div>
 
+                {/* 🚀 CUSTOMER LAST LOGIN DATE & TIME */}
                 <div>
                   <label style={{ display: "block", marginBottom: "0.5rem", color: "#9ca3af", fontSize: "0.85rem" }}>Last Login / Activity Recorded</label>
                   <input 
