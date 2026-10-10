@@ -102,7 +102,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 
       <main style={{ position: "relative", zIndex: 20, display: "grid", gridTemplateColumns: "360px 1fr", gap: "1.5rem", padding: "1.5rem 2rem", maxWidth: "1600px", margin: "0 auto", height: "calc(100vh - 100px)", boxSizing: "border-box" }}>
         
-        {/* USER LIST */}
+        {/* USER LIST (WITH LOGIN DATE & TIME BADGE) */}
         <div style={{ background: "#0c0c14", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "1.2rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <input
@@ -120,12 +120,16 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
               const isSelected = selectedUserId === uid;
               
               let isPrem = false;
+              let uLastSeen = 0;
               if (u.subscriptionLink) {
                 try {
                   const meta = JSON.parse(u.subscriptionLink);
                   if (meta.isPremium) isPrem = true;
+                  if (meta.lastSeen) uLastSeen = meta.lastSeen;
                 } catch {}
               }
+
+              const displayTime = uLastSeen || (u.updatedAt ? new Date(u.updatedAt).getTime() : 0);
 
               return (
                 <div 
@@ -139,6 +143,13 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
                       {u.name || "Unknown User"} {isPrem && <span style={{ color: "#3b82f6" }}>✔️</span>}
                     </h4>
                     <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{u.email}</p>
+                    
+                    {/* 🚀 CLIENT LIST LOGIN DATE & TIME */}
+                    {displayTime ? (
+                      <p style={{ margin: "3px 0 0 0", fontSize: "0.7rem", color: "#818cf8", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                        🕒 {new Date(displayTime).toLocaleDateString()} · {new Date(displayTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -174,35 +185,39 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     }
   }
 
-  // Real-time Online Tracker
+  // 🚀 REAL-TIME ONLINE TRACKER (TIME & DATE WITH SECONDS)
   const [onlineText, setOnlineText] = useState("Offline");
   const [isClientOnline, setIsClientOnline] = useState(false);
 
   useEffect(() => {
     const updateTimeAgo = () => {
-      if (!metaData.lastSeen) {
+      const lastSeenTime = metaData.lastSeen || (user?.updatedAt ? new Date(user.updatedAt).getTime() : 0);
+      if (!lastSeenTime) {
         setIsClientOnline(false);
         setOnlineText("Offline (Never Active)");
         return;
       }
-      const diffSeconds = Math.floor((Date.now() - metaData.lastSeen) / 1000);
+      const diffSeconds = Math.floor((Date.now() - lastSeenTime) / 1000);
+      const dateStr = new Date(lastSeenTime).toLocaleDateString();
+      const timeStr = new Date(lastSeenTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
       if (diffSeconds < 45) {
         setIsClientOnline(true);
-        setOnlineText("Online Now");
+        setOnlineText(`Online Now · ${dateStr} at ${timeStr}`);
       } else {
         setIsClientOnline(false);
         const mins = Math.floor(diffSeconds / 60);
         if (mins < 60) {
-          setOnlineText(`Offline (Seen ${mins}m ago)`);
+          setOnlineText(`Offline (${mins}m ago) · ${dateStr} at ${timeStr}`);
         } else {
-          setOnlineText(`Offline (${new Date(metaData.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+          setOnlineText(`Offline · ${dateStr} at ${timeStr}`);
         }
       }
     };
     updateTimeAgo();
     const interval = setInterval(updateTimeAgo, 5000);
     return () => clearInterval(interval);
-  }, [metaData.lastSeen]);
+  }, [metaData.lastSeen, user?.updatedAt]);
 
   // Dynamic Multi-Config Sections
   interface ConfigItem {
@@ -285,6 +300,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   };
 
   const togglePremium = () => saveMeta(metaData.alert, !metaData.isPremium);
+  
   const handleBanUser = () => {
     if (confirm(`Are you sure you want to BAN ${user.name || "this user"}?`)) {
       onUpdate(userId, { vpnStatus: "Banned" });
@@ -299,7 +315,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   };
   const handleClearMessage = () => saveMeta("", metaData.isPremium);
 
-  // 🚀 VERIFY PAYMENT HANDLER
+  // VERIFY PAYMENT HANDLER
   const handleVerifyPayment = (paymentIdentifier: any) => {
     const updatedPayments = (metaData.payments || []).map((p: any) => {
       if (p.id === paymentIdentifier || p.date === paymentIdentifier) {
@@ -315,7 +331,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     });
   };
 
-  // 🚀 DELETE PAYMENT HANDLER
+  // DELETE PAYMENT HANDLER
   const handleDeletePayment = (paymentIdentifier: any) => {
     if (!confirm("Are you sure you want to permanently delete this payment slip record?")) return;
 
@@ -323,7 +339,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       return p.id !== paymentIdentifier && p.date !== paymentIdentifier;
     });
 
-    // Remove from pendingOrders if present
     const updatedPendingOrders = (metaData.pendingOrders || []).filter((po: any) => {
       return po.id !== paymentIdentifier && po.date !== paymentIdentifier;
     });
@@ -359,6 +374,19 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: isClientOnline ? "#22c55e" : "#9ca3af", boxShadow: isClientOnline ? "0 0 8px #22c55e" : "none" }}></span>
               <span style={{ fontSize: "0.8rem", color: isClientOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>{onlineText}</span>
             </div>
+
+            {/* 🚀 EXACT LAST LOGIN DATE & TIME */}
+            <p style={{ margin: "0.4rem 0 0 0", color: "#9ca3af", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>🕒</span>
+              <span>Last Login / Active:</span>
+              <strong style={{ color: "#FFF" }}>
+                {metaData.lastSeen 
+                  ? `${new Date(metaData.lastSeen).toLocaleDateString()} at ${new Date(metaData.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                  : user?.updatedAt 
+                    ? `${new Date(user.updatedAt).toLocaleDateString()} at ${new Date(user.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                    : "No record"}
+              </strong>
+            </p>
           </div>
         </div>
 
@@ -447,7 +475,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       </div>
 
-      {/* 📦 DYNAMIC MULTI-CONFIG SECTIONS */}
+      {/* 📦 ASSIGNED CONFIGURATIONS */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.5rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div>
@@ -499,7 +527,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         )}
       </div>
 
-      {/* 🧾 PAYMENT SLIPS & VERIFICATION (WITH VERIFY & DELETE BUTTONS) */}
+      {/* 🧾 PAYMENT SLIPS & VERIFICATION */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#FFF", fontSize: "1.05rem" }}>🧾 Payment Slips & History</h3>
         
@@ -527,7 +555,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                       </a>
                     )}
                     
-                    {/* VERIFY PAYMENT BUTTON */}
                     {isVerified ? (
                       <span style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", padding: "0.45rem 0.9rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold" }}>
                         ✅ Verified
@@ -541,7 +568,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                       </button>
                     )}
 
-                    {/* 🚀 DELETE PAYMENT SLIP BUTTON */}
                     <button
                       onClick={() => handleDeletePayment(p?.id || p?.date)}
                       style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.45rem 0.9rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}
