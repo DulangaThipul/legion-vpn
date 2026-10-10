@@ -77,7 +77,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   // 🚀 METADATA DECODER
   let metaData = useMemo(() => {
-    let data = { alert: "", isPremium: false, payments: [] as any[], pendingOrders: [] as any[], lastSeen: 0, customRank: "", bonusPurchases: 0 };
+    let data = { 
+      alert: "", 
+      isPremium: false, 
+      payments: [] as any[], 
+      pendingOrders: [] as any[], 
+      lastSeen: 0, 
+      customRank: "", 
+      bonusPurchases: 0,
+      dataTotal: "Unlimited",
+      dataUsed: "0 GB"
+    };
     if (user?.subscriptionLink) {
       try {
         data = { ...data, ...JSON.parse(user.subscriptionLink) };
@@ -588,7 +598,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const currentQuotaList = modalPackage?.type === "router" ? ROUTER_CONFIG_PRICES : MOBILE_CONFIG_PRICES;
 
   return (
-    // 🚀 MATRIX BACKGROUND VISIBILITY FIXED: background set to transparent so canvas shines through
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
 
@@ -667,7 +676,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginBottom: "1rem" }}>
-                {/* 🚀 CLAIM FREE TEST PLAN: Opens Pop-up instead of immediate redirect */}
                 <div onClick={() => setFreeTestModal(true)} style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
                   <div style={{ fontSize: "2.5rem" }}>🎁</div>
                   <div>
@@ -685,21 +693,46 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               </div>
 
               {hasActivePlan && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem" }}>
-                  <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.8rem", color: "#FFF" }}>
-                    <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📡 LIVE CONNECTION</p>
-                    <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-                      <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block" }}></span>
-                      {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
-                    </h2>
-                    <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.2rem" }}>
+                  
+                  {/* 📡 LIVE CONNECTION (LEFT) */}
+                  <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📡 LIVE CONNECTION</p>
+                      <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block" }}></span>
+                        {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
+                      </h2>
+                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
+                    </div>
                   </div>
 
-                  <div style={{ background: isExpired ? "#dc2626" : "#6d28d9", borderRadius: "16px", padding: "1.8rem", color: "#FFF" }}>
-                    <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>⏳ EXPIRES IN</p>
-                    <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
-                    <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
+                  {/* 📊 DATA USED (RIGHT TO LIVE CONNECTION) */}
+                  <div style={{ background: "#2563eb", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📊 DATA USED</p>
+                      <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                        <span>{metaData.dataUsed || "0 GB"}</span>
+                        <span style={{ fontSize: "1.05rem", fontWeight: "normal", opacity: 0.85 }}>
+                          / {metaData.dataTotal || "Unlimited"}
+                        </span>
+                      </h2>
+                    </div>
+
+                    <p style={{ margin: "0.8rem 0 0 0", fontSize: "0.75rem", color: "rgba(255,255,255,0.75)", letterSpacing: "0.5px" }}>
+                      Updates at 12:00am Every Day
+                    </p>
                   </div>
+
+                  {/* ⏳ EXPIRES IN */}
+                  <div style={{ background: isExpired ? "#dc2626" : "#6d28d9", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>⏳ EXPIRES IN</p>
+                      <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
+                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -1097,7 +1130,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              5. 🏆 RANK PROGRESS TAB (REPLACES ACHIEVEMENTS)
+              5. 🏆 RANK PROGRESS TAB
           ======================== */}
           {activeTab === "rank" && (
             <div style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }} className="animate-fade-in">
@@ -1129,7 +1162,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "bold", color: "#FFF" }}>{safeName}</h2>
                       <span onClick={() => setActiveTab("profile")} style={{ cursor: "pointer", fontSize: "0.9rem", color: "#9ca3af" }} title="Edit Profile">✏️</span>
                       
-                      {/* Current Rank Badge */}
                       <span style={{ 
                         display: "inline-flex", 
                         alignItems: "center", 
@@ -1156,7 +1188,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
               </div>
 
-              {/* Rank Progress Main Card (Exact theme to reference image) */}
+              {/* Rank Progress Main Card */}
               <div style={{ 
                 background: "rgba(10, 10, 18, 0.88)", 
                 backdropFilter: "blur(16px)", 
@@ -1170,7 +1202,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <h3 style={{ margin: 0, fontSize: "1.3rem", fontWeight: "bold", color: "#FFF" }}>Rank Progress</h3>
                 </div>
 
-                {/* Current & Next Rank Boxes */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div style={{ 
@@ -1221,7 +1252,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                 </div>
 
-                {/* Progress Bar with Labels */}
                 <div style={{ marginBottom: "1.2rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "8px", fontWeight: "bold" }}>
                     <span style={{ color: currentRank.color }}>{currentRank.name}</span>
@@ -1239,7 +1269,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 </div>
 
-                {/* Purchases text */}
                 <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "0.9rem", margin: "0 0 2rem 0" }}>
                   {nextRank ? (
                     <>
@@ -1250,7 +1279,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   )}
                 </p>
 
-                {/* All Ranks Legend Pill Badges */}
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1.5rem" }}>
                   <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.9rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px" }}>All Ranks</h4>
                   
