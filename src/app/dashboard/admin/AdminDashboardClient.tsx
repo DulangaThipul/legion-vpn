@@ -19,8 +19,6 @@ const PACKAGE_LIST = [
   "Custom / Special Package"
 ];
 
-const AVAILABLE_RANKS = ["Auto", "Bronze", "Silver", "Gold", "Platinum", "Diamond"];
-
 function safeParseDate(val: any): Date | null {
   if (!val) return null;
   const d = new Date(val);
@@ -104,7 +102,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 
       <main style={{ position: "relative", zIndex: 20, display: "grid", gridTemplateColumns: "360px 1fr", gap: "1.5rem", padding: "1.5rem 2rem", maxWidth: "1600px", margin: "0 auto", height: "calc(100vh - 100px)", boxSizing: "border-box" }}>
         
-        {/* USER LIST */}
+        {/* USER LIST (WITH LOGIN DATE & TIME BADGE) */}
         <div style={{ background: "#0c0c14", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "1.2rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <input
@@ -123,13 +121,11 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
               
               let isPrem = false;
               let uLastSeen = 0;
-              let userRank = "Bronze";
               if (u.subscriptionLink) {
                 try {
                   const meta = JSON.parse(u.subscriptionLink);
                   if (meta.isPremium) isPrem = true;
                   if (meta.lastSeen) uLastSeen = meta.lastSeen;
-                  if (meta.customRank) userRank = meta.customRank;
                 } catch {}
               }
 
@@ -143,14 +139,12 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
                 >
                   <img src={u.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'User')}`} alt="Avatar" style={{ width: "42px", height: "42px", borderRadius: "50%", objectFit: "cover" }} />
                   <div style={{ overflow: "hidden", flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden", display: "flex", alignItems: "center", gap: "5px", fontSize: "0.95rem" }}>
-                        {u.name || "Unknown User"} {isPrem && <span style={{ color: "#3b82f6" }}>✔️</span>}
-                      </h4>
-                      <span style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: "bold" }}>{userRank}</span>
-                    </div>
+                    <h4 style={{ margin: "0 0 0.2rem 0", color: "#FFF", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden", display: "flex", alignItems: "center", gap: "5px", fontSize: "0.95rem" }}>
+                      {u.name || "Unknown User"} {isPrem && <span style={{ color: "#3b82f6" }}>✔️</span>}
+                    </h4>
                     <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{u.email}</p>
                     
+                    {/* 🚀 CLIENT LIST LOGIN DATE & TIME */}
                     {displayTime ? (
                       <p style={{ margin: "3px 0 0 0", fontSize: "0.7rem", color: "#818cf8", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
                         🕒 {new Date(displayTime).toLocaleDateString()} · {new Date(displayTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -182,7 +176,7 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
 function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string, updates: any) => void }) {
   const userId = user.id || user._id;
 
-  let metaData = { alert: "", isPremium: false, payments: [] as any[], lastSeen: 0, customRank: "", bonusPurchases: 0 };
+  let metaData = { alert: "", isPremium: false, payments: [] as any[], lastSeen: 0 };
   if (user?.subscriptionLink) {
     try {
       metaData = { ...metaData, ...JSON.parse(user.subscriptionLink) };
@@ -191,7 +185,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     }
   }
 
-  // 🚀 ONLINE STATUS TRACKER
+  // 🚀 REAL-TIME ONLINE TRACKER (TIME & DATE WITH SECONDS)
   const [onlineText, setOnlineText] = useState("Offline");
   const [isClientOnline, setIsClientOnline] = useState(false);
 
@@ -224,20 +218,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     const interval = setInterval(updateTimeAgo, 5000);
     return () => clearInterval(interval);
   }, [metaData.lastSeen, user?.updatedAt]);
-
-  // 🏆 RANK CONTROLS
-  const verifiedPaymentsCount = (metaData.payments || []).filter((p: any) => p?.status === "Verified").length;
-  const [selectedRank, setSelectedRank] = useState(metaData.customRank || "Auto");
-  const [bonusPurchasesInput, setBonusPurchasesInput] = useState<number>(Number(metaData.bonusPurchases) || 0);
-
-  const handleSaveRankSettings = () => {
-    const updatedMeta = {
-      ...metaData,
-      customRank: selectedRank === "Auto" ? "" : selectedRank,
-      bonusPurchases: Number(bonusPurchasesInput) || 0
-    };
-    onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
-  };
 
   // Dynamic Multi-Config Sections
   interface ConfigItem {
@@ -395,6 +375,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
               <span style={{ fontSize: "0.8rem", color: isClientOnline ? "#22c55e" : "#9ca3af", fontWeight: "bold" }}>{onlineText}</span>
             </div>
 
+            {/* 🚀 EXACT LAST LOGIN DATE & TIME */}
             <p style={{ margin: "0.4rem 0 0 0", color: "#9ca3af", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
               <span>🕒</span>
               <span>Last Login / Active:</span>
@@ -424,53 +405,6 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             </button>
           )}
         </div>
-      </div>
-
-      {/* 🏆 RANK & PURCHASES MANAGEMENT CARD (NEW) */}
-      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(234, 179, 8, 0.2)" }}>
-        <h3 style={{ margin: "0 0 1rem 0", color: "#eab308", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>🏆</span> Rank & Purchases Management
-        </h3>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
-          <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Verified In-app Purchases</p>
-            <h3 style={{ margin: "4px 0 0 0", color: "#22c55e", fontSize: "1.3rem" }}>{verifiedPaymentsCount} Purchases</h3>
-          </div>
-
-          <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Bonus Purchases Added</p>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-              <input 
-                type="number" 
-                value={bonusPurchasesInput} 
-                onChange={(e) => setBonusPurchasesInput(Number(e.target.value))}
-                style={{ width: "90px", padding: "0.4rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold" }}
-              />
-              <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>bonus</span>
-            </div>
-          </div>
-
-          <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Override Client Rank</p>
-            <select 
-              value={selectedRank} 
-              onChange={(e) => setSelectedRank(e.target.value)}
-              style={{ marginTop: "4px", width: "100%", padding: "0.5rem", borderRadius: "6px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", color: "#eab308", fontWeight: "bold" }}
-            >
-              {AVAILABLE_RANKS.map(rk => (
-                <option key={rk} value={rk}>{rk === "Auto" ? "Auto (Based on Purchases)" : rk}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <button 
-          onClick={handleSaveRankSettings}
-          style={{ background: "linear-gradient(90deg, #d97706, #eab308)", color: "#000", border: "none", padding: "0.6rem 1.6rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
-        >
-          💾 Save Rank & Purchases
-        </button>
       </div>
 
       {/* ⏳ COUNTDOWN + 💬 MESSAGE */}
