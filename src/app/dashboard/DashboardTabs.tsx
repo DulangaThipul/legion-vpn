@@ -606,7 +606,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
           <div style={{ background: "#10101c", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "20px", padding: "2.5rem 2rem", maxWidth: "480px", width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.8)", animation: "fadeInUp 0.3s ease" }}>
             <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>🎁</div>
-            <h2 style={{ color: "#FFF", fontSize: "1.5rem", margin: "0 0 0.8rem 0" }}>Claim Free 3GB Test Plan</h2>
+            <h2 style={{ color: "#FFF", fontSize: "1.5rem", margin: "0 0 0.8rem 0" }}>Claim Free 3GB Test Plan (NO SLT)</h2>
             <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
               අපගේ Ultra-Fast VIP VPN සේවාව නොමිලේ අත්හදා බැලීමට <strong>3GB Free Test Plan</strong> එකක් ලබාගත හැක. පහත බටන් එක ක්ලික් කර WhatsApp හරහා අපගේ Support වෙත සෘජුවම Request එකක් යොමු කරන්න.
             </p>
