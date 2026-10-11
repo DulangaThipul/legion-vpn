@@ -208,7 +208,8 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     customRank: "", 
     bonusPurchases: 0,
     dataTotal: "Unlimited",
-    dataUsed: "0 GB"
+    dataUsed: "0 GB",
+    forceShowGuide: false
   };
 
   if (user?.subscriptionLink) {
@@ -267,7 +268,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
 
-  // 📊 DATA USAGE CONTROLS (NEW)
+  // 📊 DATA USAGE CONTROLS
   const [selectedDataTotal, setSelectedDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
   const [dataUsedInput, setDataUsedInput] = useState<string>(metaData.dataUsed || "0 GB");
 
@@ -280,6 +281,16 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       dataUsed: formattedUsed
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+  };
+
+  // 🧭 TRIGGER ONBOARDING GUIDE FOR CLIENT (NEW)
+  const handleTriggerGuideForUser = () => {
+    const updatedMeta = {
+      ...metaData,
+      forceShowGuide: true
+    };
+    onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+    alert("✅ Success: The onboarding walkthrough guide will pop up on the client's screen on their next dashboard visit!");
   };
 
   // Dynamic Multi-Config Sections
@@ -469,7 +480,25 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* 📊 DATA USAGE MANAGEMENT CARD (NEW) */}
+      {/* 🧭 ONBOARDING GUIDE CONTROL (NEW) */}
+      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem 1.4rem", borderRadius: "14px", border: "1px solid rgba(99, 102, 241, 0.25)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <div>
+          <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>🧭</span> Client Onboarding & Help Guide
+          </h4>
+          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>
+            Force Walkthrough for this user: <strong style={{ color: metaData.forceShowGuide ? "#f59e0b" : "#22c55e" }}>{metaData.forceShowGuide ? "Active (Will show next login)" : "Dismissed / Normal"}</strong>
+          </p>
+        </div>
+        <button 
+          onClick={handleTriggerGuideForUser}
+          style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.6rem 1.4rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.3)" }}
+        >
+          🔄 Re-send / Trigger Guide for User
+        </button>
+      </div>
+
+      {/* 📊 DATA USAGE MANAGEMENT CARD */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(59, 130, 246, 0.25)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#3b82f6", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
           <span>📊</span> Data Usage Management
