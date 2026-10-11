@@ -36,13 +36,13 @@ const ALL_PACKAGES = [
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
 const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (Budget)": 100, "50 GB Config (Budget)": 150, "100 GB Config (Budget)": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
 
-// 🏆 RANKS CONFIGURATION
+// 🏆 REALISTIC FAIR RANKS CONFIGURATION (Monthly friendly)
 const RANKS = [
   { name: "Bronze", min: 0, color: "#d97706", badgeBg: "rgba(217, 119, 6, 0.15)", border: "#d97706", icon: "🥉" },
-  { name: "Silver", min: 5, color: "#94a3b8", badgeBg: "rgba(148, 163, 184, 0.15)", border: "#94a3b8", icon: "⭐" },
-  { name: "Gold", min: 15, color: "#eab308", badgeBg: "rgba(234, 179, 8, 0.15)", border: "#eab308", icon: "🏆" },
-  { name: "Platinum", min: 30, color: "#06b6d4", badgeBg: "rgba(6, 182, 212, 0.15)", border: "#06b6d4", icon: "💎" },
-  { name: "Diamond", min: 50, color: "#a855f7", badgeBg: "rgba(168, 85, 247, 0.15)", border: "#a855f7", icon: "👑" },
+  { name: "Silver", min: 3, color: "#94a3b8", badgeBg: "rgba(148, 163, 184, 0.15)", border: "#94a3b8", icon: "⭐" },
+  { name: "Gold", min: 6, color: "#eab308", badgeBg: "rgba(234, 179, 8, 0.15)", border: "#eab308", icon: "🏆" },
+  { name: "Platinum", min: 10, color: "#06b6d4", badgeBg: "rgba(6, 182, 212, 0.15)", border: "#06b6d4", icon: "💎" },
+  { name: "Diamond", min: 15, color: "#a855f7", badgeBg: "rgba(168, 85, 247, 0.15)", border: "#a855f7", icon: "👑" },
 ];
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
@@ -65,6 +65,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 🎁 FREE TEST PLAN POPUP STATE
   const [freeTestModal, setFreeTestModal] = useState(false);
 
+  // 🧭 ONBOARDING / WALKTHROUGH GUIDE POPUP STATE (NEW)
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [guideStep, setGuideStep] = useState(1);
+
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user?.image || null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -86,7 +90,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       customRank: "", 
       bonusPurchases: 0,
       dataTotal: "Unlimited",
-      dataUsed: "0 GB"
+      dataUsed: "0 GB",
+      forceShowGuide: false
     };
     if (user?.subscriptionLink) {
       try {
@@ -97,6 +102,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
     return data;
   }, [user?.subscriptionLink]);
+
+  const userIdentifier = user?.id || user?.email || "guest_user";
+
+  // 🧭 CHECK FIRST LOGIN / ADMIN FORCED GUIDE
+  useEffect(() => {
+    const guideKey = `legion_guide_seen_${userIdentifier}`;
+    const hasSeenGuideLocal = localStorage.getItem(guideKey);
+
+    if (metaData.forceShowGuide) {
+      setShowGuideModal(true);
+      setGuideStep(1);
+    } else if (!hasSeenGuideLocal) {
+      setShowGuideModal(true);
+      setGuideStep(1);
+    }
+  }, [metaData.forceShowGuide, userIdentifier]);
+
+  const handleFinishGuide = () => {
+    const guideKey = `legion_guide_seen_${userIdentifier}`;
+    localStorage.setItem(guideKey, "true");
+    setShowGuideModal(false);
+    setGuideStep(1);
+  };
 
   // 🚀 USER-ISOLATED PAYMENT HISTORY
   useEffect(() => {
@@ -115,8 +143,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }, 20000);
     return () => clearInterval(hb);
   }, []);
-
-  const userIdentifier = user?.id || user?.email || "guest_user";
 
   // 🚀 CENTER POPUP ALERT (DISMISSED STATE SAVED PER USER)
   const [showCenterAlert, setShowCenterAlert] = useState(false);
@@ -581,7 +607,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     );
   }
 
-  // 🚀 TABS: Achievements replaced by Rank Progress
+  // 🚀 TABS
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
     { id: "buy", label: "Store", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg> },
@@ -600,6 +626,144 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   return (
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
+
+      {/* 🧭 COMPLETE ONBOARDING / WALKTHROUGH GUIDE MODAL (NEW) */}
+      {showGuideModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1.2rem" }}>
+          <div style={{ background: "#0e0e1a", border: "1px solid rgba(99,102,241,0.4)", borderRadius: "24px", padding: "2rem", maxWidth: "560px", width: "100%", boxShadow: "0 25px 60px rgba(0,0,0,0.9)", animation: "fadeInUp 0.3s ease", position: "relative" }}>
+            
+            {/* Header with Step Counter */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
+              <span style={{ fontSize: "0.8rem", color: "#818cf8", fontWeight: "bold", background: "rgba(99,102,241,0.15)", padding: "4px 12px", borderRadius: "20px" }}>
+                LEGION Quick Tour · Step {guideStep} of 5
+              </span>
+              <button onClick={handleFinishGuide} style={{ background: "none", border: "none", color: "#9ca3af", fontSize: "1.3rem", cursor: "pointer" }} title="Skip Tour">✕</button>
+            </div>
+
+            {/* STEP 1: VPN INTRODUCTION */}
+            {guideStep === 1 && (
+              <div style={{ animation: "fadeIn 0.25s ease" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🌐</div>
+                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>LEGION VPN යනු කුමක්ද?</h2>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.6, fontSize: "0.9rem", color: "#cbd5e1" }}>
+                  <p style={{ margin: "0 0 0.8rem 0" }}>
+                    🚀 <strong>Unlimited Internet Bypass:</strong> Dialog, Airtel, Hutch, SLT වැනි සිම්පත් වල Zoom, TikTok, YouTube වැනි පැකේජ සක්‍රීය කර ඇති විට, එම Data වලින් <strong>ඕනෑම Website එකක් හෝ App එකක් Unlimited බාවිතා කිරීමට</strong> මෙම VPN එක උපකාරී වේ.
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    🛡️ <strong>Online Privacy:</strong> ඔබගේ සත්‍ය IP ලිපිනය සඟවා High-speed Cloudflare & VIP Servers හරහා සුරක්ෂිත වේගවත් අන්තර්ජාල අත්දැකීමක් සපයයි.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: DASHBOARD EXPLANATION */}
+            {guideStep === 2 && (
+              <div style={{ animation: "fadeIn 0.25s ease" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>📊</div>
+                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>Dashboard එක තේරුම් ගනිමු</h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", fontSize: "0.85rem", color: "#cbd5e1" }}>
+                  <div style={{ background: "rgba(5, 150, 105, 0.15)", padding: "0.9rem", borderRadius: "10px", border: "1px solid rgba(5,150,105,0.3)" }}>
+                    <strong style={{ color: "#22c55e" }}>📡 LIVE CONNECTION:</strong> ඔබගේ VPN එක ක්‍රියාත්මකද (Secured) නැතහොත් ක්‍රියාවිරහිතද (VPN is OFF) යන්න මෙතැනින් සජීවීව බලාගත හැක.
+                  </div>
+                  <div style={{ background: "rgba(37, 99, 235, 0.15)", padding: "0.9rem", borderRadius: "10px", border: "1px solid rgba(37,99,235,0.3)" }}>
+                    <strong style={{ color: "#60a5fa" }}>📊 DATA USED:</strong> ඔබ දැනට භාවිත කළ Data ප්‍රමාණය පෙන්වයි. මෙය සෑම දිනකම රාත්‍රී 12:00ට ස්වයංක්‍රීයව update වේ.
+                  </div>
+                  <div style={{ background: "rgba(109, 40, 217, 0.15)", padding: "0.9rem", borderRadius: "10px", border: "1px solid rgba(109,40,217,0.3)" }}>
+                    <strong style={{ color: "#a78bfa" }}>⏳ EXPIRES IN:</strong> ඔබේ VPN සේවාව කල් ඉකුත් වීමට ඉතිරි දින ගණන ගණනය කර පෙන්වයි.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: HOW TO BUY / ORDER */}
+            {guideStep === 3 && (
+              <div style={{ animation: "fadeIn 0.25s ease" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🛒</div>
+                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>VPN එකක් Order කරන්නේ කෙසේද?</h2>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                  <ol style={{ margin: 0, paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    <li>පහළ Navigation Bar එකේ ඇති <strong>Store (Buy)</strong> tab එක වෙත යන්න.</li>
+                    <li>ඔබේ සිම්පත (Dialog, Airtel, Hutch, SLT) සහ Router / Mobile වර්ගය තෝරා <strong>'Select & Configure VPN'</strong> ක්ලික් කරන්න.</li>
+                    <li>අවශ්‍ය Data Quota එක තෝරා, ලබාදී ඇති බැංකු ගිණුමට මුදල් තැන්පත් කරන්න.</li>
+                    <li><strong>Upload Slip</strong> මඟින් ගෙවීම් රිසිට්පත (Receipt) upload කර <strong>'Submit Order'</strong> ඔබන්න. එවිට ඔබගේ Order එක Admin වෙත යොමු වේ.</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: GETTING CONFIG & CONNECTING */}
+            {guideStep === 4 && (
+              <div style={{ animation: "fadeIn 0.25s ease" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🔑</div>
+                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>Config ලබාගෙන Connect වන්නේ කෙසේද?</h2>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                  <p style={{ margin: "0 0 0.8rem 0" }}>
+                    ✅ Admin විසින් ඔබගේ Payment එක Verify කළ වහාම <strong>'My VPNs'</strong> tab එකෙහි ඔබේ රහස්‍ය <strong>VLESS Key</strong> එක දිස්වේ.
+                  </p>
+                  <p style={{ margin: "0 0 0.8rem 0" }}>
+                    📋 <strong>'📋 Copy Code'</strong> ක්ලික් කර එය Copy කරගන්න.
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    📲 <strong>App එකට Import කරන්න:</strong> Android සඳහා <em>v2rayNG</em>, iPhone සඳහා <em>Streisand / Shadowrocket</em>, PC සඳහා <em>v2rayN</em> app එක download කර Clipboard එකෙන් import කර Connect වන්න!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: RANKS & TOOLS */}
+            {guideStep === 5 && (
+              <div style={{ animation: "fadeIn 0.25s ease" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🏆</div>
+                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>Ranks & Tools විශේෂාංග</h2>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                  <p style={{ margin: "0 0 0.8rem 0" }}>
+                    ⭐ <strong>Fair Rank System:</strong> ඔබ මාස්පතා VPN buy කරන වාර ගණන අනුව Bronze 🥉, Silver ⭐ (3), Gold 🏆 (6), Platinum 💎 (10), Diamond 👑 (15) දක්වා High Ranks unlock වේ!
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    🛠️ <strong>Network Tools:</strong> Speed Test, IP Privacy Checker, Latency Ping, WebRTC Leak tools මඟින් ඔබේ VPN වේගය සහ ආරක්ෂාව ක්ෂණිකව පරික්ෂා කරගත හැක.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.8rem", gap: "10px" }}>
+              {guideStep > 1 ? (
+                <button 
+                  onClick={() => setGuideStep(prev => prev - 1)} 
+                  style={{ padding: "0.7rem 1.4rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
+                >
+                  ← Back
+                </button>
+              ) : (
+                <button 
+                  onClick={handleFinishGuide} 
+                  style={{ padding: "0.7rem 1.4rem", background: "transparent", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "0.9rem" }}
+                >
+                  Skip Tour
+                </button>
+              )}
+
+              {guideStep < 5 ? (
+                <button 
+                  onClick={() => setGuideStep(prev => prev + 1)} 
+                  style={{ padding: "0.7rem 1.8rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}
+                >
+                  Next Step →
+                </button>
+              ) : (
+                <button 
+                  onClick={handleFinishGuide} 
+                  style={{ padding: "0.7rem 1.8rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}
+                >
+                  ✓ Finish Tour & Get Started
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* 🎁 POPUP MODAL: CLAIM FREE TEST PLAN */}
       {freeTestModal && (
@@ -675,21 +839,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {/* 1. DASHBOARD TAB */}
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginBottom: "1rem" }}>
-                <div onClick={() => setFreeTestModal(true)} style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ fontSize: "2.5rem" }}>🎁</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "0.5rem" }}>
+                
+                {/* 🧭 QUICK HELP GUIDE BUTTON (BONUS ACCESSIBILITY) */}
+                <div onClick={() => { setGuideStep(1); setShowGuideModal(true); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                  <div style={{ fontSize: "2.3rem" }}>📖</div>
                   <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.1rem" }}>Claim Free Test Plan</h3>
-                    <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>Experience our premium speeds with a 3GB trial.</p>
+                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>How to Use / VPN Guide</h3>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Learn how to order and connect in 1 minute.</p>
                   </div>
                 </div>
-                <div onClick={() => setActiveTab("buy")} style={{ background: "rgba(16, 16, 29, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ fontSize: "2.5rem" }}>🛒</div>
+
+                {/* 🎁 CLAIM FREE TEST PLAN */}
+                <div onClick={() => setFreeTestModal(true)} style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                  <div style={{ fontSize: "2.3rem" }}>🎁</div>
                   <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.1rem" }}>Buy Premium Config</h3>
-                    <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>Unlock unlimited internet with our stable plans.</p>
+                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.05rem" }}>Claim Free Test Plan</h3>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Experience our premium speeds with a 3GB trial.</p>
                   </div>
                 </div>
+
+                {/* 🛒 BUY PREMIUM CONFIG */}
+                <div onClick={() => setActiveTab("buy")} style={{ background: "rgba(16, 16, 29, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                  <div style={{ fontSize: "2.3rem" }}>🛒</div>
+                  <div>
+                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>Buy Premium Config</h3>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Unlock unlimited internet with our stable plans.</p>
+                  </div>
+                </div>
+
               </div>
 
               {hasActivePlan && (
@@ -1130,7 +1308,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              5. 🏆 RANK PROGRESS TAB
+              5. 🏆 FAIR RANK PROGRESS TAB
           ======================== */}
           {activeTab === "rank" && (
             <div style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }} className="animate-fade-in">
@@ -1372,6 +1550,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     style={{ width: "100%", padding: "0.9rem", background: "#08080f", border: "1px solid rgba(255,255,255,0.1)", color: "#818cf8", borderRadius: "8px", outline: "none", boxSizing: "border-box", fontWeight: "bold" }} 
                   />
                 </div>
+
+                {/* Re-trigger Guide Button for Self */}
+                <button 
+                  onClick={() => { setGuideStep(1); setShowGuideModal(true); }}
+                  style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
+                >
+                  📖 Replay Onboarding Guide & Tutorial
+                </button>
 
               </div>
             </div>
