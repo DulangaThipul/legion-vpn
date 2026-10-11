@@ -283,7 +283,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
 
-  // 🐱 TOGGLE SWITCH FOR CLIENT CAT GUIDE (ON / OFF SWITCH)
+  // 🧭 TOGGLE SWITCH FOR CLIENT USER GUIDE (ON / OFF SWITCH)
   const [guideSwitch, setGuideSwitch] = useState<boolean>(Boolean(metaData.forceShowGuide));
 
   const handleToggleGuideSwitch = () => {
@@ -483,18 +483,18 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* 🐱 INTERACTIVE CAT GUIDE ON / OFF SWITCH CARD (NEW) */}
+      {/* 🧭 USER GUIDE ON / OFF SWITCH CARD */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem 1.5rem", borderRadius: "14px", border: `1px solid ${guideSwitch ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.08)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h4 style={{ margin: "0 0 0.3rem 0", color: guideSwitch ? "#22c55e" : "#FFF", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>🐱</span> Client Interactive Cat Guide
+            <span>🧭</span> Client Interactive User Guide
           </h4>
           <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>
-            Tour Guide Status: <strong style={{ color: guideSwitch ? "#22c55e" : "#ef4444" }}>{guideSwitch ? "ON (Active on Client's Dashboard)" : "OFF (Disabled for this Client)"}</strong>
+            User Guide Switch: <strong style={{ color: guideSwitch ? "#22c55e" : "#ef4444" }}>{guideSwitch ? "ON (Will prompt user next visit)" : "OFF (Disabled for this Client)"}</strong>
           </p>
         </div>
 
-        {/* Real Toggle Switch Button */}
+        {/* Real Toggle Switch */}
         <div 
           onClick={handleToggleGuideSwitch}
           style={{ 
@@ -507,7 +507,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             transition: "all 0.25s ease",
             boxShadow: guideSwitch ? "0 0 15px rgba(34,197,94,0.4)" : "none" 
           }}
-          title={guideSwitch ? "Click to turn OFF Cat Guide" : "Click to turn ON Cat Guide"}
+          title={guideSwitch ? "Click to turn OFF Guide" : "Click to turn ON Guide"}
         >
           <div 
             style={{ 
@@ -584,7 +584,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                 type="number" 
                 value={bonusPurchasesInput} 
                 onChange={(e) => setBonusPurchasesInput(Number(e.target.value))}
-                style={{ width: "90px", padding: "0.4rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", fontWeight: "bold" }}
+                style={{ width: "90px", padding: "0.4rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold" }}
               />
               <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>bonus</span>
             </div>
