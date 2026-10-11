@@ -1719,7 +1719,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <label htmlFor="slip-upload" style={{ cursor: "pointer", display: "block" }}>
                         <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>📁</div>
                         <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8" }}>{isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip image"}</h4>
-                        <p style={{ margin 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
+                        <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
                       </label>
                     </div>
 
