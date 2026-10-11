@@ -36,7 +36,7 @@ const ALL_PACKAGES = [
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
 const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (Budget)": 100, "50 GB Config (Budget)": 150, "100 GB Config (Budget)": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
 
-// 🏆 REALISTIC FAIR RANKS CONFIGURATION (Monthly friendly)
+// 🏆 REALISTIC FAIR RANKS CONFIGURATION
 const RANKS = [
   { name: "Bronze", min: 0, color: "#d97706", badgeBg: "rgba(217, 119, 6, 0.15)", border: "#d97706", icon: "🥉" },
   { name: "Silver", min: 3, color: "#94a3b8", badgeBg: "rgba(148, 163, 184, 0.15)", border: "#94a3b8", icon: "⭐" },
@@ -65,9 +65,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 🎁 FREE TEST PLAN POPUP STATE
   const [freeTestModal, setFreeTestModal] = useState(false);
 
-  // 🐱 INTERACTIVE CAT GUIDE STATE (STEP-BY-STEP TAB TOUR)
-  const [showCatGuide, setShowCatGuide] = useState(false);
-  const [catGuideStep, setCatGuideStep] = useState(1);
+  // 🧭 GLASSMORPHISM USER GUIDE STATES
+  const [guidePromptOpen, setGuidePromptOpen] = useState(false); // Asking user first
+  const [isTourActive, setIsTourActive] = useState(false);        // In active walkthrough
+  const [tourStep, setTourStep] = useState(1);                   // 1 to 5 steps
 
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user?.image || null);
@@ -105,60 +106,69 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const userIdentifier = user?.id || user?.email || "guest_user";
 
-  // 🐱 CAT GUIDE INITIAL CHECK (ADMIN SWITCH & FIRST LOGIN)
+  // 🧭 INITIAL GUIDE PROMPT LOGIC
   useEffect(() => {
-    const guideSeenKey = `legion_cat_guide_seen_${userIdentifier}`;
-    const hasSeenLocal = localStorage.getItem(guideSeenKey);
+    const guidePromptSeenKey = `legion_guide_prompt_seen_${userIdentifier}`;
+    const hasSeenPrompt = localStorage.getItem(guidePromptSeenKey);
 
-    // If Admin explicitly turned Switch ON -> Show!
+    // If Admin explicitly turned Switch ON -> Ask!
     if (metaData.forceShowGuide === true) {
-      setShowCatGuide(true);
-      setCatGuideStep(1);
-      setActiveTab("dashboard");
+      setGuidePromptOpen(true);
     } else if (metaData.forceShowGuide === false) {
-      // If Admin explicitly turned Switch OFF -> Hide!
-      setShowCatGuide(false);
-    } else if (!hasSeenLocal) {
-      // If Admin hasn't touched switch & new user -> Auto Show!
-      setShowCatGuide(true);
-      setCatGuideStep(1);
-      setActiveTab("dashboard");
+      // If Admin turned Switch OFF -> Do not show
+      setGuidePromptOpen(false);
+      setIsTourActive(false);
+    } else if (!hasSeenPrompt) {
+      // First time user ever logs in -> Ask first!
+      setGuidePromptOpen(true);
     }
   }, [metaData.forceShowGuide, userIdentifier]);
 
-  const handleCloseCatGuide = () => {
-    const guideSeenKey = `legion_cat_guide_seen_${userIdentifier}`;
-    localStorage.setItem(guideSeenKey, "true");
-    setShowCatGuide(false);
-    setCatGuideStep(1);
+  const handleStartTour = () => {
+    const guidePromptSeenKey = `legion_guide_prompt_seen_${userIdentifier}`;
+    localStorage.setItem(guidePromptSeenKey, "true");
+    setGuidePromptOpen(false);
+    setTourStep(1);
+    setActiveTab("dashboard");
+    setIsTourActive(true);
+  };
+
+  const handleDismissTourPrompt = () => {
+    const guidePromptSeenKey = `legion_guide_prompt_seen_${userIdentifier}`;
+    localStorage.setItem(guidePromptSeenKey, "true");
+    setGuidePromptOpen(false);
+    setIsTourActive(false);
+  };
+
+  const handleExitTour = () => {
+    setIsTourActive(false);
+    setTourStep(1);
     setActiveTab("dashboard");
   };
 
-  const handleNextCatStep = () => {
-    if (catGuideStep < 6) {
-      const nxt = catGuideStep + 1;
-      setCatGuideStep(nxt);
-      if (nxt === 1) setActiveTab("dashboard");
-      else if (nxt === 2) setActiveTab("buy");
-      else if (nxt === 3) setActiveTab("configs");
-      else if (nxt === 4) setActiveTab("payments");
-      else if (nxt === 5) setActiveTab("rank");
-      else if (nxt === 6) setActiveTab("dashboard");
+  const handleNextTourStep = () => {
+    if (tourStep < 5) {
+      const next = tourStep + 1;
+      setTourStep(next);
+      if (next === 1) setActiveTab("dashboard");
+      else if (next === 2) setActiveTab("buy");
+      else if (next === 3) setActiveTab("configs");
+      else if (next === 4) setActiveTab("payments");
+      else if (next === 5) setActiveTab("rank");
     } else {
-      handleCloseCatGuide();
+      handleExitTour();
     }
   };
 
-  const handlePrevCatStep = () => {
-    if (catGuideStep > 1) {
-      const prev = catGuideStep - 1;
-      setCatGuideStep(prev);
+  const handlePrevTourStep = () => {
+    if (tourStep > 1) {
+      const prev = tourStep - 1;
+      setTourStep(prev);
       if (prev === 1) setActiveTab("dashboard");
       else if (prev === 2) setActiveTab("buy");
       else if (prev === 3) setActiveTab("configs");
       else if (prev === 4) setActiveTab("payments");
       else if (prev === 5) setActiveTab("rank");
-      else if (prev === 6) setActiveTab("dashboard");
     }
   };
 
@@ -288,7 +298,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
 
-  // 🛡️ ONLY ACTIVE WHEN PAYMENT IS VERIFIED BY ADMIN & CONFIGS ARE PRESENT
+  // 🛡️ ONLY ACTIVE WHEN ADMIN VERIFIES AND ACTIVATES CONFIG
   const isVpnActivated = activeConfigs.length > 0 && user?.vpnStatus === "Active";
 
   // 🚀 REAL-TIME VERIFICATION & REVIEW STATUS CHECK
@@ -665,91 +675,133 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
 
-      {/* 🐱 INTERACTIVE CAT GUIDE MASCOT & SPEECH BUBBLE WIDGET */}
-      {showCatGuide && (
-        <div style={{ position: "fixed", bottom: "5.5rem", left: "50%", transform: "translateX(-50%)", width: "94%", maxWidth: "540px", zIndex: 99999, animation: "fadeInUp 0.3s ease" }}>
+      {/* 🧭 1. INITIAL PROMPT MODAL: ASKS USER FIRST IF THEY WANT A USER GUIDE */}
+      {guidePromptOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1.5rem" }}>
+          <div style={{ background: "rgba(16, 16, 32, 0.85)", backdropFilter: "blur(25px)", border: "1px solid rgba(129,140,248,0.35)", borderRadius: "24px", padding: "2.5rem 2rem", maxWidth: "490px", width: "100%", textAlign: "center", boxShadow: "0 25px 60px rgba(0,0,0,0.85), 0 0 30px rgba(99,102,241,0.2)", animation: "fadeInUp 0.3s ease" }}>
+            <div style={{ fontSize: "3.2rem", marginBottom: "0.8rem" }}>🧭</div>
+            <h2 style={{ color: "#FFF", fontSize: "1.5rem", margin: "0 0 0.8rem 0", fontWeight: "bold" }}>User Guide එකක් අවශ්‍යද?</h2>
+            <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
+              LEGION Dashboard එකෙන් <strong>Free Test Plan</strong> එකක් ලබාගන්නා ආකාරය, Store එකෙන් Order එකක් දමන ආකාරය සහ VPN එක Connect කරන ආකාරය පිළිබඳ කෙටි Interactive Walkthrough එකක් බලමුද?
+            </p>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button 
+                onClick={handleDismissTourPrompt} 
+                style={{ flex: 1, padding: "0.9rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#9ca3af", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
+              >
+                නැත, අවශ්‍ය නැත (Skip)
+              </button>
+              <button 
+                onClick={handleStartTour} 
+                style={{ flex: 1.3, padding: "0.9rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "0.95rem", boxShadow: "0 10px 25px rgba(99,102,241,0.4)" }}
+              >
+                ඔව්, පෙන්වන්න (Start Tour) ✨
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🧭 2. ACTIVE GLASSMORPHIC FLOATING WALKTHROUGH CONTROLLER */}
+      {isTourActive && (
+        <div style={{ position: "fixed", bottom: "5.5rem", left: "50%", transform: "translateX(-50%)", width: "94%", maxWidth: "560px", zIndex: 100000, animation: "fadeInUp 0.35s ease" }}>
           
-          {/* Pointer Arrow pointing to highlighted section */}
-          <div style={{ width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderBottom: "12px solid #6366f1", margin: "0 auto -2px auto" }} />
-
-          <div style={{ background: "rgba(11, 11, 22, 0.96)", backdropFilter: "blur(20px)", border: "2px solid #6366f1", borderRadius: "22px", padding: "1.2rem 1.4rem", boxShadow: "0 20px 50px rgba(0,0,0,0.9), 0 0 30px rgba(99,102,241,0.3)" }}>
+          <div style={{ 
+            background: "rgba(14, 14, 28, 0.82)", 
+            backdropFilter: "blur(25px)", 
+            border: "1px solid rgba(255, 255, 255, 0.16)", 
+            borderRadius: "22px", 
+            padding: "1.3rem 1.6rem", 
+            boxShadow: "0 25px 60px rgba(0,0,0,0.9), 0 0 35px rgba(99,102,241,0.35), inset 0 1px 1px rgba(255,255,255,0.2)" 
+          }}>
             
-            {/* Mascot Top Header */}
+            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #a855f7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", boxShadow: "0 4px 14px rgba(99,102,241,0.4)", animation: "catBounce 1.6s ease-in-out infinite" }}>
-                  🐱
-                </div>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#FFF", fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px" }}>
-                    LEGION Cat Guide <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>🐾</span>
-                  </h4>
-                  <span style={{ fontSize: "0.75rem", color: "#a855f7", fontWeight: "bold" }}>
-                    Step {catGuideStep} of 6
-                  </span>
-                </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "1.2rem" }}>✨</span>
+                <span style={{ fontSize: "0.82rem", color: "#818cf8", fontWeight: "bold", letterSpacing: "0.5px" }}>
+                  INTERACTIVE WALKTHROUGH · STEP {tourStep} OF 5
+                </span>
               </div>
-
-              <button onClick={handleCloseCatGuide} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", padding: "4px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}>
-                ✕ Skip
+              <button 
+                onClick={handleExitTour} 
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", padding: "3px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}
+              >
+                ✕ Exit Tour
               </button>
             </div>
 
-            {/* Cat Speech Balloon Content */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "1rem", color: "#cbd5e1", fontSize: "0.88rem", lineHeight: 1.6, minHeight: "75px" }}>
-              
-              {catGuideStep === 1 && (
-                <p style={{ margin: 0 }}>
-                  🐾 <strong>මියාව්! සාදරයෙන් පිළිගන්නවා!</strong> මම ඔයාගේ Guide Cat 🐱. ඔයාට මෙතනින් මුලින්ම නොමිලේ <strong>3GB Free Test Plan</strong> එකක් අරන් බලන්න හරි කෙලින්ම <strong>Store</strong> එකෙන් කැමති package එකක් ගන්න පුළුවන්!
-                </p>
+            {/* Step Message Content */}
+            <div style={{ minHeight: "70px", color: "#e2e8f0", fontSize: "0.92rem", lineHeight: 1.6 }}>
+              {tourStep === 1 && (
+                <div>
+                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1rem" }}>🎁 1. Claim Free 3GB Test Plan</h4>
+                  <p style={{ margin: 0 }}>
+                    අපගේ Ultra-Fast VIP VPN සේවාව නොමිලේ අත්හදා බැලීමට මුදල් ගෙවීමකින් තොරව <strong>3GB Free Test Plan</strong> එකක් ලබාගත හැක. මෙම Card එක ක්ලික් කර WhatsApp හරහා අපගේ Support වෙත සෘජුවම Request එකක් යොමු කරන්න!
+                  </p>
+                </div>
               )}
 
-              {catGuideStep === 2 && (
-                <p style={{ margin: 0 }}>
-                  🛒 <strong>මෙන්න Store එක!</strong> Dialog, Airtel, Hutch, SLT සිම් වල Zoom, TikTok, YouTube packages වලින් Unlimited Internet යන්න පුළුවන් VPN මෙතනින් තෝරගන්න. <strong>'Select & Configure VPN'</strong> ඔබලා Bank Slip එක Upload කරන්න විතරයි තියෙන්නේ!
-                </p>
+              {tourStep === 2 && (
+                <div>
+                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1rem" }}>🛒 2. Choose & Order Packages from Store</h4>
+                  <p style={{ margin: 0 }}>
+                    Dialog, Airtel, Hutch, SLT සිම් වල Zoom, TikTok, YouTube packages වලින් Unlimited Internet යන්න පුළුවන් configs මෙතැනින් තෝරගන්න. <strong>'Select & Configure VPN'</strong> ඔබලා Bank Slip එක Upload කර Order එක Submit කරන්න.
+                  </p>
+                </div>
               )}
 
-              {catGuideStep === 3 && (
-                <p style={{ margin: 0 }}>
-                  🔑 <strong>ඔයාගේ රහස්‍ය VLESS Key එක:</strong> Admin විසින් ඔබගේ Payment එක Verify කළාම ඔයාගේ VPN Key එක ලැබෙන්නේ මෙන්න මේ <strong>'My VPNs'</strong> tab එකට. <strong>'Copy Code'</strong> ඔබලා v2rayNG (Android) හෝ Streisand (iPhone) app එකට paste කරලා එක ක්ලික් එකෙන් Connect වෙන්න!
-                </p>
+              {tourStep === 3 && (
+                <div>
+                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#60a5fa", fontSize: "1rem" }}>🔑 3. Receive Your Secret VLESS Config</h4>
+                  <p style={{ margin: 0 }}>
+                    Admin විසින් ඔබගේ Payment Slip එක Verify කළ වහාම ඔබගේ පුද්ගලික <strong>VLESS Key</strong> එක මෙතැන දිස්වේ. <strong>'Copy Code'</strong> ඔබා v2rayNG (Android) හෝ Streisand (iPhone) app එකට paste කර එක ක්ලික් එකෙන් Connect වන්න!
+                  </p>
+                </div>
               )}
 
-              {catGuideStep === 4 && (
-                <p style={{ margin: 0 }}>
-                  🧾 <strong>Payments & Receipts:</strong> ඔයා ගෙවපු මුදල්, Upload කරපු Payment Slips සහ ඒවා Verify වුණාද නැද්ද යන්න මෙන්න මෙතැනින් ඕනෑම වෙලාවක බලාගන්න සහ Download කරගන්න පුළුවන්!
-                </p>
+              {tourStep === 4 && (
+                <div>
+                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#f59e0b", fontSize: "1rem" }}>🧾 4. View Payment History & Slips</h4>
+                  <p style={{ margin: 0 }}>
+                    ඔබ මෙතෙක් සිදු කළ ගෙවීම් වාර්තා, Upload කළ Payment Receipts සහ ඒවායේ තත්ත්වය (Verified / Verifying) ඕනෑම මොහොතක මෙතැනින් ආරක්ෂිතව පරීක්ෂා කර බලාගත හැක.
+                  </p>
+                </div>
               )}
 
-              {catGuideStep === 5 && (
-                <p style={{ margin: 0 }}>
-                  🏆 <strong>Rank Level Up!</strong> ඔයා මාස්පතා VPN buy කරන වාර ගණන අනුව Bronze 🥉 ඉඳන් Silver ⭐ (3), Gold 🏆 (6), Platinum 💎 (10), Diamond 👑 (15) දක්වා ඔයාගේ Profile එක Level Up වෙනවා!
-                </p>
+              {tourStep === 5 && (
+                <div>
+                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#eab308", fontSize: "1rem" }}>🏆 5. Level Up Your Client Rank</h4>
+                  <p style={{ margin: 0 }}>
+                    ඔබ සිදුකරන මාසික purchases ගණන අනුව (3, 6, 10, 15) Bronze 🥉, Silver ⭐, Gold 🏆, Platinum 💎, Diamond 👑 දක්වා ඔබගේ Profile Rank එක ස්වයංක්‍රීයව Level Up වේ!
+                  </p>
+                </div>
               )}
-
-              {catGuideStep === 6 && (
-                <p style={{ margin: 0 }}>
-                  📡 <strong>Live Status & Data Usage:</strong> ඔයාගේ පළමු Order එක Admin විසින් Verify කළ පසු, <strong>Live Connection</strong>, <strong>Data Used</strong> (දිනපතා 12:00am Update වන) සහ <strong>Expires In</strong> cards මෙතැන Active වී දිස්වේ! දැන් ඔයා සූදානම්! 🚀🐱🎉
-                </p>
-              )}
-
             </div>
 
-            {/* Cat Navigation Controls */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
-              {catGuideStep > 1 ? (
-                <button onClick={handlePrevCatStep} style={{ padding: "0.5rem 1.1rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.8rem" }}>
+            {/* Navigation buttons */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.2rem" }}>
+              {tourStep > 1 ? (
+                <button 
+                  onClick={handlePrevTourStep} 
+                  style={{ padding: "0.55rem 1.2rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                >
                   ← Back
                 </button>
               ) : <div />}
 
-              {catGuideStep < 6 ? (
-                <button onClick={handleNextCatStep} style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}>
-                  Next Step 🐾 →
+              {tourStep < 5 ? (
+                <button 
+                  onClick={handleNextTourStep} 
+                  style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}
+                >
+                  Next Step →
                 </button>
               ) : (
-                <button onClick={handleCloseCatGuide} style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}>
+                <button 
+                  onClick={handleExitTour} 
+                  style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}
+                >
                   ✓ Finish Tour
                 </button>
               )}
@@ -804,7 +856,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      <main style={{ padding: "2.5rem 1rem", maxWidth: "1150px", margin: "0 auto", position: "relative", zIndex: 10 }}>
+      {/* MAIN CONTAINER (AUTOMATICALLY DIMS AND TURNS BLACK & WHITE WHEN TOUR IS ACTIVE) */}
+      <main 
+        className={isTourActive ? "tour-dim-non-focused" : ""}
+        style={{ padding: "2.5rem 1rem", maxWidth: "1150px", margin: "0 auto", position: "relative", zIndex: 10, transition: "filter 0.4s ease, opacity 0.4s ease" }}
+      >
         
         {/* HEADER */}
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem", flexWrap: "wrap", gap: "1rem" }}>
@@ -834,24 +890,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               
-              {/* TOP ACTION BUTTONS (HIGHLIGHTED IN TOUR STEP 1) */}
-              <div 
-                id="tour-quick-actions"
-                className={showCatGuide && catGuideStep === 1 ? "tour-spotlight-active" : ""}
-                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "0.5rem", borderRadius: "18px", transition: "all 0.3s" }}
-              >
+              {/* TOP ACTION BUTTONS */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "0.5rem" }}>
                 
-                {/* 📖 CAT GUIDE REPLAY BUTTON */}
-                <div onClick={() => { setCatGuideStep(1); setShowCatGuide(true); setActiveTab("dashboard"); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ fontSize: "2.3rem" }}>🐱</div>
-                  <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>Cat Walkthrough Guide</h3>
-                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Interactive tour to learn all buttons & tabs.</p>
-                  </div>
-                </div>
-
-                {/* 🎁 CLAIM FREE TEST PLAN */}
-                <div onClick={() => setFreeTestModal(true)} style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                {/* 🎁 CLAIM FREE TEST PLAN (HIGHLIGHTED IN TOUR STEP 1) */}
+                <div 
+                  id="tour-step-testplan"
+                  onClick={() => setFreeTestModal(true)} 
+                  className={`hover-scale-card ${isTourActive && tourStep === 1 ? "tour-spotlight-active" : ""}`}
+                  style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem", transition: "all 0.3s ease" }}
+                >
                   <div style={{ fontSize: "2.3rem" }}>🎁</div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.05rem" }}>Claim Free Test Plan</h3>
@@ -868,15 +916,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 </div>
 
+                {/* 📖 REPLAY GUIDE BUTTON */}
+                <div onClick={() => { setTourStep(1); setIsTourActive(true); setActiveTab("dashboard"); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                  <div style={{ fontSize: "2.3rem" }}>🧭</div>
+                  <div>
+                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>User Guide Tour</h3>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Replay the interactive walkthrough anytime.</p>
+                  </div>
+                </div>
+
               </div>
 
-              {/* 🛡️ ACTIVE STATUS CARDS: ONLY SHOWN ONCE ADMIN VERIFIES PAYMENT & ACTIVATES CONFIGS */}
+              {/* 🛡️ ACTIVE STATUS CARDS: ONLY DISPLAYED IF ADMIN VERIFIED PAYMENT AND ACTIVATED CONFIG */}
               {isVpnActivated ? (
-                <div 
-                  id="tour-status-section"
-                  className={showCatGuide && catGuideStep === 6 ? "tour-spotlight-active" : ""}
-                  style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.2rem", borderRadius: "18px", transition: "all 0.3s" }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.2rem", borderRadius: "18px" }}>
                   
                   {/* 📡 LIVE CONNECTION (LEFT) */}
                   <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
@@ -918,16 +971,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                 </div>
               ) : (
-                /* NEW USER STATE (CARDS HIDDEN UNTIL PAYMENT IS VERIFIED) */
-                <div 
-                  id="tour-status-section"
-                  className={showCatGuide && catGuideStep === 6 ? "tour-spotlight-active" : ""}
-                  style={{ background: "rgba(14, 16, 34, 0.75)", border: "1px dashed rgba(99,102,241,0.35)", borderRadius: "18px", padding: "1.8rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8rem", transition: "all 0.3s" }}
-                >
+                /* NEW USER STATE */
+                <div style={{ background: "rgba(14, 16, 34, 0.75)", border: "1px dashed rgba(99,102,241,0.35)", borderRadius: "18px", padding: "1.8rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8rem" }}>
                   <div style={{ fontSize: "2.5rem" }}>🛡️</div>
                   <h3 style={{ margin: 0, color: "#FFF", fontSize: "1.2rem" }}>No Active VPN Subscription</h3>
                   <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.85rem", maxWidth: "480px", lineHeight: 1.6 }}>
-                    ඔබ තවමත් VPN පැකේජයක් සක්‍රීය කර නොමැත. Store වෙතින් Package එකක් තෝරාගෙන Payment එක Admin විසින් Verify කළ පසු <strong>Live Connection, Data Used</strong> සහ <strong>Expiry Days</strong> cards මෙතැන සජීවීව දිස්වේ.
+                    ඔබ තවමත් VPN පැකේජයක් සක්‍රීය කර නොමැත. Store වෙතින් Package එකක් තෝරාගෙන Payment එක Admin විසින් Verify කළ පසු <strong>Live Connection, Data Used</strong> සහ <strong>Expires In</strong> cards මෙතැන සජීවීව දිස්වේ.
                   </p>
                   <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.6rem 1.6rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", marginTop: "4px" }}>
                     🛒 Go to Store
@@ -1176,9 +1225,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           ======================== */}
           {activeTab === "buy" && (
              <div 
-               id="tour-store-section"
-               className={`animate-fade-in store-container ${showCatGuide && catGuideStep === 2 ? "tour-spotlight-active" : ""}`}
-               style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s" }}
+               className={`animate-fade-in store-container ${isTourActive && tourStep === 2 ? "tour-spotlight-active" : ""}`}
+               style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s ease" }}
              >
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
                  <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "#0e0e17", color: activeIsp === "All" ? "#FFF" : "#9ca3af" }}>
@@ -1248,9 +1296,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           ======================== */}
           {activeTab === "configs" && (
             <div 
-              id="tour-configs-section"
-              className={`animate-fade-in flex flex-col gap-6 ${showCatGuide && catGuideStep === 3 ? "tour-spotlight-active" : ""}`}
-              style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s" }}
+              className={`animate-fade-in flex flex-col gap-6 ${isTourActive && tourStep === 3 ? "tour-spotlight-active" : ""}`}
+              style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s ease" }}
             >
                <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
                
@@ -1297,9 +1344,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           ======================== */}
           {activeTab === "payments" && (
             <div 
-              id="tour-payments-section"
-              className={showCatGuide && catGuideStep === 4 ? "tour-spotlight-active" : ""}
-              style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(14, 14, 23, 0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.08)", transition: "all 0.3s" }}
+              className={isTourActive && tourStep === 4 ? "tour-spotlight-active" : ""}
+              style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(14, 14, 23, 0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.08)", transition: "all 0.3s ease" }}
             >
               <h2 style={{ marginBottom: "0.5rem", color: "#FFF" }}>My Payment History ({new Date().getFullYear()})</h2>
               <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem" }}>Payments are stored safely in your account record.</p>
@@ -1345,9 +1391,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           ======================== */}
           {activeTab === "rank" && (
             <div 
-              id="tour-rank-section"
-              className={`animate-fade-in ${showCatGuide && catGuideStep === 5 ? "tour-spotlight-active" : ""}`}
-              style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem", borderRadius: "24px", padding: "0.5rem", transition: "all 0.3s" }}
+              className={`animate-fade-in ${isTourActive && tourStep === 5 ? "tour-spotlight-active" : ""}`}
+              style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem", borderRadius: "24px", padding: "0.5rem", transition: "all 0.3s ease" }}
             >
               
               {/* User Profile Summary Card */}
@@ -1588,12 +1633,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   />
                 </div>
 
-                {/* Replay Cat Guide Button */}
+                {/* Replay Guide Tour Button */}
                 <button 
-                  onClick={() => { setCatGuideStep(1); setShowCatGuide(true); setActiveTab("dashboard"); }}
+                  onClick={() => { setTourStep(1); setIsTourActive(true); setActiveTab("dashboard"); }}
                   style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
                 >
-                  🐱 Replay Cat Walkthrough Tutorial
+                  🧭 Start Interactive User Guide Tour
                 </button>
 
               </div>
@@ -1674,7 +1719,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <label htmlFor="slip-upload" style={{ cursor: "pointer", display: "block" }}>
                         <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>📁</div>
                         <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8" }}>{isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip image"}</h4>
-                        <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
+                        <p style={{ margin 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
                       </label>
                     </div>
 
@@ -1694,7 +1739,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       </main>
 
       {/* Floating Taskbar */}
-      <nav style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.4rem", background: "rgba(10,10,18,0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50px", zIndex: 100 }}>
+      <nav 
+        className={isTourActive ? "tour-dim-non-focused" : ""}
+        style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.4rem", background: "rgba(10,10,18,0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50px", zIndex: 100, transition: "filter 0.4s ease, opacity 0.4s ease" }}
+      >
         {tabs.map(tab => {
           if (tab.isLink) return <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}><span>{tab.icon}</span></Link>;
           const isActive = activeTab === tab.id;
@@ -1706,27 +1754,37 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         })}
       </nav>
       
-      {/* STYLES & SPOTLIGHT ANIMATIONS */}
+      {/* 🌟 GLASSMORPHISM & SPOTLIGHT BLACK/WHITE FOCUS STYLES */}
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        @keyframes catBounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
+
+        /* When tour is active, non-focused background elements become grayscale and dimmed */
+        .tour-dim-non-focused {
+          filter: grayscale(85%) contrast(0.9);
+          opacity: 0.38;
+          pointer-events: none;
         }
 
+        /* The explicitly focused active card pops up in full color, bright glow and full opacity */
         .tour-spotlight-active {
-          position: relative;
-          z-index: 50;
+          filter: none !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          position: relative !important;
+          z-index: 99999 !important;
           border-color: #818cf8 !important;
-          box-shadow: 0 0 35px rgba(99, 102, 241, 0.7), 0 0 0 3px rgba(99, 102, 241, 0.5) !important;
-          animation: tourPulse 1.8s infinite ease-in-out;
+          box-shadow: 0 0 35px rgba(99, 102, 241, 0.75), 0 0 0 3px rgba(129, 140, 248, 0.8) !important;
+          animation: tourPulseGlow 2s infinite ease-in-out !important;
         }
 
-        @keyframes tourPulse {
-          0%, 100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.5), 0 0 0 2px rgba(99, 102, 241, 0.4); }
-          50% { box-shadow: 0 0 45px rgba(99, 102, 241, 0.9), 0 0 0 4px rgba(99, 102, 241, 0.75); }
+        @keyframes tourPulseGlow {
+          0%, 100% {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.5), 0 0 0 2px rgba(129, 140, 248, 0.6);
+          }
+          50% {
+            box-shadow: 0 0 45px rgba(99, 102, 241, 0.9), 0 0 0 4px rgba(129, 140, 248, 0.95);
+          }
         }
 
         * {
