@@ -283,14 +283,17 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
 
-  // 🧭 TRIGGER ONBOARDING GUIDE FOR CLIENT (NEW)
-  const handleTriggerGuideForUser = () => {
+  // 🐱 TOGGLE SWITCH FOR CLIENT CAT GUIDE (ON / OFF SWITCH)
+  const [guideSwitch, setGuideSwitch] = useState<boolean>(Boolean(metaData.forceShowGuide));
+
+  const handleToggleGuideSwitch = () => {
+    const newVal = !guideSwitch;
+    setGuideSwitch(newVal);
     const updatedMeta = {
       ...metaData,
-      forceShowGuide: true
+      forceShowGuide: newVal
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
-    alert("✅ Success: The onboarding walkthrough guide will pop up on the client's screen on their next dashboard visit!");
   };
 
   // Dynamic Multi-Config Sections
@@ -480,22 +483,46 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
         </div>
       </div>
 
-      {/* 🧭 ONBOARDING GUIDE CONTROL (NEW) */}
-      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem 1.4rem", borderRadius: "14px", border: "1px solid rgba(99, 102, 241, 0.25)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+      {/* 🐱 INTERACTIVE CAT GUIDE ON / OFF SWITCH CARD (NEW) */}
+      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem 1.5rem", borderRadius: "14px", border: `1px solid ${guideSwitch ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.08)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
         <div>
-          <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>🧭</span> Client Onboarding & Help Guide
+          <h4 style={{ margin: "0 0 0.3rem 0", color: guideSwitch ? "#22c55e" : "#FFF", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>🐱</span> Client Interactive Cat Guide
           </h4>
-          <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>
-            Force Walkthrough for this user: <strong style={{ color: metaData.forceShowGuide ? "#f59e0b" : "#22c55e" }}>{metaData.forceShowGuide ? "Active (Will show next login)" : "Dismissed / Normal"}</strong>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>
+            Tour Guide Status: <strong style={{ color: guideSwitch ? "#22c55e" : "#ef4444" }}>{guideSwitch ? "ON (Active on Client's Dashboard)" : "OFF (Disabled for this Client)"}</strong>
           </p>
         </div>
-        <button 
-          onClick={handleTriggerGuideForUser}
-          style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.6rem 1.4rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.3)" }}
+
+        {/* Real Toggle Switch Button */}
+        <div 
+          onClick={handleToggleGuideSwitch}
+          style={{ 
+            width: "64px", 
+            height: "34px", 
+            borderRadius: "20px", 
+            background: guideSwitch ? "#22c55e" : "rgba(255,255,255,0.15)", 
+            position: "relative", 
+            cursor: "pointer", 
+            transition: "all 0.25s ease",
+            boxShadow: guideSwitch ? "0 0 15px rgba(34,197,94,0.4)" : "none" 
+          }}
+          title={guideSwitch ? "Click to turn OFF Cat Guide" : "Click to turn ON Cat Guide"}
         >
-          🔄 Re-send / Trigger Guide for User
-        </button>
+          <div 
+            style={{ 
+              width: "26px", 
+              height: "26px", 
+              borderRadius: "50%", 
+              background: "#FFF", 
+              position: "absolute", 
+              top: "4px", 
+              left: guideSwitch ? "34px" : "4px", 
+              transition: "left 0.25s ease",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.5)" 
+            }} 
+          />
+        </div>
       </div>
 
       {/* 📊 DATA USAGE MANAGEMENT CARD */}
@@ -557,7 +584,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                 type="number" 
                 value={bonusPurchasesInput} 
                 onChange={(e) => setBonusPurchasesInput(Number(e.target.value))}
-                style={{ width: "90px", padding: "0.4rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold" }}
+                style={{ width: "90px", padding: "0.4rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", fontWeight: "bold" }}
               />
               <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>bonus</span>
             </div>
