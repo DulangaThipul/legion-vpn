@@ -65,9 +65,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 🎁 FREE TEST PLAN POPUP STATE
   const [freeTestModal, setFreeTestModal] = useState(false);
 
-  // 🧭 ONBOARDING / WALKTHROUGH GUIDE POPUP STATE (NEW)
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [guideStep, setGuideStep] = useState(1);
+  // 🐱 INTERACTIVE CAT GUIDE STATE (STEP-BY-STEP TAB TOUR)
+  const [showCatGuide, setShowCatGuide] = useState(false);
+  const [catGuideStep, setCatGuideStep] = useState(1);
 
   const [user, setUser] = useState(initialUser);
   const [avatar, setAvatar] = useState<string | null>(user?.image || null);
@@ -91,7 +91,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       bonusPurchases: 0,
       dataTotal: "Unlimited",
       dataUsed: "0 GB",
-      forceShowGuide: false
+      forceShowGuide: undefined as boolean | undefined
     };
     if (user?.subscriptionLink) {
       try {
@@ -105,25 +105,61 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const userIdentifier = user?.id || user?.email || "guest_user";
 
-  // 🧭 CHECK FIRST LOGIN / ADMIN FORCED GUIDE
+  // 🐱 CAT GUIDE INITIAL CHECK (ADMIN SWITCH & FIRST LOGIN)
   useEffect(() => {
-    const guideKey = `legion_guide_seen_${userIdentifier}`;
-    const hasSeenGuideLocal = localStorage.getItem(guideKey);
+    const guideSeenKey = `legion_cat_guide_seen_${userIdentifier}`;
+    const hasSeenLocal = localStorage.getItem(guideSeenKey);
 
-    if (metaData.forceShowGuide) {
-      setShowGuideModal(true);
-      setGuideStep(1);
-    } else if (!hasSeenGuideLocal) {
-      setShowGuideModal(true);
-      setGuideStep(1);
+    // If Admin explicitly turned Switch ON -> Show!
+    if (metaData.forceShowGuide === true) {
+      setShowCatGuide(true);
+      setCatGuideStep(1);
+      setActiveTab("dashboard");
+    } else if (metaData.forceShowGuide === false) {
+      // If Admin explicitly turned Switch OFF -> Hide!
+      setShowCatGuide(false);
+    } else if (!hasSeenLocal) {
+      // If Admin hasn't touched switch & new user -> Auto Show!
+      setShowCatGuide(true);
+      setCatGuideStep(1);
+      setActiveTab("dashboard");
     }
   }, [metaData.forceShowGuide, userIdentifier]);
 
-  const handleFinishGuide = () => {
-    const guideKey = `legion_guide_seen_${userIdentifier}`;
-    localStorage.setItem(guideKey, "true");
-    setShowGuideModal(false);
-    setGuideStep(1);
+  const handleCloseCatGuide = () => {
+    const guideSeenKey = `legion_cat_guide_seen_${userIdentifier}`;
+    localStorage.setItem(guideSeenKey, "true");
+    setShowCatGuide(false);
+    setCatGuideStep(1);
+    setActiveTab("dashboard");
+  };
+
+  const handleNextCatStep = () => {
+    if (catGuideStep < 6) {
+      const nxt = catGuideStep + 1;
+      setCatGuideStep(nxt);
+      if (nxt === 1) setActiveTab("dashboard");
+      else if (nxt === 2) setActiveTab("buy");
+      else if (nxt === 3) setActiveTab("configs");
+      else if (nxt === 4) setActiveTab("payments");
+      else if (nxt === 5) setActiveTab("rank");
+      else if (nxt === 6) setActiveTab("dashboard");
+    } else {
+      handleCloseCatGuide();
+    }
+  };
+
+  const handlePrevCatStep = () => {
+    if (catGuideStep > 1) {
+      const prev = catGuideStep - 1;
+      setCatGuideStep(prev);
+      if (prev === 1) setActiveTab("dashboard");
+      else if (prev === 2) setActiveTab("buy");
+      else if (prev === 3) setActiveTab("configs");
+      else if (prev === 4) setActiveTab("payments");
+      else if (prev === 5) setActiveTab("rank");
+      else if (prev === 6) setActiveTab("dashboard");
+    }
   };
 
   // 🚀 USER-ISOLATED PAYMENT HISTORY
@@ -252,6 +288,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
 
+  // 🛡️ ONLY ACTIVE WHEN PAYMENT IS VERIFIED BY ADMIN & CONFIGS ARE PRESENT
+  const isVpnActivated = activeConfigs.length > 0 && user?.vpnStatus === "Active";
+
   // 🚀 REAL-TIME VERIFICATION & REVIEW STATUS CHECK
   const pendingOrders = useMemo(() => {
     return (Array.isArray(metaData.payments) ? metaData.payments : []).filter((p: any) => p?.status === "Verifying");
@@ -270,7 +309,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const safeName = user?.name || "Premium User";
   const safeEmail = user?.email || "";
   
-  const hasActivePlan = activeConfigs.length > 0;
   const now = new Date().getTime();
   const expiry = user?.expiryDate ? new Date(user.expiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
@@ -627,136 +665,92 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     <div style={{ minHeight: "100vh", background: "transparent", color: "#FFFFFF", paddingBottom: "100px", position: "relative" }}>
       <DashboardMatrix />
 
-      {/* 🧭 COMPLETE ONBOARDING / WALKTHROUGH GUIDE MODAL (NEW) */}
-      {showGuideModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1.2rem" }}>
-          <div style={{ background: "#0e0e1a", border: "1px solid rgba(99,102,241,0.4)", borderRadius: "24px", padding: "2rem", maxWidth: "560px", width: "100%", boxShadow: "0 25px 60px rgba(0,0,0,0.9)", animation: "fadeInUp 0.3s ease", position: "relative" }}>
+      {/* 🐱 INTERACTIVE CAT GUIDE MASCOT & SPEECH BUBBLE WIDGET */}
+      {showCatGuide && (
+        <div style={{ position: "fixed", bottom: "5.5rem", left: "50%", transform: "translateX(-50%)", width: "94%", maxWidth: "540px", zIndex: 99999, animation: "fadeInUp 0.3s ease" }}>
+          
+          {/* Pointer Arrow pointing to highlighted section */}
+          <div style={{ width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderBottom: "12px solid #6366f1", margin: "0 auto -2px auto" }} />
+
+          <div style={{ background: "rgba(11, 11, 22, 0.96)", backdropFilter: "blur(20px)", border: "2px solid #6366f1", borderRadius: "22px", padding: "1.2rem 1.4rem", boxShadow: "0 20px 50px rgba(0,0,0,0.9), 0 0 30px rgba(99,102,241,0.3)" }}>
             
-            {/* Header with Step Counter */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
-              <span style={{ fontSize: "0.8rem", color: "#818cf8", fontWeight: "bold", background: "rgba(99,102,241,0.15)", padding: "4px 12px", borderRadius: "20px" }}>
-                LEGION Quick Tour · Step {guideStep} of 5
-              </span>
-              <button onClick={handleFinishGuide} style={{ background: "none", border: "none", color: "#9ca3af", fontSize: "1.3rem", cursor: "pointer" }} title="Skip Tour">✕</button>
+            {/* Mascot Top Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #a855f7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", boxShadow: "0 4px 14px rgba(99,102,241,0.4)", animation: "catBounce 1.6s ease-in-out infinite" }}>
+                  🐱
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#FFF", fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px" }}>
+                    LEGION Cat Guide <span style={{ fontSize: "0.75rem", color: "#818cf8" }}>🐾</span>
+                  </h4>
+                  <span style={{ fontSize: "0.75rem", color: "#a855f7", fontWeight: "bold" }}>
+                    Step {catGuideStep} of 6
+                  </span>
+                </div>
+              </div>
+
+              <button onClick={handleCloseCatGuide} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", padding: "4px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}>
+                ✕ Skip
+              </button>
             </div>
 
-            {/* STEP 1: VPN INTRODUCTION */}
-            {guideStep === 1 && (
-              <div style={{ animation: "fadeIn 0.25s ease" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🌐</div>
-                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>LEGION VPN යනු කුමක්ද?</h2>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.6, fontSize: "0.9rem", color: "#cbd5e1" }}>
-                  <p style={{ margin: "0 0 0.8rem 0" }}>
-                    🚀 <strong>Unlimited Internet Bypass:</strong> Dialog, Airtel, Hutch, SLT වැනි සිම්පත් වල Zoom, TikTok, YouTube වැනි පැකේජ සක්‍රීය කර ඇති විට, එම Data වලින් <strong>ඕනෑම Website එකක් හෝ App එකක් Unlimited බාවිතා කිරීමට</strong> මෙම VPN එක උපකාරී වේ.
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    🛡️ <strong>Online Privacy:</strong> ඔබගේ සත්‍ය IP ලිපිනය සඟවා High-speed Cloudflare & VIP Servers හරහා සුරක්ෂිත වේගවත් අන්තර්ජාල අත්දැකීමක් සපයයි.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2: DASHBOARD EXPLANATION */}
-            {guideStep === 2 && (
-              <div style={{ animation: "fadeIn 0.25s ease" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>📊</div>
-                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>Dashboard එක තේරුම් ගනිමු</h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", fontSize: "0.85rem", color: "#cbd5e1" }}>
-                  <div style={{ background: "rgba(5, 150, 105, 0.15)", padding: "0.9rem", borderRadius: "10px", border: "1px solid rgba(5,150,105,0.3)" }}>
-                    <strong style={{ color: "#22c55e" }}>📡 LIVE CONNECTION:</strong> ඔබගේ VPN එක ක්‍රියාත්මකද (Secured) නැතහොත් ක්‍රියාවිරහිතද (VPN is OFF) යන්න මෙතැනින් සජීවීව බලාගත හැක.
-                  </div>
-                  <div style={{ background: "rgba(37, 99, 235, 0.15)", padding: "0.9rem", borderRadius: "10px", border: "1px solid rgba(37,99,235,0.3)" }}>
-                    <strong style={{ color: "#60a5fa" }}>📊 DATA USED:</strong> ඔබ දැනට භාවිත කළ Data ප්‍රමාණය පෙන්වයි. මෙය සෑම දිනකම රාත්‍රී 12:00ට ස්වයංක්‍රීයව update වේ.
-                  </div>
-                  <div style={{ background: "rgba(109, 40, 217, 0.15)", padding: "0.9rem", borderRadius: "10px", border: "1px solid rgba(109,40,217,0.3)" }}>
-                    <strong style={{ color: "#a78bfa" }}>⏳ EXPIRES IN:</strong> ඔබේ VPN සේවාව කල් ඉකුත් වීමට ඉතිරි දින ගණන ගණනය කර පෙන්වයි.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: HOW TO BUY / ORDER */}
-            {guideStep === 3 && (
-              <div style={{ animation: "fadeIn 0.25s ease" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🛒</div>
-                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>VPN එකක් Order කරන්නේ කෙසේද?</h2>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                  <ol style={{ margin: 0, paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                    <li>පහළ Navigation Bar එකේ ඇති <strong>Store (Buy)</strong> tab එක වෙත යන්න.</li>
-                    <li>ඔබේ සිම්පත (Dialog, Airtel, Hutch, SLT) සහ Router / Mobile වර්ගය තෝරා <strong>'Select & Configure VPN'</strong> ක්ලික් කරන්න.</li>
-                    <li>අවශ්‍ය Data Quota එක තෝරා, ලබාදී ඇති බැංකු ගිණුමට මුදල් තැන්පත් කරන්න.</li>
-                    <li><strong>Upload Slip</strong> මඟින් ගෙවීම් රිසිට්පත (Receipt) upload කර <strong>'Submit Order'</strong> ඔබන්න. එවිට ඔබගේ Order එක Admin වෙත යොමු වේ.</li>
-                  </ol>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 4: GETTING CONFIG & CONNECTING */}
-            {guideStep === 4 && (
-              <div style={{ animation: "fadeIn 0.25s ease" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🔑</div>
-                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>Config ලබාගෙන Connect වන්නේ කෙසේද?</h2>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                  <p style={{ margin: "0 0 0.8rem 0" }}>
-                    ✅ Admin විසින් ඔබගේ Payment එක Verify කළ වහාම <strong>'My VPNs'</strong> tab එකෙහි ඔබේ රහස්‍ය <strong>VLESS Key</strong> එක දිස්වේ.
-                  </p>
-                  <p style={{ margin: "0 0 0.8rem 0" }}>
-                    📋 <strong>'📋 Copy Code'</strong> ක්ලික් කර එය Copy කරගන්න.
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    📲 <strong>App එකට Import කරන්න:</strong> Android සඳහා <em>v2rayNG</em>, iPhone සඳහා <em>Streisand / Shadowrocket</em>, PC සඳහා <em>v2rayN</em> app එක download කර Clipboard එකෙන් import කර Connect වන්න!
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 5: RANKS & TOOLS */}
-            {guideStep === 5 && (
-              <div style={{ animation: "fadeIn 0.25s ease" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "0.8rem", textAlign: "center" }}>🏆</div>
-                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 0.8rem 0", textAlign: "center" }}>Ranks & Tools විශේෂාංග</h2>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.2rem", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                  <p style={{ margin: "0 0 0.8rem 0" }}>
-                    ⭐ <strong>Fair Rank System:</strong> ඔබ මාස්පතා VPN buy කරන වාර ගණන අනුව Bronze 🥉, Silver ⭐ (3), Gold 🏆 (6), Platinum 💎 (10), Diamond 👑 (15) දක්වා High Ranks unlock වේ!
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    🛠️ <strong>Network Tools:</strong> Speed Test, IP Privacy Checker, Latency Ping, WebRTC Leak tools මඟින් ඔබේ VPN වේගය සහ ආරක්ෂාව ක්ෂණිකව පරික්ෂා කරගත හැක.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Footer Buttons */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.8rem", gap: "10px" }}>
-              {guideStep > 1 ? (
-                <button 
-                  onClick={() => setGuideStep(prev => prev - 1)} 
-                  style={{ padding: "0.7rem 1.4rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
-                >
-                  ← Back
-                </button>
-              ) : (
-                <button 
-                  onClick={handleFinishGuide} 
-                  style={{ padding: "0.7rem 1.4rem", background: "transparent", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "0.9rem" }}
-                >
-                  Skip Tour
-                </button>
+            {/* Cat Speech Balloon Content */}
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "1rem", color: "#cbd5e1", fontSize: "0.88rem", lineHeight: 1.6, minHeight: "75px" }}>
+              
+              {catGuideStep === 1 && (
+                <p style={{ margin: 0 }}>
+                  🐾 <strong>මියාව්! සාදරයෙන් පිළිගන්නවා!</strong> මම ඔයාගේ Guide Cat 🐱. ඔයාට මෙතනින් මුලින්ම නොමිලේ <strong>3GB Free Test Plan</strong> එකක් අරන් බලන්න හරි කෙලින්ම <strong>Store</strong> එකෙන් කැමති package එකක් ගන්න පුළුවන්!
+                </p>
               )}
 
-              {guideStep < 5 ? (
-                <button 
-                  onClick={() => setGuideStep(prev => prev + 1)} 
-                  style={{ padding: "0.7rem 1.8rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}
-                >
-                  Next Step →
+              {catGuideStep === 2 && (
+                <p style={{ margin: 0 }}>
+                  🛒 <strong>මෙන්න Store එක!</strong> Dialog, Airtel, Hutch, SLT සිම් වල Zoom, TikTok, YouTube packages වලින් Unlimited Internet යන්න පුළුවන් VPN මෙතනින් තෝරගන්න. <strong>'Select & Configure VPN'</strong> ඔබලා Bank Slip එක Upload කරන්න විතරයි තියෙන්නේ!
+                </p>
+              )}
+
+              {catGuideStep === 3 && (
+                <p style={{ margin: 0 }}>
+                  🔑 <strong>ඔයාගේ රහස්‍ය VLESS Key එක:</strong> Admin විසින් ඔබගේ Payment එක Verify කළාම ඔයාගේ VPN Key එක ලැබෙන්නේ මෙන්න මේ <strong>'My VPNs'</strong> tab එකට. <strong>'Copy Code'</strong> ඔබලා v2rayNG (Android) හෝ Streisand (iPhone) app එකට paste කරලා එක ක්ලික් එකෙන් Connect වෙන්න!
+                </p>
+              )}
+
+              {catGuideStep === 4 && (
+                <p style={{ margin: 0 }}>
+                  🧾 <strong>Payments & Receipts:</strong> ඔයා ගෙවපු මුදල්, Upload කරපු Payment Slips සහ ඒවා Verify වුණාද නැද්ද යන්න මෙන්න මෙතැනින් ඕනෑම වෙලාවක බලාගන්න සහ Download කරගන්න පුළුවන්!
+                </p>
+              )}
+
+              {catGuideStep === 5 && (
+                <p style={{ margin: 0 }}>
+                  🏆 <strong>Rank Level Up!</strong> ඔයා මාස්පතා VPN buy කරන වාර ගණන අනුව Bronze 🥉 ඉඳන් Silver ⭐ (3), Gold 🏆 (6), Platinum 💎 (10), Diamond 👑 (15) දක්වා ඔයාගේ Profile එක Level Up වෙනවා!
+                </p>
+              )}
+
+              {catGuideStep === 6 && (
+                <p style={{ margin: 0 }}>
+                  📡 <strong>Live Status & Data Usage:</strong> ඔයාගේ පළමු Order එක Admin විසින් Verify කළ පසු, <strong>Live Connection</strong>, <strong>Data Used</strong> (දිනපතා 12:00am Update වන) සහ <strong>Expires In</strong> cards මෙතැන Active වී දිස්වේ! දැන් ඔයා සූදානම්! 🚀🐱🎉
+                </p>
+              )}
+
+            </div>
+
+            {/* Cat Navigation Controls */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+              {catGuideStep > 1 ? (
+                <button onClick={handlePrevCatStep} style={{ padding: "0.5rem 1.1rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.8rem" }}>
+                  ← Back
+                </button>
+              ) : <div />}
+
+              {catGuideStep < 6 ? (
+                <button onClick={handleNextCatStep} style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}>
+                  Next Step 🐾 →
                 </button>
               ) : (
-                <button 
-                  onClick={handleFinishGuide} 
-                  style={{ padding: "0.7rem 1.8rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}
-                >
-                  ✓ Finish Tour & Get Started
+                <button onClick={handleCloseCatGuide} style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}>
+                  ✓ Finish Tour
                 </button>
               )}
             </div>
@@ -839,14 +833,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {/* 1. DASHBOARD TAB */}
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "0.5rem" }}>
+              
+              {/* TOP ACTION BUTTONS (HIGHLIGHTED IN TOUR STEP 1) */}
+              <div 
+                id="tour-quick-actions"
+                className={showCatGuide && catGuideStep === 1 ? "tour-spotlight-active" : ""}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "0.5rem", borderRadius: "18px", transition: "all 0.3s" }}
+              >
                 
-                {/* 🧭 QUICK HELP GUIDE BUTTON (BONUS ACCESSIBILITY) */}
-                <div onClick={() => { setGuideStep(1); setShowGuideModal(true); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ fontSize: "2.3rem" }}>📖</div>
+                {/* 📖 CAT GUIDE REPLAY BUTTON */}
+                <div onClick={() => { setCatGuideStep(1); setShowCatGuide(true); setActiveTab("dashboard"); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
+                  <div style={{ fontSize: "2.3rem" }}>🐱</div>
                   <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>How to Use / VPN Guide</h3>
-                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Learn how to order and connect in 1 minute.</p>
+                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>Cat Walkthrough Guide</h3>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Interactive tour to learn all buttons & tabs.</p>
                   </div>
                 </div>
 
@@ -870,8 +870,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               </div>
 
-              {hasActivePlan && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.2rem" }}>
+              {/* 🛡️ ACTIVE STATUS CARDS: ONLY SHOWN ONCE ADMIN VERIFIES PAYMENT & ACTIVATES CONFIGS */}
+              {isVpnActivated ? (
+                <div 
+                  id="tour-status-section"
+                  className={showCatGuide && catGuideStep === 6 ? "tour-spotlight-active" : ""}
+                  style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.2rem", borderRadius: "18px", transition: "all 0.3s" }}
+                >
                   
                   {/* 📡 LIVE CONNECTION (LEFT) */}
                   <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
@@ -911,6 +916,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   </div>
 
+                </div>
+              ) : (
+                /* NEW USER STATE (CARDS HIDDEN UNTIL PAYMENT IS VERIFIED) */
+                <div 
+                  id="tour-status-section"
+                  className={showCatGuide && catGuideStep === 6 ? "tour-spotlight-active" : ""}
+                  style={{ background: "rgba(14, 16, 34, 0.75)", border: "1px dashed rgba(99,102,241,0.35)", borderRadius: "18px", padding: "1.8rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8rem", transition: "all 0.3s" }}
+                >
+                  <div style={{ fontSize: "2.5rem" }}>🛡️</div>
+                  <h3 style={{ margin: 0, color: "#FFF", fontSize: "1.2rem" }}>No Active VPN Subscription</h3>
+                  <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.85rem", maxWidth: "480px", lineHeight: 1.6 }}>
+                    ඔබ තවමත් VPN පැකේජයක් සක්‍රීය කර නොමැත. Store වෙතින් Package එකක් තෝරාගෙන Payment එක Admin විසින් Verify කළ පසු <strong>Live Connection, Data Used</strong> සහ <strong>Expiry Days</strong> cards මෙතැන සජීවීව දිස්වේ.
+                  </p>
+                  <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.6rem 1.6rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", marginTop: "4px" }}>
+                    🛒 Go to Store
+                  </button>
                 </div>
               )}
 
@@ -1151,10 +1172,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              2. STORE TAB
+              2. STORE TAB (HIGHLIGHTED IN TOUR STEP 2)
           ======================== */}
           {activeTab === "buy" && (
-             <div className="animate-fade-in store-container">
+             <div 
+               id="tour-store-section"
+               className={`animate-fade-in store-container ${showCatGuide && catGuideStep === 2 ? "tour-spotlight-active" : ""}`}
+               style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s" }}
+             >
                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
                  <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "#0e0e17", color: activeIsp === "All" ? "#FFF" : "#9ca3af" }}>
                    All ISPs
@@ -1219,10 +1244,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              3. MY VPNS TAB
+              3. MY VPNS TAB (HIGHLIGHTED IN TOUR STEP 3)
           ======================== */}
           {activeTab === "configs" && (
-            <div className="animate-fade-in flex flex-col gap-6">
+            <div 
+              id="tour-configs-section"
+              className={`animate-fade-in flex flex-col gap-6 ${showCatGuide && catGuideStep === 3 ? "tour-spotlight-active" : ""}`}
+              style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s" }}
+            >
                <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
                
                {hasPendingReview && (
@@ -1264,10 +1293,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              4. PAYMENTS TAB
+              4. PAYMENTS TAB (HIGHLIGHTED IN TOUR STEP 4)
           ======================== */}
           {activeTab === "payments" && (
-            <div style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(14, 14, 23, 0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div 
+              id="tour-payments-section"
+              className={showCatGuide && catGuideStep === 4 ? "tour-spotlight-active" : ""}
+              style={{ padding: "2.5rem 1.5rem", maxWidth: "800px", margin: "0 auto", borderRadius: "16px", background: "rgba(14, 14, 23, 0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.08)", transition: "all 0.3s" }}
+            >
               <h2 style={{ marginBottom: "0.5rem", color: "#FFF" }}>My Payment History ({new Date().getFullYear()})</h2>
               <p style={{ color: "#9ca3af", marginBottom: "2rem", fontSize: "0.9rem" }}>Payments are stored safely in your account record.</p>
               
@@ -1308,10 +1341,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           )}
 
           {/* =======================
-              5. 🏆 FAIR RANK PROGRESS TAB
+              5. 🏆 FAIR RANK PROGRESS TAB (HIGHLIGHTED IN TOUR STEP 5)
           ======================== */}
           {activeTab === "rank" && (
-            <div style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }} className="animate-fade-in">
+            <div 
+              id="tour-rank-section"
+              className={`animate-fade-in ${showCatGuide && catGuideStep === 5 ? "tour-spotlight-active" : ""}`}
+              style={{ maxWidth: "780px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem", borderRadius: "24px", padding: "0.5rem", transition: "all 0.3s" }}
+            >
               
               {/* User Profile Summary Card */}
               <div style={{ 
@@ -1551,12 +1588,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   />
                 </div>
 
-                {/* Re-trigger Guide Button for Self */}
+                {/* Replay Cat Guide Button */}
                 <button 
-                  onClick={() => { setGuideStep(1); setShowGuideModal(true); }}
+                  onClick={() => { setCatGuideStep(1); setShowCatGuide(true); setActiveTab("dashboard"); }}
                   style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
                 >
-                  📖 Replay Onboarding Guide & Tutorial
+                  🐱 Replay Cat Walkthrough Tutorial
                 </button>
 
               </div>
@@ -1669,11 +1706,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         })}
       </nav>
       
-      {/* STYLES */}
+      {/* STYLES & SPOTLIGHT ANIMATIONS */}
       <style>{`
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
+        @keyframes catBounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+
+        .tour-spotlight-active {
+          position: relative;
+          z-index: 50;
+          border-color: #818cf8 !important;
+          box-shadow: 0 0 35px rgba(99, 102, 241, 0.7), 0 0 0 3px rgba(99, 102, 241, 0.5) !important;
+          animation: tourPulse 1.8s infinite ease-in-out;
+        }
+
+        @keyframes tourPulse {
+          0%, 100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.5), 0 0 0 2px rgba(99, 102, 241, 0.4); }
+          50% { box-shadow: 0 0 45px rgba(99, 102, 241, 0.9), 0 0 0 4px rgba(99, 102, 241, 0.75); }
+        }
+
         * {
           -webkit-tap-highlight-color: transparent;
         }
