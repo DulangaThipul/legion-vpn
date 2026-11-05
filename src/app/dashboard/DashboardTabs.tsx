@@ -1129,7 +1129,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      {metaData.isRenewUnlocked ? "🔓 Renew VPN" : "🔒 Renew VPN"}
+                      {metaData.isRenewUnlocked ? "Renew VPN" : "Renew VPN"}
                     </button>
                   </div>
 
