@@ -4,140 +4,109 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// 1. Admin Data Fetching
+// 1. Admin Data ගන්න Function එක (Admin Page එකට)
 export async function getAdminData() {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session");
     if (!sessionCookie?.value) return { authorized: false, users: [] };
 
-    const payload: any = await verifyJwt(sessionCookie.value);
+    const payload = await verifyJwt(sessionCookie.value);
     if (!payload || !payload.id) return { authorized: false, users: [] };
-
-    const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
-    if (!currentUser || currentUser.email !== "dulangathipul@gmail.com") {
-      return { authorized: false, users: [] };
-    }
+    if (payload.email !== "dulangathipul@gmail.com") return { authorized: false, users: [] };
 
     const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
-    return { authorized: true, users: JSON.parse(JSON.stringify(users)) };
-  } catch {
+    return { authorized: true, users };
+  } catch (error) {
     return { authorized: false, users: [] };
   }
 }
 
-// 2. Admin Partial Safe Update
+// 2. Admin ගෙන් ඩේටා Update කරන Function එක (Key එකයි Link එකයි)
 export async function updateUserAdmin(userId: string, data: any) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session");
-    if (!sessionCookie?.value) return { success: false, error: "Unauthorized" };
+    if (!sessionCookie?.value) throw new Error("Unauthorized");
 
-    const payload: any = await verifyJwt(sessionCookie.value);
-    if (!payload || !payload.id) return { success: false, error: "Unauthorized" };
-
-    const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
-    if (!currentUser || currentUser.email !== "dulangathipul@gmail.com") return { success: false, error: "Unauthorized" };
-
-    const updateData: any = {};
-    if (data.vpnStatus !== undefined) updateData.vpnStatus = data.vpnStatus;
-    if (data.expiryDate !== undefined) {
-      updateData.expiryDate = data.expiryDate ? new Date(data.expiryDate) : null;
-    }
-    if (data.vpnConfigKey !== undefined) updateData.vpnConfigKey = data.vpnConfigKey;
-    if (data.subscriptionLink !== undefined) updateData.subscriptionLink = data.subscriptionLink;
+    const payload = await verifyJwt(sessionCookie.value);
+    
+    if (!payload || !payload.id) throw new Error("Unauthorized");
+    if (payload.email !== "dulangathipul@gmail.com") throw new Error("Unauthorized");
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: updateData,
+      data: {
+        vpnStatus: data.vpnStatus || "Active", 
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+        vpnConfigKey: data.vpnConfigKey,
+        subscriptionLink: data.subscriptionLink,
+      },
     });
-
-    return { success: true, user: JSON.parse(JSON.stringify(updatedUser)) };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Failed to update user" };
+    return { success: true, user: updatedUser };
+  } catch (error) {
+    return { success: false, error: "Failed to update user" };
   }
 }
 
-// 3. Client Payment Order Submission (Preserves existing active configs)
-export async function submitClientPaymentOrder(data: { packageName: string; amount: number; receiptUrl: string }) {
+// 3. යූසර්ගේ Avatar එක Update කරන Function එක
+export async function updateUserAvatar(imageUrl: string) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session");
-    if (!sessionCookie?.value) return { success: false, error: "Unauthorized" };
+    if (!sessionCookie?.value) throw new Error("Unauthorized");
 
-    const payload: any = await verifyJwt(sessionCookie.value);
-    if (!payload || !payload.id) return { success: false, error: "Unauthorized" };
+    const payload = await verifyJwt(sessionCookie.value);
+    if (!payload || !payload.id) throw new Error("Unauthorized");
 
+    // යූසර්ගේ Google පින්තූරේ ගන්නවා
     const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
-    if (!currentUser) return { success: false, error: "User not found" };
 
-    let meta: any = { alert: "", isPremium: false, payments: [], pendingOrders: [] };
-    if (currentUser.subscriptionLink) {
-      try {
-        meta = { ...meta, ...JSON.parse(currentUser.subscriptionLink) };
-      } catch {}
+    let finalImage = imageUrl;
+    
+    if (imageUrl === "") {
+      finalImage = currentUser?.googleImage || ""; // හිස් ලින්ක් එකක් ආවොත් Google පින්තූරේ දානවා
+    } else if (!imageUrl.startsWith("/avatars/avatar") || !imageUrl.endsWith(".gif")) {
+      throw new Error("Invalid avatar selection");
     }
 
-    const newPayment = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      package: data.packageName,
-      amount: data.amount,
-      status: "Verifying",
-      receipt: data.receiptUrl,
-    };
-
-    meta.payments = [newPayment, ...(meta.payments || [])];
-    meta.pendingOrders = [
-      {
-        id: newPayment.id,
-        package: data.packageName,
-        amount: data.amount,
-        receipt: data.receiptUrl,
-        date: newPayment.date,
-      },
-      ...(meta.pendingOrders || []),
-    ];
-
-    // 🚀 Keep existing configs intact & don't suspend user if already Active
-    const updated = await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: payload.id as string },
-      data: {
-        vpnStatus: currentUser.vpnStatus === "Active" ? "Active" : "Suspended",
-        subscriptionLink: JSON.stringify(meta),
-      },
+      data: { image: finalImage === "" ? null : finalImage }
     });
 
-    return { success: true, user: JSON.parse(JSON.stringify(updated)) };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: true, image: updatedUser.image };
+  } catch (error) {
+    return { success: false, error: "Failed to update avatar" };
   }
 }
 
-// 4. Real-time Client Heartbeat
+// 4. Send Client Heartbeat (Update lastSeen timestamp)
 export async function sendClientHeartbeat() {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session");
     if (!sessionCookie?.value) return { success: false };
 
-    const payload: any = await verifyJwt(sessionCookie.value);
+    const payload = await verifyJwt(sessionCookie.value);
     if (!payload || !payload.id) return { success: false };
 
-    const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
-    if (!currentUser) return { success: false };
+    const user = await prisma.user.findUnique({ where: { id: payload.id as string } });
+    if (!user) return { success: false };
 
-    let meta: any = { alert: "", isPremium: false, payments: [] };
-    if (currentUser.subscriptionLink) {
+    let meta: any = {};
+    if (user.subscriptionLink) {
       try {
-        meta = { ...meta, ...JSON.parse(currentUser.subscriptionLink) };
-      } catch {}
+        meta = JSON.parse(user.subscriptionLink);
+      } catch {
+        meta = { alert: user.subscriptionLink };
+      }
     }
     meta.lastSeen = Date.now();
 
     await prisma.user.update({
-      where: { id: payload.id as string },
-      data: { subscriptionLink: JSON.stringify(meta) },
+      where: { id: user.id },
+      data: { subscriptionLink: JSON.stringify(meta) }
     });
 
     return { success: true };
@@ -146,31 +115,55 @@ export async function sendClientHeartbeat() {
   }
 }
 
-// 5. Update Avatar
-export async function updateUserAvatar(imageUrl: string) {
+// 5. Submit Client Payment Order
+export async function submitClientPaymentOrder({
+  packageName,
+  amount,
+  receiptUrl
+}: {
+  packageName: string;
+  amount: number;
+  receiptUrl: string;
+}) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session");
-    if (!sessionCookie?.value) throw new Error("Unauthorized");
+    if (!sessionCookie?.value) return { success: false, error: "Unauthorized" };
 
-    const payload: any = await verifyJwt(sessionCookie.value);
-    if (!payload || !payload.id) throw new Error("Unauthorized");
+    const payload = await verifyJwt(sessionCookie.value);
+    if (!payload || !payload.id) return { success: false, error: "Unauthorized" };
 
-    const currentUser = await prisma.user.findUnique({ where: { id: payload.id as string } });
-    let finalImage = imageUrl;
-    if (imageUrl === "") {
-      finalImage = currentUser?.googleImage || "";
-    } else if (!imageUrl.startsWith("/avatars/avatar") || !imageUrl.endsWith(".gif")) {
-      throw new Error("Invalid avatar selection");
+    const user = await prisma.user.findUnique({ where: { id: payload.id as string } });
+    if (!user) return { success: false, error: "User not found" };
+
+    let meta: any = {};
+    if (user.subscriptionLink) {
+      try {
+        meta = JSON.parse(user.subscriptionLink);
+      } catch {
+        meta = { alert: user.subscriptionLink };
+      }
     }
 
+    const newPayment = {
+      id: `pay-${Date.now()}`,
+      package: packageName,
+      amount,
+      receipt: receiptUrl,
+      date: new Date().toISOString(),
+      status: "Verifying"
+    };
+
+    const existingPayments = Array.isArray(meta.payments) ? meta.payments : [];
+    meta.payments = [newPayment, ...existingPayments];
+
     const updatedUser = await prisma.user.update({
-      where: { id: payload.id as string },
-      data: { image: finalImage === "" ? null : finalImage },
+      where: { id: user.id },
+      data: { subscriptionLink: JSON.stringify(meta) }
     });
 
-    return { success: true, image: updatedUser.image };
-  } catch (error) {
-    return { success: false, error: "Failed to update avatar" };
+    return { success: true, user: updatedUser };
+  } catch {
+    return { success: false, error: "Payment submission failed" };
   }
 }
