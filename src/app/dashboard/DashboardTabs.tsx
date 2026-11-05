@@ -15,7 +15,7 @@ const ISP_LOGOS = {
   SLT: "https://files.catbox.moe/86zkr9.webp"
 };
 
-const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "W DULANGA THIPUL", accountNo: "8029138148", branch: "Yatiyanthota" };
+const BANK_ACCOUNT = { bankName: "HNB (Hatton National Bank)", accountName: "KUMARA W W K P", accountNo: "173020085590", branch: "Ginigathhena" };
 
 const ALL_PACKAGES = [
   { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "Home Broadband & Router Zoom unlimited bypass." },
@@ -92,6 +92,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       bonusPurchases: 0,
       dataTotal: "Unlimited",
       dataUsed: "0 GB",
+      subscriptionUrl: "",
+      previousUsageGB: 0,
       forceShowGuide: undefined as boolean | undefined
     };
     if (user?.subscriptionLink) {
@@ -103,6 +105,62 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
     return data;
   }, [user?.subscriptionLink]);
+
+  // 📊 REALTIME 3x-ui DATA USAGE AUTO-SYNC
+  const [liveDataUsed, setLiveDataUsed] = useState<string>(metaData.dataUsed || "0 GB");
+  const [liveDataTotal, setLiveDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
+  const [isSyncingUsage, setIsSyncingUsage] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (metaData.dataUsed) setLiveDataUsed(metaData.dataUsed);
+    if (metaData.dataTotal) setLiveDataTotal(metaData.dataTotal);
+  }, [metaData.dataUsed, metaData.dataTotal]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUsage = async () => {
+      // Bandwidth optimization: pause background fetching when browser tab is inactive/hidden
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+
+      try {
+        setIsSyncingUsage(true);
+        const res = await fetch("/api/usage", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data.success) {
+          if (data.dataUsed) setLiveDataUsed(data.dataUsed);
+          if (data.dataTotal) setLiveDataTotal(data.dataTotal);
+        }
+      } catch (err) {
+        console.error("Auto-sync data usage error:", err);
+      } finally {
+        if (isMounted) setIsSyncingUsage(false);
+      }
+    };
+
+    // 1. Initial instant fetch on mount
+    fetchUsage();
+
+    // 2. Poll every 30 seconds
+    const interval = setInterval(fetchUsage, 30000);
+
+    // 3. Re-sync immediately when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchUsage();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const userIdentifier = user?.id || user?.email || "guest_user";
 
@@ -948,16 +1006,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div>
                       <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📊 DATA USED</p>
                       <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
-                        <span>{metaData.dataUsed || "0 GB"}</span>
+                        <span>{liveDataUsed || "0 GB"}</span>
                         <span style={{ fontSize: "1.05rem", fontWeight: "normal", opacity: 0.85 }}>
-                          / {metaData.dataTotal || "Unlimited"}
+                          / {liveDataTotal || "Unlimited"}
                         </span>
                       </h2>
                     </div>
 
-                    <p style={{ margin: "0.8rem 0 0 0", fontSize: "0.75rem", color: "rgba(255,255,255,0.75)", letterSpacing: "0.5px" }}>
-                      Updates at 12:00am Every Day
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", margin: "0.8rem 0 0 0" }}>
+                      <span style={{ 
+                        width: "8px", 
+                        height: "8px", 
+                        borderRadius: "50%", 
+                        background: isSyncingUsage ? "#fbbf24" : "#4ade80", 
+                        display: "inline-block",
+                        boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #4ade80",
+                        transition: "all 0.3s ease"
+                      }} />
+                      <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.5px" }}>
+                        {isSyncingUsage ? "Syncing 3x-ui..." : "Auto-Syncs Every 30s · Live"}
+                      </p>
+                    </div>
                   </div>
 
                   {/* ⏳ EXPIRES IN */}
