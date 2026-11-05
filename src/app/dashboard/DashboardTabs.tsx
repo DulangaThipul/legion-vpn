@@ -208,12 +208,24 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   }, [metaData.forceShowGuide, userIdentifier]);
 
+  const goToTourStep = (step: number) => {
+    if (step < 1 || step > 5) return;
+    setTourStep(step);
+    if (step === 1) setActiveTab("dashboard");
+    else if (step === 2) setActiveTab("buy");
+    else if (step === 3) setActiveTab("configs");
+    else if (step === 4) setActiveTab("payments");
+    else if (step === 5) setActiveTab("rank");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const handleStartTour = () => {
     const guidePromptSeenKey = `legion_guide_prompt_seen_${userIdentifier}`;
     localStorage.setItem(guidePromptSeenKey, "true");
     setGuidePromptOpen(false);
-    setTourStep(1);
-    setActiveTab("dashboard");
+    goToTourStep(1);
     setIsTourActive(true);
   };
 
@@ -232,13 +244,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const handleNextTourStep = () => {
     if (tourStep < 5) {
-      const next = tourStep + 1;
-      setTourStep(next);
-      if (next === 1) setActiveTab("dashboard");
-      else if (next === 2) setActiveTab("buy");
-      else if (next === 3) setActiveTab("configs");
-      else if (next === 4) setActiveTab("payments");
-      else if (next === 5) setActiveTab("rank");
+      goToTourStep(tourStep + 1);
     } else {
       handleExitTour();
     }
@@ -246,13 +252,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const handlePrevTourStep = () => {
     if (tourStep > 1) {
-      const prev = tourStep - 1;
-      setTourStep(prev);
-      if (prev === 1) setActiveTab("dashboard");
-      else if (prev === 2) setActiveTab("buy");
-      else if (prev === 3) setActiveTab("configs");
-      else if (prev === 4) setActiveTab("payments");
-      else if (prev === 5) setActiveTab("rank");
+      goToTourStep(tourStep - 1);
     }
   };
 
@@ -411,14 +411,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 🎨 EXPIRES IN CARD DYNAMIC COLOR:
   // - Days left < 5 or expired: Red (#dc2626)
   // - Days left between 5 and 8 (inclusive): Yellow / Amber (#d97706)
-  // - Otherwise (> 8 days or unlimited): Green (#16a34a)
+  // - Otherwise (> 8 days or unlimited): Original Purple (#6d28d9)
   const expiryCardBg = useMemo(() => {
     if (daysLeft !== null) {
       if (isExpired || daysLeft < 5) return "#dc2626"; // Red (< 5 days)
       if (daysLeft >= 5 && daysLeft <= 8) return "#d97706"; // Yellow (5 to 8 days)
-      return "#16a34a"; // Green (> 8 days)
+      return "#6d28d9"; // Original Purple (> 8 days)
     }
-    return "#16a34a"; // Green (Unlimited / Otherwise)
+    return "#6d28d9"; // Original Purple (Unlimited / Otherwise)
   }, [daysLeft, isExpired]);
 
   const availablePackages = useMemo(() => {
@@ -807,89 +807,103 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* 🧭 2. ACTIVE GLASSMORPHIC FLOATING WALKTHROUGH CONTROLLER */}
+      {/* 🧭 2. ACTIVE GLASSMORPHIC FLOATING WALKTHROUGH CONTROLLER (OPTIMIZED FOR MOBILE & PC) */}
       {isTourActive && (
-        <div style={{ position: "fixed", bottom: "5.5rem", left: "50%", transform: "translateX(-50%)", width: "94%", maxWidth: "560px", zIndex: 100000, animation: "fadeInUp 0.35s ease" }}>
-          
-          <div style={{ 
-            background: "rgba(14, 14, 28, 0.82)", 
-            backdropFilter: "blur(25px)", 
-            border: "1px solid rgba(255, 255, 255, 0.16)", 
-            borderRadius: "22px", 
-            padding: "1.3rem 1.6rem", 
-            boxShadow: "0 25px 60px rgba(0,0,0,0.9), 0 0 35px rgba(99,102,241,0.35), inset 0 1px 1px rgba(255,255,255,0.2)" 
-          }}>
+        <div className="tour-controller-wrapper">
+          <div className="tour-controller-card">
             
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "1.2rem" }}>✨</span>
-                <span style={{ fontSize: "0.82rem", color: "#818cf8", fontWeight: "bold", letterSpacing: "0.5px" }}>
-                  INTERACTIVE WALKTHROUGH · STEP {tourStep} OF 5
+            {/* Header: Step Dots, Step Count, and Exit Button */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {/* 5 Interactive Progress Dots */}
+                <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                  {[1, 2, 3, 4, 5].map((step) => (
+                    <span
+                      key={step}
+                      onClick={() => goToTourStep(step)}
+                      style={{
+                        width: tourStep === step ? "20px" : "7px",
+                        height: "7px",
+                        borderRadius: "4px",
+                        background: tourStep === step ? "linear-gradient(90deg, #6366f1, #a855f7)" : "rgba(255,255,255,0.22)",
+                        cursor: "pointer",
+                        transition: "all 0.3s ease",
+                        display: "inline-block"
+                      }}
+                      title={`Go to Step ${step}`}
+                    />
+                  ))}
+                </div>
+
+                <span style={{ fontSize: "0.76rem", color: "#818cf8", fontWeight: "bold", letterSpacing: "0.5px", background: "rgba(99,102,241,0.15)", padding: "2px 8px", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.25)" }}>
+                  Step {tourStep} / 5
                 </span>
               </div>
+
               <button 
+                type="button"
                 onClick={handleExitTour} 
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", padding: "3px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", padding: "3px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s" }}
               >
                 ✕ Exit Tour
               </button>
             </div>
 
             {/* Step Message Content */}
-            <div style={{ minHeight: "70px", color: "#e2e8f0", fontSize: "0.92rem", lineHeight: 1.6 }}>
+            <div style={{ minHeight: "56px", color: "#e2e8f0" }}>
               {tourStep === 1 && (
                 <div>
-                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1rem" }}>🎁 1. Claim Free 3GB Test Plan</h4>
-                  <p style={{ margin: 0 }}>
-                    අපගේ Ultra-Fast VIP VPN සේවාව නොමිලේ අත්හදා බැලීමට මුදල් ගෙවීමකින් තොරව <strong>3GB Free Test Plan</strong> එකක් ලබාගත හැක. මෙම Card එක ක්ලික් කර WhatsApp හරහා අපගේ Support වෙත සෘජුවම Request එකක් යොමු කරන්න!
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#4ade80", fontWeight: "bold" }}>🎁 1. Claim Free 3GB Test Plan</h4>
+                  <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
+                    අපගේ Ultra-Fast VIP VPN එක මුදල් නොගෙවා අත්හදා බැලීමට <strong>3GB Free Test Plan</strong> එකක් ලබාගන්න. මෙම Card එක ක්ලික් කර WhatsApp හරහා Free Request එකක් දමන්න!
                   </p>
                 </div>
               )}
 
               {tourStep === 2 && (
                 <div>
-                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1rem" }}>🛒 2. Choose & Order Packages from Store</h4>
-                  <p style={{ margin: 0 }}>
-                    Dialog, Airtel, Hutch, SLT සිම් වල Zoom, TikTok, YouTube packages වලින් Unlimited Internet යන්න පුළුවන් configs මෙතැනින් තෝරගන්න. <strong>'Select & Configure VPN'</strong> ඔබලා Bank Slip එක Upload කර Order එක Submit කරන්න.
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#818cf8", fontWeight: "bold" }}>🛒 2. Store එකෙන් Package තෝරාගැනීම</h4>
+                  <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
+                    Dialog, Airtel, Hutch, SLT සඳහා Unlimited bypass configs මෙතැනින් ලබාගත හැක. <strong>'Select & Configure VPN'</strong> ඔබා Bank Slip එක Upload කර Order එක Submit කරන්න.
                   </p>
                 </div>
               )}
 
               {tourStep === 3 && (
                 <div>
-                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#60a5fa", fontSize: "1rem" }}>🔑 3. Receive Your Secret VLESS Config</h4>
-                  <p style={{ margin: 0 }}>
-                    Admin විසින් ඔබගේ Payment Slip එක Verify කළ වහාම ඔබගේ පුද්ගලික <strong>VLESS Key</strong> එක මෙතැන දිස්වේ. <strong>'Copy Code'</strong> ඔබා v2rayNG (Android) හෝ Streisand (iPhone) app එකට paste කර එක ක්ලික් එකෙන් Connect වන්න!
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#38bdf8", fontWeight: "bold" }}>🔑 3. ඔබගේ Secret VLESS Configs</h4>
+                  <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
+                    Admin විසින් Payment එක Verify කළ පසු ඔබගේ රහසිගත <strong>VLESS Key</strong> එක මෙතැන දිස්වේ. <strong>'Copy Code'</strong> ඔබා v2rayNG හෝ Streisand app එකට Paste කර Connect වන්න!
                   </p>
                 </div>
               )}
 
               {tourStep === 4 && (
                 <div>
-                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#f59e0b", fontSize: "1rem" }}>🧾 4. View Payment History & Slips</h4>
-                  <p style={{ margin: 0 }}>
-                    ඔබ මෙතෙක් සිදු කළ ගෙවීම් වාර්තා, Upload කළ Payment Receipts සහ ඒවායේ තත්ත්වය (Verified / Verifying) ඕනෑම මොහොතක මෙතැනින් ආරක්ෂිතව පරීක්ෂා කර බලාගත හැක.
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#fbbf24", fontWeight: "bold" }}>🧾 4. Payment History & Receipts</h4>
+                  <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
+                    ඔබ සිදු කළ ගෙවීම් වාර්තා, Slip බාගත කිරීම සහ ඒවායේ Verified තත්ත්වය ඕනෑම මොහොතක මෙතැනින් ආරක්ෂිතව පරීක්ෂා කරගත හැක.
                   </p>
                 </div>
               )}
 
               {tourStep === 5 && (
                 <div>
-                  <h4 style={{ margin: "0 0 0.3rem 0", color: "#eab308", fontSize: "1rem" }}>🏆 5. Level Up Your Client Rank</h4>
-                  <p style={{ margin: 0 }}>
-                    ඔබ සිදුකරන මාසික purchases ගණන අනුව (3, 6, 10, 15) Bronze 🥉, Silver ⭐, Gold 🏆, Platinum 💎, Diamond 👑 දක්වා ඔබගේ Profile Rank එක ස්වයංක්‍රීයව Level Up වේ!
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#e879f9", fontWeight: "bold" }}>🏆 5. VIP Fair Rank Progress</h4>
+                  <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
+                    ඔබ සිදුකරන orders ගණන අනුව (3, 6, 10, 15) Bronze 🥉 සිට Diamond 👑 දක්වා ඔබගේ Profile Rank එක ස්වයංක්‍රීයව Level Up වේ!
                   </p>
                 </div>
               )}
             </div>
 
             {/* Navigation buttons */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.2rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
               {tourStep > 1 ? (
                 <button 
+                  type="button"
                   onClick={handlePrevTourStep} 
-                  style={{ padding: "0.55rem 1.2rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                  style={{ padding: "0.5rem 1.1rem", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.82rem" }}
                 >
                   ← Back
                 </button>
@@ -897,15 +911,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {tourStep < 5 ? (
                 <button 
+                  type="button"
                   onClick={handleNextTourStep} 
-                  style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}
+                  style={{ padding: "0.5rem 1.4rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", border: "none", color: "#FFF", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(99,102,241,0.4)" }}
                 >
                   Next Step →
                 </button>
               ) : (
                 <button 
+                  type="button"
                   onClick={handleExitTour} 
-                  style={{ padding: "0.55rem 1.6rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}
+                  style={{ padding: "0.5rem 1.4rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}
                 >
                   ✓ Finish Tour
                 </button>
@@ -1119,7 +1135,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                     </div>
 
-                    {/* 🔓 / 🔒 RENEW VPN BUTTON */}
+                    {/* RENEW VPN BUTTON (NO EMOJI) */}
                     <button
                       type="button"
                       onClick={() => setRenewModalOpen(true)}
@@ -1142,7 +1158,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      {metaData.isRenewUnlocked ? "Renew VPN" : "Renew VPN"}
+                      Renew VPN
                     </button>
                   </div>
 
@@ -2087,7 +2103,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         href="https://wa.me/+441163504152"
         target="_blank"
         rel="noopener noreferrer"
-        className="floating-contact-btn"
+        className={`floating-contact-btn ${isTourActive ? "tour-active-hide" : ""}`}
         title="Contact Us via WhatsApp"
         aria-label="Contact Us on WhatsApp"
       >
@@ -2157,6 +2173,68 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           transform: translateZ(0);
           backface-visibility: hidden;
           contain: content;
+        }
+
+        /* 🧭 Mobile & Desktop Optimized Tour Styles */
+        .tour-controller-wrapper {
+          position: fixed;
+          bottom: 5.5rem;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 92%;
+          max-width: 520px;
+          z-index: 100000;
+          animation: fadeInUp 0.3s ease;
+          pointer-events: auto;
+        }
+
+        .tour-controller-card {
+          background: rgba(14, 14, 28, 0.94);
+          backdrop-filter: blur(25px);
+          -webkit-backdrop-filter: blur(25px);
+          border: 1px solid rgba(129, 140, 248, 0.35);
+          border-radius: 20px;
+          padding: 1.2rem 1.4rem;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(99, 102, 241, 0.3);
+        }
+
+        .tour-step-title {
+          font-size: 1rem;
+        }
+
+        .tour-step-text {
+          font-size: 0.9rem;
+          line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+          .tour-controller-wrapper {
+            bottom: 5.2rem !important;
+            left: 10px !important;
+            right: 10px !important;
+            transform: none !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+          .tour-controller-card {
+            padding: 1rem 1.1rem !important;
+            border-radius: 16px !important;
+          }
+          .tour-step-title {
+            font-size: 0.92rem !important;
+          }
+          .tour-step-text {
+            font-size: 0.82rem !important;
+            line-height: 1.5 !important;
+          }
+        }
+
+        /* Hide WhatsApp button during tour to prevent overlap on mobile */
+        .floating-contact-btn.tour-active-hide {
+          opacity: 0 !important;
+          pointer-events: none !important;
+          transform: scale(0.6) !important;
+          transition: opacity 0.25s ease, transform 0.25s ease;
         }
 
         /* 📱 Floating Contact Us Button & Mobile / iPhone SE Responsive Positioning */
