@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAdmin } from "@/lib/authActions";
@@ -54,6 +54,29 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
   const [users, setUsers] = useState<any[]>(safeUsers);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [isBulkSyncing, setIsBulkSyncing] = useState(false);
+  const [bulkSyncMsg, setBulkSyncMsg] = useState("");
+
+  const handleBulkRefresh = async () => {
+    if (!confirm("Fetch live 3x-ui usage for all clients with subscription links right now?")) return;
+    setIsBulkSyncing(true);
+    setBulkSyncMsg("Bulk syncing all clients...");
+    try {
+      const res = await fetch("/api/usage?bulk=true", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) {
+        setBulkSyncMsg(`✓ Updated ${data.updatedCount} clients!`);
+        showToast(`✅ Bulk sync: Updated ${data.updatedCount} clients!`);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setBulkSyncMsg("⚠️ Bulk sync failed");
+      }
+    } catch {
+      setBulkSyncMsg("⚠️ Bulk sync error");
+    } finally {
+      setIsBulkSyncing(false);
+    }
+  };
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     safeUsers.length > 0 ? safeUsers[0]?.id || safeUsers[0]?._id : null
@@ -124,14 +147,28 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
         
         {/* USER LIST */}
         <div style={{ background: "#0c0c14", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ padding: "1.2rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <input
-              type="text"
-              placeholder="Search clients..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", padding: "0.8rem 1rem", borderRadius: "10px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", outline: "none", boxSizing: "border-box" }}
-            />
+          <div style={{ padding: "1.2rem", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <input
+                type="text"
+                placeholder="Search clients..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ flex: 1, padding: "0.75rem 0.9rem", borderRadius: "10px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", outline: "none", boxSizing: "border-box", fontSize: "0.85rem" }}
+              />
+              <button
+                type="button"
+                onClick={handleBulkRefresh}
+                disabled={isBulkSyncing}
+                title="Fetch live 3x-ui usage for all clients with subscription links right now"
+                style={{ background: isBulkSyncing ? "rgba(59, 130, 246, 0.1)" : "linear-gradient(90deg, #2563eb, #3b82f6)", color: "#FFF", border: "none", borderRadius: "8px", padding: "0.75rem 0.9rem", cursor: isBulkSyncing ? "not-allowed" : "pointer", fontSize: "0.78rem", fontWeight: "bold", whiteSpace: "nowrap" }}
+              >
+                {isBulkSyncing ? "Syncing..." : "⚡ Sync All"}
+              </button>
+            </div>
+            {bulkSyncMsg && (
+              <span style={{ fontSize: "0.72rem", color: "#38bdf8", textAlign: "center" }}>{bulkSyncMsg}</span>
+            )}
           </div>
           
           <div style={{ overflowY: "auto", flex: 1, padding: "0.8rem" }}>
@@ -142,12 +179,16 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
               let isPrem = false;
               let uLastSeen = 0;
               let userRank = "Bronze";
+              let uDataUsed = "0 GB";
+              let uPrev = 0;
               if (u.subscriptionLink) {
                 try {
                   const meta = JSON.parse(u.subscriptionLink);
                   if (meta.isPremium) isPrem = true;
                   if (meta.lastSeen) uLastSeen = meta.lastSeen;
                   if (meta.customRank) userRank = meta.customRank;
+                  if (meta.lastRecordedUsage || meta.dataUsed) uDataUsed = meta.lastRecordedUsage || meta.dataUsed;
+                  if (meta.previousUsage || meta.previousUsageGB) uPrev = Number(meta.previousUsage || meta.previousUsageGB);
                 } catch {}
               }
 
@@ -169,8 +210,12 @@ export default function AdminDashboardClient({ initialUsers }: { initialUsers: a
                     </div>
                     <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{u.email}</p>
                     
+                    <p style={{ margin: "3px 0 0 0", fontSize: "0.72rem", color: "#38bdf8", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden", display: "flex", alignItems: "center", gap: "4px" }}>
+                      📊 {uDataUsed} {uPrev > 0 ? `(Prev: ${uPrev} GB)` : ""}
+                    </p>
+
                     {displayTime ? (
-                      <p style={{ margin: "3px 0 0 0", fontSize: "0.7rem", color: "#818cf8", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                      <p style={{ margin: "2px 0 0 0", fontSize: "0.68rem", color: "#818cf8", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
                         🕒 {new Date(displayTime).toLocaleDateString()} · {new Date(displayTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     ) : null}
@@ -210,8 +255,11 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     bonusPurchases: 0,
     dataTotal: "Unlimited",
     dataUsed: "0 GB",
+    lastRecordedUsage: "0 GB",
     subscriptionUrl: "",
+    previousUsage: 0,
     previousUsageGB: 0,
+    customVpnUserId: "",
     forceShowGuide: false
   };
 
@@ -271,11 +319,63 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
 
+  // 🔑 EXTRACT VPN USER ID (UUID) FROM VLESS CONFIG
+  const extractedVpnUserId = useMemo(() => {
+    const raw = user?.vpnConfigKey || "";
+    const match = raw.match(/vless:\/\/([a-f0-9\-]{36})/i);
+    return match ? match[1] : "";
+  }, [user?.vpnConfigKey]);
+
   // 📊 DATA USAGE CONTROLS (3x-ui Auto-Sync & Manual)
   const [selectedDataTotal, setSelectedDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
-  const [dataUsedInput, setDataUsedInput] = useState<string>(metaData.dataUsed || "0 GB");
+  const [dataUsedInput, setDataUsedInput] = useState<string>(metaData.lastRecordedUsage || metaData.dataUsed || "0 GB");
   const [subscriptionUrlInput, setSubscriptionUrlInput] = useState<string>(metaData.subscriptionUrl || "");
-  const [previousUsageGBInput, setPreviousUsageGBInput] = useState<string | number>(metaData.previousUsageGB ?? 0);
+  const [previousUsageInput, setPreviousUsageInput] = useState<string | number>(metaData.previousUsage ?? metaData.previousUsageGB ?? 0);
+  const [customVpnUserIdInput, setCustomVpnUserIdInput] = useState<string>(metaData.customVpnUserId || extractedVpnUserId || "");
+  const [isRefreshingLive, setIsRefreshingLive] = useState<boolean>(false);
+  const [liveRefreshMsg, setLiveRefreshMsg] = useState<string>("");
+
+  const handleRefreshSingleClient = async () => {
+    setIsRefreshingLive(true);
+    setLiveRefreshMsg("Connecting to 3x-ui...");
+    try {
+      const res = await fetch(`/api/usage?userId=${userId}`, { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) {
+        setDataUsedInput(data.dataUsed);
+        setLiveRefreshMsg(`✓ Live: ${data.dataUsed} (3x-ui: ${data.current3xuiUsageGB || 0} GB + Prev: ${data.previousUsage || 0} GB)`);
+      } else {
+        setLiveRefreshMsg(`⚠️ ${data.warning || data.message || "Failed to fetch live usage"}`);
+      }
+    } catch {
+      setLiveRefreshMsg("⚠️ Connection error fetching 3x-ui data");
+    } finally {
+      setIsRefreshingLive(false);
+    }
+  };
+
+  const handleSnapshotPreviousData = () => {
+    const match = dataUsedInput.match(/([0-9]+(?:\.[0-9]+)?)/);
+    const currentNum = match ? parseFloat(match[1]) : 0;
+    
+    if (!confirm(`Are you sure you want to LOCK current usage (${currentNum} GB) as Previous Server Data?\n\nWhen switching VPS, this preserves old usage so: Total = ${currentNum} GB + New Server Usage.`)) {
+      return;
+    }
+
+    setPreviousUsageInput(currentNum);
+    const updatedMeta = {
+      ...metaData,
+      previousUsage: currentNum,
+      previousUsageGB: currentNum,
+      dataTotal: selectedDataTotal,
+      dataUsed: dataUsedInput,
+      lastRecordedUsage: dataUsedInput,
+      subscriptionUrl: subscriptionUrlInput.trim(),
+      customVpnUserId: customVpnUserIdInput.trim()
+    };
+    onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+    setLiveRefreshMsg(`🔒 Successfully locked ${currentNum} GB as Previous Usage!`);
+  };
 
   const handleSaveDataUsage = () => {
     const rawVal = dataUsedInput.trim();
@@ -286,13 +386,16 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       formattedUsed = "0 GB";
     }
 
-    const offsetVal = parseFloat(String(previousUsageGBInput)) || 0;
+    const offsetVal = parseFloat(String(previousUsageInput)) || 0;
     const updatedMeta = {
       ...metaData,
       dataTotal: selectedDataTotal,
       dataUsed: formattedUsed,
+      lastRecordedUsage: formattedUsed,
       subscriptionUrl: subscriptionUrlInput.trim(),
-      previousUsageGB: offsetVal
+      previousUsage: offsetVal,
+      previousUsageGB: offsetVal,
+      customVpnUserId: customVpnUserIdInput.trim()
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
@@ -541,9 +644,63 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
       {/* 📊 DATA USAGE MANAGEMENT CARD */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(59, 130, 246, 0.25)" }}>
-        <h3 style={{ margin: "0 0 1rem 0", color: "#3b82f6", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>📊</span> Data Usage Management (3x-ui Auto-Sync)
-        </h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "10px" }}>
+          <h3 style={{ margin: 0, color: "#3b82f6", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>📊</span> Data Usage Management
+          </h3>
+
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {/* Refresh Live Usage Button */}
+            <button
+              type="button"
+              onClick={handleRefreshSingleClient}
+              disabled={isRefreshingLive}
+              style={{
+                background: "rgba(59, 130, 246, 0.15)",
+                color: "#60a5fa",
+                border: "1px solid rgba(59, 130, 246, 0.4)",
+                padding: "0.45rem 0.9rem",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                fontSize: "0.8rem",
+                cursor: isRefreshingLive ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+            >
+              🔄 {isRefreshingLive ? "Checking 3x-ui..." : "Refresh Live Usage"}
+            </button>
+
+            {/* Snapshot / Lock Previous Data Button */}
+            <button
+              type="button"
+              onClick={handleSnapshotPreviousData}
+              title="Lock current usage into previousUsage before switching to a new VPS"
+              style={{
+                background: "rgba(234, 179, 8, 0.15)",
+                color: "#facc15",
+                border: "1px solid rgba(234, 179, 8, 0.4)",
+                padding: "0.45rem 0.9rem",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+            >
+              🔒 Snapshot / Lock as Previous Data
+            </button>
+          </div>
+        </div>
+
+        {liveRefreshMsg && (
+          <div style={{ padding: "0.6rem 1rem", borderRadius: "8px", background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.25)", color: "#93c5fd", fontSize: "0.8rem", marginBottom: "1rem" }}>
+            {liveRefreshMsg}
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -561,7 +718,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual Input)</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual Input / Total)</p>
               <button
                 type="button"
                 onClick={() => setDataUsedInput("0 GB")}
@@ -592,18 +749,18 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
               step="0.01"
               min="0"
               placeholder="0"
-              value={previousUsageGBInput} 
-              onChange={(e) => setPreviousUsageGBInput(e.target.value)}
+              value={previousUsageInput} 
+              onChange={(e) => setPreviousUsageInput(e.target.value)}
               style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#eab308", fontWeight: "bold", fontSize: "0.95rem", boxSizing: "border-box", outline: "none" }}
             />
             <span style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "4px", display: "block" }}>
-              VPS මාරු කරන විට පරණ Server එකේ GB මෙතනට දමන්න
+              VPS මාරු කරන විට පරණ Server එකේ GB මෙතනට දමන්න (හෝ Snapshot click කරන්න)
             </span>
           </div>
         </div>
 
         {/* 3x-ui Subscription Link Input */}
-        <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(59, 130, 246, 0.25)", marginBottom: "1.2rem" }}>
+        <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(59, 130, 246, 0.25)", marginBottom: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <p style={{ margin: 0, fontSize: "0.8rem", color: "#60a5fa", fontWeight: "600" }}>
               🔗 3x-ui Subscription Link (Auto-Sync)
@@ -627,11 +784,30 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           />
         </div>
 
+        {/* Custom VPN User ID (UUID) Input */}
+        <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.08)", marginBottom: "1.2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p style={{ margin: 0, fontSize: "0.8rem", color: "#a5b4fc", fontWeight: "600" }}>
+              🔑 Custom VPN User ID (UUID)
+            </p>
+            <span style={{ fontSize: "0.7rem", color: "#9ca3af" }}>
+              {customVpnUserIdInput ? "Custom ID Configured" : "Auto-extracted from VLESS Key"}
+            </span>
+          </div>
+          <input 
+            type="text" 
+            placeholder="e.g. 12345678-abcd-1234-abcd-1234567890ab (Empty = Auto from VLESS Key)"
+            value={customVpnUserIdInput} 
+            onChange={(e) => setCustomVpnUserIdInput(e.target.value)}
+            style={{ marginTop: "8px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#a5b4fc", fontFamily: "monospace", fontSize: "0.85rem", boxSizing: "border-box", outline: "none" }}
+          />
+        </div>
+
         <button 
           onClick={handleSaveDataUsage}
           style={{ background: "linear-gradient(90deg, #2563eb, #3b82f6)", color: "#FFF", border: "none", padding: "0.6rem 1.6rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 14px rgba(37,99,235,0.3)" }}
         >
-          💾 Save Data Usage
+          💾 Save Data Usage & ID Settings
         </button>
       </div>
 
