@@ -64,6 +64,40 @@ function fetchSubscriptionHeaders(
   });
 }
 
+function parseUserInfoHeader(headers: Record<string, string | string[] | undefined>) {
+  let userinfoRaw: string | null = null;
+  if (headers["subscription-userinfo"]) {
+    userinfoRaw = Array.isArray(headers["subscription-userinfo"])
+      ? headers["subscription-userinfo"][0]
+      : headers["subscription-userinfo"];
+  } else {
+    for (const [key, val] of Object.entries(headers)) {
+      if (key.toLowerCase().includes("userinfo")) {
+        userinfoRaw = Array.isArray(val) ? val[0] : (val || null);
+        break;
+      }
+    }
+  }
+
+  if (!userinfoRaw) return null;
+
+  let uploadBytes = 0;
+  let downloadBytes = 0;
+  let totalLimitBytes = 0;
+
+  const parts = userinfoRaw.split(";");
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const [k, v] = trimmed.split("=").map((s) => s.trim().toLowerCase());
+    if (k === "upload") uploadBytes = Number(v) || 0;
+    else if (k === "download") downloadBytes = Number(v) || 0;
+    else if (k === "total") totalLimitBytes = Number(v) || 0;
+  }
+
+  return { uploadBytes, downloadBytes, totalLimitBytes };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -77,10 +111,79 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Determine target user (client themselves or admin inspecting a client)
-    const { searchParams } = new URL(req.url);
-    const queryUserId = searchParams.get("userId");
     const isAdmin = payload.email === "dulangathipul@gmail.com";
+    const { searchParams } = new URL(req.url);
+    const isBulk = searchParams.get("bulk") === "true";
+    const queryUserId = searchParams.get("userId");
+
+    // ========================================================
+    // 1. ADMIN BULK REFRESH FOR ALL CLIENTS WITH 3X-UI LINKS
+    // ========================================================
+    if (isAdmin && isBulk) {
+      const users = await prisma.user.findMany({
+        where: { subscriptionLink: { not: null } },
+      });
+
+      let updatedCount = 0;
+      const results: any[] = [];
+
+      for (const u of users) {
+        if (!u.subscriptionLink) continue;
+        let meta: any = {};
+        try {
+          meta = JSON.parse(u.subscriptionLink);
+        } catch {
+          continue;
+        }
+
+        let subUrl = meta.subscriptionUrl || (u.subscriptionLink.startsWith("http") ? u.subscriptionLink : null);
+        if (!subUrl) continue;
+        subUrl = subUrl.trim();
+        if (!subUrl.startsWith("http://") && !subUrl.startsWith("https://")) {
+          subUrl = "https://" + subUrl;
+        }
+
+        try {
+          const { headers } = await fetchSubscriptionHeaders(subUrl, 5000);
+          const parsed = parseUserInfoHeader(headers);
+          if (parsed) {
+            const current3xuiBytes = parsed.uploadBytes + parsed.downloadBytes;
+            const current3xuiGB = current3xuiBytes / (1024 * 1024 * 1024);
+            const previousUsage = Number(meta.previousUsage ?? meta.previousUsageGB ?? 0);
+            const totalUsedGB = previousUsage + current3xuiGB;
+            const formattedDataUsed = `${totalUsedGB.toFixed(2)} GB`;
+
+            meta.dataUsed = formattedDataUsed;
+            meta.lastRecordedUsage = formattedDataUsed;
+            meta.current3xuiUsageGB = Number(current3xuiGB.toFixed(2));
+            meta.previousUsage = previousUsage;
+            meta.previousUsageGB = previousUsage;
+            meta.lastUsageSync = new Date().toISOString();
+
+            await prisma.user.update({
+              where: { id: u.id },
+              data: { subscriptionLink: JSON.stringify(meta) },
+            });
+
+            updatedCount++;
+            results.push({ userId: u.id, name: u.name, dataUsed: formattedDataUsed });
+          }
+        } catch {
+          // Ignore individual client timeout in bulk
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Bulk sync completed. Updated ${updatedCount} clients.`,
+        updatedCount,
+        results,
+      });
+    }
+
+    // ========================================================
+    // 2. SINGLE CLIENT REFRESH (Client or Admin-Selected)
+    // ========================================================
     const targetUserId = isAdmin && queryUserId ? queryUserId : (payload.id as string);
 
     const user = await prisma.user.findUnique({
@@ -101,8 +204,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const previousUsageGB = Number(metaData.previousUsageGB) || 0;
-    const fallbackUsed = metaData.dataUsed || "0 GB";
+    const previousUsage = Number(metaData.previousUsage ?? metaData.previousUsageGB ?? 0);
+    const fallbackUsed = metaData.lastRecordedUsage || metaData.dataUsed || "0 GB";
     const fallbackTotal = metaData.dataTotal || "Unlimited";
 
     // Detect 3x-ui subscription URL
@@ -123,96 +226,72 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // If no subscription URL is configured, return whatever was saved
+    // If no subscription URL is configured, return whatever was last recorded safely
     if (!subscriptionUrl) {
       return NextResponse.json({
         success: true,
         dataUsed: fallbackUsed,
+        lastRecordedUsage: fallbackUsed,
         dataTotal: fallbackTotal,
-        previousUsageGB,
+        previousUsage,
         current3xuiUsageGB: 0,
         isLiveSync: false,
         message: "No 3x-ui subscription URL configured",
       });
     }
 
-    // Check if manual input was "0 GB", "0" or empty
-    const rawManualUsed = (metaData.dataUsed || "").toString().trim().toLowerCase();
-    const isManualZero = !rawManualUsed || rawManualUsed === "0" || rawManualUsed === "0 gb" || rawManualUsed === "0gb";
-
-    let userinfoRaw: string | null = null;
+    let parsedHeader: { uploadBytes: number; downloadBytes: number; totalLimitBytes: number } | null = null;
 
     try {
       const { headers } = await fetchSubscriptionHeaders(subscriptionUrl, 8000);
-
-      if (headers["subscription-userinfo"]) {
-        userinfoRaw = Array.isArray(headers["subscription-userinfo"])
-          ? headers["subscription-userinfo"][0]
-          : headers["subscription-userinfo"];
-      } else {
-        for (const [key, val] of Object.entries(headers)) {
-          if (key.toLowerCase().includes("userinfo")) {
-            userinfoRaw = Array.isArray(val) ? val[0] : (val || null);
-            break;
-          }
-        }
-      }
+      parsedHeader = parseUserInfoHeader(headers);
     } catch (fetchErr: any) {
       console.warn("3x-ui server unreachable or timeout:", fetchErr?.message || fetchErr);
       return NextResponse.json({
         success: true,
         dataUsed: fallbackUsed,
+        lastRecordedUsage: fallbackUsed,
         dataTotal: fallbackTotal,
-        previousUsageGB,
+        previousUsage,
         current3xuiUsageGB: 0,
         isLiveSync: false,
-        warning: "3x-ui server unreachable, showing cached data",
+        warning: "3x-ui server unreachable, returning last recorded usage from database",
       });
     }
 
-    if (!userinfoRaw) {
+    if (!parsedHeader) {
       return NextResponse.json({
         success: true,
         dataUsed: fallbackUsed,
+        lastRecordedUsage: fallbackUsed,
         dataTotal: fallbackTotal,
-        previousUsageGB,
+        previousUsage,
         current3xuiUsageGB: 0,
         isLiveSync: false,
-        warning: "subscription-userinfo header missing in 3x-ui response",
+        warning: "subscription-userinfo header missing, returning last recorded usage",
       });
     }
 
-    // Parse: upload=12345; download=67890; total=...; expire=...
-    let uploadBytes = 0;
-    let downloadBytes = 0;
-    let totalLimitBytes = 0;
-
-    const parts = userinfoRaw.split(";");
-    for (const part of parts) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      const [k, v] = trimmed.split("=").map((s) => s.trim().toLowerCase());
-      if (k === "upload") uploadBytes = Number(v) || 0;
-      else if (k === "download") downloadBytes = Number(v) || 0;
-      else if (k === "total") totalLimitBytes = Number(v) || 0;
-    }
-
-    // Calculate GB
-    const current3xuiBytes = uploadBytes + downloadBytes;
+    // Total Displayed Used = previousUsage + current 3x-ui Usage
+    const current3xuiBytes = parsedHeader.uploadBytes + parsedHeader.downloadBytes;
     const current3xuiGB = current3xuiBytes / (1024 * 1024 * 1024);
-    const finalTotalUsedGB = previousUsageGB + current3xuiGB;
+    const finalTotalUsedGB = previousUsage + current3xuiGB;
     const formattedDataUsed = `${finalTotalUsedGB.toFixed(2)} GB`;
 
     let calculatedDataTotal = fallbackTotal;
-    if (totalLimitBytes > 0 && (!metaData.dataTotal || metaData.dataTotal === "Unlimited")) {
-      calculatedDataTotal = `${(totalLimitBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
+    if (parsedHeader.totalLimitBytes > 0 && (!metaData.dataTotal || metaData.dataTotal === "Unlimited")) {
+      calculatedDataTotal = `${(parsedHeader.totalLimitBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
     }
 
-    // Save updated synced value in MongoDB cache
+    // Auto-save lastRecordedUsage & dataUsed into MongoDB so data is NEVER lost even if VPS terminates
     try {
       const updatedMeta = {
         ...metaData,
         dataUsed: formattedDataUsed,
+        lastRecordedUsage: formattedDataUsed,
+        current3xuiUsageGB: Number(current3xuiGB.toFixed(2)),
+        previousUsage: previousUsage,
+        previousUsageGB: previousUsage,
         lastUsageSync: new Date().toISOString(),
       };
       await prisma.user.update({
@@ -220,17 +299,18 @@ export async function GET(req: NextRequest) {
         data: { subscriptionLink: JSON.stringify(updatedMeta) },
       });
     } catch (dbErr) {
-      console.error("Failed to update cached usage in MongoDB:", dbErr);
+      console.error("Failed to update lastRecordedUsage in MongoDB:", dbErr);
     }
 
     return NextResponse.json({
       success: true,
       dataUsed: formattedDataUsed,
+      lastRecordedUsage: formattedDataUsed,
       dataTotal: calculatedDataTotal,
-      previousUsageGB,
+      previousUsage,
       current3xuiUsageGB: Number(current3xuiGB.toFixed(2)),
-      uploadGB: Number((uploadBytes / (1024 * 1024 * 1024)).toFixed(2)),
-      downloadGB: Number((downloadBytes / (1024 * 1024 * 1024)).toFixed(2)),
+      uploadGB: Number((parsedHeader.uploadBytes / (1024 * 1024 * 1024)).toFixed(2)),
+      downloadGB: Number((parsedHeader.downloadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       isLiveSync: true,
     });
   } catch (error: any) {
