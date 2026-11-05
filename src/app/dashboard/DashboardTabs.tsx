@@ -1024,7 +1024,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         transition: "all 0.3s ease"
                       }} />
                       <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.5px" }}>
-                        {isSyncingUsage ? "Syncing 3x-ui..." : "Auto-Syncs Every 30s · Live"}
+                        {isSyncingUsage ? "Syncing..." : "Auto-Syncs Every 30s · Live"}
                       </p>
                     </div>
                   </div>
