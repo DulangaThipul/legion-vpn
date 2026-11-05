@@ -260,6 +260,8 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     previousUsage: 0,
     previousUsageGB: 0,
     customVpnUserId: "",
+    isRenewUnlocked: false,
+    renewPopupMessage: "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.",
     forceShowGuide: false
   };
 
@@ -411,6 +413,24 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       forceShowGuide: newVal
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+  };
+
+  // 🔐 VPN RENEW CONTROLS & CUSTOM POPUP MESSAGE
+  const [isRenewUnlocked, setIsRenewUnlocked] = useState<boolean>(Boolean(metaData.isRenewUnlocked));
+  const [renewPopupMessageInput, setRenewPopupMessageInput] = useState<string>(
+    metaData.renewPopupMessage || "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න."
+  );
+  const [renewSaveMsg, setRenewSaveMsg] = useState<string>("");
+
+  const handleSaveRenewSettings = () => {
+    const updatedMeta = {
+      ...metaData,
+      isRenewUnlocked,
+      renewPopupMessage: renewPopupMessageInput.trim()
+    };
+    onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+    setRenewSaveMsg("✓ Renew settings saved!");
+    setTimeout(() => setRenewSaveMsg(""), 3000);
   };
 
   // Dynamic Multi-Config Sections
@@ -669,7 +689,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
                 gap: "5px"
               }}
             >
-              🔄 {isRefreshingLive ? "Checking 3x-ui..." : "Refresh Live Usage"}
+              {isRefreshingLive ? "Checking 3x-ui..." : "Refresh"}
             </button>
 
             {/* Snapshot / Lock Previous Data Button */}
@@ -924,6 +944,86 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </button>
         </div>
 
+      </div>
+
+      {/* 🔐 VPN RENEW CONTROL & CUSTOM POPUP */}
+      <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: `1px solid ${isRenewUnlocked ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h3 style={{ margin: 0, color: isRenewUnlocked ? "#4ade80" : "#f87171", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>{isRenewUnlocked ? "🔓" : "🔐"}</span> VPN Renew Control & Custom Popup
+            </h3>
+            <p style={{ margin: "0.2rem 0 0 0", color: "#9ca3af", fontSize: "0.8rem" }}>Control renewal button access and configure the modal message shown to this client.</p>
+          </div>
+
+          {/* Toggle Lock / Unlock */}
+          <button
+            type="button"
+            onClick={() => setIsRenewUnlocked(!isRenewUnlocked)}
+            style={{
+              background: isRenewUnlocked ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)",
+              color: isRenewUnlocked ? "#22c55e" : "#ef4444",
+              border: `1px solid ${isRenewUnlocked ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`,
+              padding: "0.45rem 1.1rem",
+              borderRadius: "8px",
+              fontWeight: "bold",
+              fontSize: "0.85rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            {isRenewUnlocked ? "🔓 Renew Unlocked" : "🔒 Renew Locked"} (Click to Toggle)
+          </button>
+        </div>
+
+        <p style={{ margin: "0 0 0.6rem 0", color: "#cbd5e1", fontSize: "0.82rem" }}>
+          Custom Popup Message (Client ගේ Renew Button එක ක්ලික් කළ විට පෙන්වන පණිවිඩය):
+        </p>
+
+        <textarea
+          rows={3}
+          value={renewPopupMessageInput}
+          onChange={(e) => setRenewPopupMessageInput(e.target.value)}
+          placeholder="Type custom renewal modal popup message here..."
+          style={{
+            width: "100%",
+            padding: "0.8rem",
+            borderRadius: "8px",
+            background: "rgba(0,0,0,0.5)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "#FFF",
+            fontSize: "0.85rem",
+            outline: "none",
+            resize: "vertical",
+            boxSizing: "border-box",
+            marginBottom: "0.8rem"
+          }}
+        />
+
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button
+            type="button"
+            onClick={handleSaveRenewSettings}
+            style={{
+              background: "linear-gradient(90deg, #10b981, #059669)",
+              color: "#FFF",
+              border: "none",
+              padding: "0.6rem 1.6rem",
+              borderRadius: "8px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              boxShadow: "0 4px 14px rgba(16,185,129,0.3)"
+            }}
+          >
+            💾 Save Renew Settings
+          </button>
+          {renewSaveMsg && (
+            <span style={{ fontSize: "0.85rem", color: "#34d399", fontWeight: "bold" }}>{renewSaveMsg}</span>
+          )}
+        </div>
       </div>
 
       {/* 📦 ASSIGNED CONFIGURATIONS */}
