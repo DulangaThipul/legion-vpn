@@ -4,10 +4,64 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import https from "https";
+import http from "http";
 
-// Handle self-signed certificates on non-standard VPS deployments
-if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === undefined) {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+// Bypass self-signed SSL errors on VPS
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+// Helper function to fetch headers with rejectUnauthorized: false and follow redirects
+function fetchSubscriptionHeaders(
+  urlStr: string,
+  timeoutMs = 8000
+): Promise<{ headers: Record<string, string | string[] | undefined>; statusCode?: number }> {
+  return new Promise((resolve, reject) => {
+    try {
+      const parsedUrl = new URL(urlStr);
+      const isHttps = parsedUrl.protocol === "https:";
+      const lib = isHttps ? https : http;
+
+      const req = lib.request(
+        parsedUrl,
+        {
+          method: "GET",
+          rejectUnauthorized: false, // Critical: allows self-signed SSL certificates on VPS
+          timeout: timeoutMs,
+          headers: {
+            "User-Agent": "v2rayNG/1.8.12 (Android; Mobile)",
+            "Accept": "*/*",
+            "Connection": "close",
+          },
+        },
+        (res) => {
+          // Follow standard redirects (301, 302, 307, 308)
+          if (res.statusCode && [301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+            try {
+              const redirectUrl = new URL(res.headers.location, parsedUrl).toString();
+              resolve(fetchSubscriptionHeaders(redirectUrl, timeoutMs));
+              return;
+            } catch {
+              // Ignore invalid redirect URL
+            }
+          }
+          resolve({ headers: res.headers, statusCode: res.statusCode });
+          res.resume(); // consume stream to release socket
+        }
+      );
+
+      req.on("timeout", () => {
+        req.destroy(new Error("Request timed out"));
+      });
+
+      req.on("error", (err) => {
+        reject(err);
+      });
+
+      req.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -27,7 +81,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const queryUserId = searchParams.get("userId");
     const isAdmin = payload.email === "dulangathipul@gmail.com";
-    const targetUserId = (isAdmin && queryUserId) ? queryUserId : (payload.id as string);
+    const targetUserId = isAdmin && queryUserId ? queryUserId : (payload.id as string);
 
     const user = await prisma.user.findUnique({
       where: { id: targetUserId },
@@ -51,14 +105,25 @@ export async function GET(req: NextRequest) {
     const fallbackUsed = metaData.dataUsed || "0 GB";
     const fallbackTotal = metaData.dataTotal || "Unlimited";
 
-    // 3x-ui Subscription link check
-    const subscriptionUrl = metaData.subscriptionUrl || (
-      typeof user.subscriptionLink === "string" && user.subscriptionLink.startsWith("http")
+    // Detect 3x-ui subscription URL
+    let subscriptionUrl =
+      metaData.subscriptionUrl ||
+      (typeof user.subscriptionLink === "string" && user.subscriptionLink.startsWith("http")
         ? user.subscriptionLink
-        : null
-    );
+        : null);
 
-    // If no 3x-ui link configured, return fallback data safely
+    if (!subscriptionUrl && metaData.alert && (metaData.alert.startsWith("http://") || metaData.alert.startsWith("https://"))) {
+      subscriptionUrl = metaData.alert;
+    }
+
+    if (subscriptionUrl) {
+      subscriptionUrl = subscriptionUrl.trim();
+      if (!subscriptionUrl.startsWith("http://") && !subscriptionUrl.startsWith("https://")) {
+        subscriptionUrl = "https://" + subscriptionUrl;
+      }
+    }
+
+    // If no subscription URL is configured, return whatever was saved
     if (!subscriptionUrl) {
       return NextResponse.json({
         success: true,
@@ -71,35 +136,29 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Check if manual input was "0 GB", "0" or empty
+    const rawManualUsed = (metaData.dataUsed || "").toString().trim().toLowerCase();
+    const isManualZero = !rawManualUsed || rawManualUsed === "0" || rawManualUsed === "0 gb" || rawManualUsed === "0gb";
+
     let userinfoRaw: string | null = null;
 
     try {
-      // 6-second timeout controller to prevent hanging if VPS is down
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const { headers } = await fetchSubscriptionHeaders(subscriptionUrl, 8000);
 
-      const res = await fetch(subscriptionUrl, {
-        method: "GET",
-        headers: {
-          "User-Agent": "v2rayng/1.8.5 (SpacemanVPN Auto-Sync)",
-          "Accept": "*/*",
-        },
-        signal: controller.signal,
-        cache: "no-store",
-      });
-
-      clearTimeout(timeoutId);
-
-      // Flexible case-insensitive parsing for subscription-userinfo header
-      for (const [key, value] of res.headers.entries()) {
-        if (key.toLowerCase() === "subscription-userinfo") {
-          userinfoRaw = value;
-          break;
+      if (headers["subscription-userinfo"]) {
+        userinfoRaw = Array.isArray(headers["subscription-userinfo"])
+          ? headers["subscription-userinfo"][0]
+          : headers["subscription-userinfo"];
+      } else {
+        for (const [key, val] of Object.entries(headers)) {
+          if (key.toLowerCase().includes("userinfo")) {
+            userinfoRaw = Array.isArray(val) ? val[0] : (val || null);
+            break;
+          }
         }
       }
     } catch (fetchErr: any) {
       console.warn("3x-ui server unreachable or timeout:", fetchErr?.message || fetchErr);
-      // Graceful fallback: return previous stored data without crashing
       return NextResponse.json({
         success: true,
         dataUsed: fallbackUsed,
@@ -107,11 +166,10 @@ export async function GET(req: NextRequest) {
         previousUsageGB,
         current3xuiUsageGB: 0,
         isLiveSync: false,
-        warning: "3x-ui server unreachable or timed out, returning cached data",
+        warning: "3x-ui server unreachable, showing cached data",
       });
     }
 
-    // If 3x-ui did not return subscription-userinfo header
     if (!userinfoRaw) {
       return NextResponse.json({
         success: true,
