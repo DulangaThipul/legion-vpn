@@ -34,14 +34,17 @@ export async function updateUserAdmin(userId: string, data: any) {
     if (!payload || !payload.id) throw new Error("Unauthorized");
     if (payload.email !== "dulangathipul@gmail.com") throw new Error("Unauthorized");
 
+    const updateData: any = {};
+    if (data.vpnStatus !== undefined) updateData.vpnStatus = data.vpnStatus;
+    if (data.expiryDate !== undefined) {
+      updateData.expiryDate = data.expiryDate ? new Date(data.expiryDate) : null;
+    }
+    if (data.vpnConfigKey !== undefined) updateData.vpnConfigKey = data.vpnConfigKey;
+    if (data.subscriptionLink !== undefined) updateData.subscriptionLink = data.subscriptionLink;
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        vpnStatus: data.vpnStatus || "Active", 
-        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-        vpnConfigKey: data.vpnConfigKey,
-        subscriptionLink: data.subscriptionLink,
-      },
+      data: updateData,
     });
     return { success: true, user: updatedUser };
   } catch (error) {
