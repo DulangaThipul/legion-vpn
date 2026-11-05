@@ -92,8 +92,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       bonusPurchases: 0,
       dataTotal: "Unlimited",
       dataUsed: "0 GB",
+      lastRecordedUsage: "0 GB",
       subscriptionUrl: "",
+      previousUsage: 0,
       previousUsageGB: 0,
+      customVpnUserId: "",
       forceShowGuide: undefined as boolean | undefined
     };
     if (user?.subscriptionLink) {
@@ -107,9 +110,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   }, [user?.subscriptionLink]);
 
   // 📊 REALTIME 3x-ui DATA USAGE AUTO-SYNC
-  const [liveDataUsed, setLiveDataUsed] = useState<string>(metaData.dataUsed || "0 GB");
+  const [liveDataUsed, setLiveDataUsed] = useState<string>(metaData.lastRecordedUsage || metaData.dataUsed || "0 GB");
   const [liveDataTotal, setLiveDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
   const [isSyncingUsage, setIsSyncingUsage] = useState<boolean>(false);
+  const [idCopied, setIdCopied] = useState<boolean>(false);
+
+  // 🔑 EXTRACT VPN USER ID (UUID) FROM VLESS CONFIG OR ADMIN OVERRIDE
+  const vpnUserId = useMemo(() => {
+    if (metaData.customVpnUserId && typeof metaData.customVpnUserId === "string" && metaData.customVpnUserId.trim()) {
+      return metaData.customVpnUserId.trim();
+    }
+    const raw = user?.vpnConfigKey || "";
+    const match = raw.match(/vless:\/\/([a-f0-9\-]{36})/i);
+    return match ? match[1] : null;
+  }, [user?.vpnConfigKey, metaData.customVpnUserId]);
+
+  const handleCopyVpnId = (idToCopy: string) => {
+    if (!idToCopy) return;
+    navigator.clipboard.writeText(idToCopy);
+    setIdCopied(true);
+    setTimeout(() => setIdCopied(false), 2000);
+  };
 
   useEffect(() => {
     if (metaData.dataUsed) setLiveDataUsed(metaData.dataUsed);
@@ -1702,13 +1723,52 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   />
                 </div>
 
-                {/* Replay Guide Tour Button */}
-                <button 
-                  onClick={() => { setTourStep(1); setIsTourActive(true); setActiveTab("dashboard"); }}
-                  style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)", padding: "0.8rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}
-                >
-                  🧭 Start Interactive User Guide Tour
-                </button>
+                {/* 🔑 YOUR LEGION-VPN USER ID SECTION */}
+                <div style={{ background: "rgba(0,0,0,0.35)", padding: "1.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <label style={{ display: "block", marginBottom: "0.5rem", color: "#60a5fa", fontSize: "0.85rem", fontWeight: "bold" }}>
+                    Your LEGION-VPN User ID
+                  </label>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input 
+                      type="text" 
+                      value={vpnUserId || "No Active VPN ID"} 
+                      readOnly 
+                      style={{ 
+                        flex: 1, 
+                        padding: "0.85rem 1rem", 
+                        background: "#08080f", 
+                        border: "1px solid rgba(255,255,255,0.12)", 
+                        color: vpnUserId ? "#38bdf8" : "#9ca3af", 
+                        borderRadius: "8px", 
+                        fontFamily: "monospace", 
+                        fontSize: "0.9rem",
+                        outline: "none",
+                        boxSizing: "border-box"
+                      }} 
+                    />
+                    {vpnUserId && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyVpnId(vpnUserId)}
+                        style={{
+                          background: idCopied ? "#059669" : "linear-gradient(90deg, #2563eb, #3b82f6)",
+                          color: "#FFF",
+                          border: "none",
+                          padding: "0.85rem 1.2rem",
+                          borderRadius: "8px",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          boxShadow: "0 4px 12px rgba(37,99,235,0.25)",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {idCopied ? "✓ Copied!" : "📋 Copy ID"}
+                      </button>
+                    )}
+                  </div>
+                </div>
 
               </div>
             </div>
