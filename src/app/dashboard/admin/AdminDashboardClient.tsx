@@ -204,11 +204,14 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     alert: "", 
     isPremium: false, 
     payments: [] as any[], 
+    pendingOrders: [] as any[], 
     lastSeen: 0, 
     customRank: "", 
     bonusPurchases: 0,
     dataTotal: "Unlimited",
     dataUsed: "0 GB",
+    subscriptionUrl: "",
+    previousUsageGB: 0,
     forceShowGuide: false
   };
 
@@ -268,17 +271,22 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
 
-  // 📊 DATA USAGE CONTROLS
+  // 📊 DATA USAGE CONTROLS (3x-ui Auto-Sync & Manual)
   const [selectedDataTotal, setSelectedDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
   const [dataUsedInput, setDataUsedInput] = useState<string>(metaData.dataUsed || "0 GB");
+  const [subscriptionUrlInput, setSubscriptionUrlInput] = useState<string>(metaData.subscriptionUrl || "");
+  const [previousUsageGBInput, setPreviousUsageGBInput] = useState<string | number>(metaData.previousUsageGB ?? 0);
 
   const handleSaveDataUsage = () => {
     const rawVal = dataUsedInput.trim();
     const formattedUsed = rawVal ? (rawVal.toLowerCase().includes("gb") || rawVal.toLowerCase().includes("mb") ? rawVal : `${rawVal} GB`) : "0 GB";
+    const offsetVal = parseFloat(String(previousUsageGBInput)) || 0;
     const updatedMeta = {
       ...metaData,
       dataTotal: selectedDataTotal,
-      dataUsed: formattedUsed
+      dataUsed: formattedUsed,
+      subscriptionUrl: subscriptionUrlInput.trim(),
+      previousUsageGB: offsetVal
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
@@ -528,7 +536,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       {/* 📊 DATA USAGE MANAGEMENT CARD */}
       <div style={{ background: "rgba(255,255,255,0.03)", padding: "1.4rem", borderRadius: "14px", border: "1px solid rgba(59, 130, 246, 0.25)" }}>
         <h3 style={{ margin: "0 0 1rem 0", color: "#3b82f6", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>📊</span> Data Usage Management
+          <span>📊</span> Data Usage Management (3x-ui Auto-Sync)
         </h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
@@ -546,7 +554,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual Input)</p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual / Last Synced)</p>
             <input 
               type="text" 
               placeholder="e.g. 15.5 GB"
@@ -555,6 +563,47 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
               style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold", fontSize: "0.95rem", boxSizing: "border-box", outline: "none" }}
             />
           </div>
+
+          <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Previous Server Usage Offset (GB)</p>
+            <input 
+              type="number" 
+              step="0.01"
+              min="0"
+              placeholder="0"
+              value={previousUsageGBInput} 
+              onChange={(e) => setPreviousUsageGBInput(e.target.value)}
+              style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#eab308", fontWeight: "bold", fontSize: "0.95rem", boxSizing: "border-box", outline: "none" }}
+            />
+            <span style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "4px", display: "block" }}>
+              VPS මාරු කරන විට පරණ Server එකේ GB මෙතනට දමන්න
+            </span>
+          </div>
+        </div>
+
+        {/* 3x-ui Subscription Link Input */}
+        <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(59, 130, 246, 0.25)", marginBottom: "1.2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p style={{ margin: 0, fontSize: "0.8rem", color: "#60a5fa", fontWeight: "600" }}>
+              🔗 3x-ui Subscription Link (Auto-Sync)
+            </p>
+            {subscriptionUrlInput ? (
+              <span style={{ fontSize: "0.7rem", color: "#10b981", background: "rgba(16,185,129,0.15)", padding: "2px 8px", borderRadius: "4px" }}>
+                ● 100% Realtime Auto-Sync Active
+              </span>
+            ) : (
+              <span style={{ fontSize: "0.7rem", color: "#9ca3af", background: "rgba(255,255,255,0.05)", padding: "2px 8px", borderRadius: "4px" }}>
+                Manual Mode (No Link)
+              </span>
+            )}
+          </div>
+          <input 
+            type="text" 
+            placeholder="Paste 3x-ui subscription URL (e.g. https://your-vps.com:2096/sub/token...)"
+            value={subscriptionUrlInput} 
+            onChange={(e) => setSubscriptionUrlInput(e.target.value)}
+            style={{ marginTop: "8px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#60a5fa", fontSize: "0.85rem", boxSizing: "border-box", outline: "none" }}
+          />
         </div>
 
         <button 
