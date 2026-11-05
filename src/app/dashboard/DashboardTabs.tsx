@@ -408,6 +408,19 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
+  // 🎨 EXPIRES IN CARD DYNAMIC COLOR:
+  // - Days left < 5 or expired: Red (#dc2626)
+  // - Days left between 5 and 8 (inclusive): Yellow / Amber (#d97706)
+  // - Otherwise (> 8 days or unlimited): Green (#16a34a)
+  const expiryCardBg = useMemo(() => {
+    if (daysLeft !== null) {
+      if (isExpired || daysLeft < 5) return "#dc2626"; // Red (< 5 days)
+      if (daysLeft >= 5 && daysLeft <= 8) return "#d97706"; // Yellow (5 to 8 days)
+      return "#16a34a"; // Green (> 8 days)
+    }
+    return "#16a34a"; // Green (Unlimited / Otherwise)
+  }, [daysLeft, isExpired]);
+
   const availablePackages = useMemo(() => {
     return ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
   }, [activeIsp]);
@@ -1099,7 +1112,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
 
                   {/* ⏳ EXPIRES IN */}
-                  <div style={{ background: isExpired ? "#dc2626" : "#6d28d9", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div style={{ background: expiryCardBg, borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", transition: "background 0.3s ease" }}>
                     <div>
                       <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>⏳ EXPIRES IN</p>
                       <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
@@ -1129,7 +1142,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      {metaData.isRenewUnlocked ? "Renew VPN" : "Renew VPN"}
+                      {metaData.isRenewUnlocked ? "🔓 Renew VPN" : "🔒 Renew VPN"}
                     </button>
                   </div>
 
