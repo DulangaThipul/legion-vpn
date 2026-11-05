@@ -1045,7 +1045,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           title={refreshCooldown > 0 ? `Wait ${refreshCooldown}s before refreshing again` : "Refresh live data usage"}
                         >
                           <span className={isSyncingUsage ? "animate-spin" : ""} style={{ display: "inline-block", fontSize: "0.75rem" }}>
-                            🔄
+                            
                           </span>
                           {isSyncingUsage ? "Syncing..." : refreshCooldown > 0 ? `${refreshCooldown}s` : "Refresh"}
                         </button>
