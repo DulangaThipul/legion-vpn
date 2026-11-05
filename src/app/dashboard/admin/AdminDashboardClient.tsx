@@ -279,7 +279,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
   const handleSaveDataUsage = () => {
     const rawVal = dataUsedInput.trim();
-    const formattedUsed = rawVal ? (rawVal.toLowerCase().includes("gb") || rawVal.toLowerCase().includes("mb") ? rawVal : `${rawVal} GB`) : "0 GB";
+    let formattedUsed = rawVal ? (rawVal.toLowerCase().includes("gb") || rawVal.toLowerCase().includes("mb") ? rawVal : `${rawVal} GB`) : "0 GB";
+    
+    // If manual input is 0 or empty, save as "0 GB" so 3x-ui auto-sync takes priority
+    if (!rawVal || rawVal === "0" || rawVal === "0 GB" || rawVal === "0GB" || rawVal.toLowerCase() === "0 gb") {
+      formattedUsed = "0 GB";
+    }
+
     const offsetVal = parseFloat(String(previousUsageGBInput)) || 0;
     const updatedMeta = {
       ...metaData,
@@ -554,14 +560,29 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual / Last Synced)</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Data Used (Manual Input)</p>
+              <button
+                type="button"
+                onClick={() => setDataUsedInput("0 GB")}
+                style={{ background: "rgba(59, 130, 246, 0.2)", color: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.4)", borderRadius: "4px", fontSize: "0.65rem", padding: "1px 6px", cursor: "pointer" }}
+                title="Reset to 0 GB to enable 3x-ui Auto-Sync"
+              >
+                Reset to 0 GB
+              </button>
+            </div>
             <input 
               type="text" 
-              placeholder="e.g. 15.5 GB"
+              placeholder="0 GB (Auto-Sync from Link)"
               value={dataUsedInput} 
               onChange={(e) => setDataUsedInput(e.target.value)}
               style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold", fontSize: "0.95rem", boxSizing: "border-box", outline: "none" }}
             />
+            <span style={{ fontSize: "0.7rem", color: (!dataUsedInput || dataUsedInput === "0 GB" || dataUsedInput === "0") && subscriptionUrlInput ? "#10b981" : "#9ca3af", marginTop: "4px", display: "block" }}>
+              {(!dataUsedInput || dataUsedInput === "0 GB" || dataUsedInput === "0") && subscriptionUrlInput
+                ? "✓ 0 GB ඇත: Subscription Link එකෙන් Live Fetch වේ"
+                : "Manual අගයක් ඇත (0 GB දැමූ විට Link එකෙන් Auto-Fetch වේ)"}
+            </span>
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
