@@ -33,7 +33,7 @@ const ALL_PACKAGES = [
   { id: "slt-router-zoom", isp: "SLT", type: "router", name: "SLT Router Zoom", ispPrice: "Rs. 235 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT 4G Wireless Router Zoom package bypass." }
 ];
 
-const ROUTER_CONFIG_PRICES: Record<string, number> = { "100 GB + USA Bonus Config": 300, "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
+const ROUTER_CONFIG_PRICES: Record<string, number> = { "100 GB + USA Bonus Config": 250, "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
 const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (Budget)": 100, "50 GB Config (Budget)": 150, "100 GB Config (Budget)": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
 
 // 🏆 REALISTIC FAIR RANKS CONFIGURATION
@@ -97,6 +97,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       previousUsage: 0,
       previousUsageGB: 0,
       customVpnUserId: "",
+      isRenewUnlocked: false,
+      renewPopupMessage: "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.",
       forceShowGuide: undefined as boolean | undefined
     };
     if (user?.subscriptionLink) {
@@ -115,6 +117,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [isSyncingUsage, setIsSyncingUsage] = useState<boolean>(false);
   const [refreshCooldown, setRefreshCooldown] = useState<number>(30);
   const [idCopied, setIdCopied] = useState<boolean>(false);
+  const [renewModalOpen, setRenewModalOpen] = useState<boolean>(false);
+  const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
+
+  const copyBankField = (fieldKey: string, text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedBankField(fieldKey);
+    setTimeout(() => setCopiedBankField(null), 2000);
+  };
 
   // ⏱️ Countdown Timer for Refresh Button (Decrements every 1 second)
   useEffect(() => {
@@ -729,7 +740,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   }
 
   // 🚀 TABS
-  const tabs = [
+  type TabItem = {
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+    isLink?: boolean;
+    href?: string;
+  };
+
+  const tabs: TabItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
     { id: "buy", label: "Store", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg> },
     { id: "configs", label: "My VPNs", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
@@ -1022,7 +1041,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
                         <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📊 DATA USED</p>
                         
-                        {/* 🔄 MANUAL REFRESH BUTTON WITH 30s COUNTDOWN */}
+                        {/* MANUAL REFRESH BUTTON WITH 30s COUNTDOWN (NO EMOJI) */}
                         <button
                           type="button"
                           onClick={handleManualRefreshUsage}
@@ -1032,21 +1051,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             color: refreshCooldown > 0 || isSyncingUsage ? "rgba(255,255,255,0.6)" : "#FFF",
                             border: "1px solid rgba(255,255,255,0.25)",
                             borderRadius: "20px",
-                            padding: "3px 10px",
-                            fontSize: "0.72rem",
+                            padding: "3px 12px",
+                            fontSize: "0.75rem",
                             fontWeight: "bold",
                             cursor: refreshCooldown > 0 || isSyncingUsage ? "not-allowed" : "pointer",
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: "5px",
                             backdropFilter: "blur(4px)",
                             transition: "all 0.2s ease"
                           }}
                           title={refreshCooldown > 0 ? `Wait ${refreshCooldown}s before refreshing again` : "Refresh live data usage"}
                         >
-                          <span className={isSyncingUsage ? "animate-spin" : ""} style={{ display: "inline-block", fontSize: "0.75rem" }}>
-                            
-                          </span>
                           {isSyncingUsage ? "Syncing..." : refreshCooldown > 0 ? `${refreshCooldown}s` : "Refresh"}
                         </button>
                       </div>
@@ -1090,6 +1105,32 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
                       <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                     </div>
+
+                    {/* 🔓 / 🔒 RENEW VPN BUTTON */}
+                    <button
+                      type="button"
+                      onClick={() => setRenewModalOpen(true)}
+                      style={{
+                        marginTop: "1.2rem",
+                        width: "100%",
+                        padding: "0.65rem 1rem",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        background: metaData.isRenewUnlocked ? "rgba(34, 197, 94, 0.25)" : "rgba(0, 0, 0, 0.35)",
+                        color: "#FFF",
+                        fontWeight: "bold",
+                        fontSize: "0.85rem",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        backdropFilter: "blur(6px)",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {metaData.isRenewUnlocked ? "🔓 Renew VPN" : "🔒 Renew VPN"}
+                    </button>
                   </div>
 
                 </div>
@@ -1858,10 +1899,101 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <p style={{ color: "#9ca3af", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Transfer <strong style={{ color: "#22c55e" }}>Rs. {modalPackage.type === "router" ? ROUTER_CONFIG_PRICES[selectedQuota!] : MOBILE_CONFIG_PRICES[selectedQuota!]}</strong> to the following account:</p>
                     
                     <div style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "12px", padding: "1.5rem", marginBottom: "2rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>BANK</span><strong>{BANK_ACCOUNT.bankName}</strong></div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>ACCOUNT NAME</span><strong>{BANK_ACCOUNT.accountName}</strong></div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>ACCOUNT NO.</span><strong style={{ color: "#22c55e", fontSize: "1.2rem", letterSpacing: "1px" }}>{BANK_ACCOUNT.accountNo}</strong></div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>BRANCH</span><strong>{BANK_ACCOUNT.branch}</strong></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                        <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>BANK</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <strong>{BANK_ACCOUNT.bankName}</strong>
+                          <button
+                            type="button"
+                            onClick={() => copyBankField("bank", BANK_ACCOUNT.bankName)}
+                            style={{
+                              background: copiedBankField === "bank" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                              color: copiedBankField === "bank" ? "#22c55e" : "#cbd5e1",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              borderRadius: "6px",
+                              padding: "2px 8px",
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {copiedBankField === "bank" ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                        <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>ACCOUNT NAME</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <strong>{BANK_ACCOUNT.accountName}</strong>
+                          <button
+                            type="button"
+                            onClick={() => copyBankField("accountName", BANK_ACCOUNT.accountName)}
+                            style={{
+                              background: copiedBankField === "accountName" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                              color: copiedBankField === "accountName" ? "#22c55e" : "#cbd5e1",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              borderRadius: "6px",
+                              padding: "2px 8px",
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {copiedBankField === "accountName" ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                        <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>ACCOUNT NO.</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <strong style={{ color: "#22c55e", fontSize: "1.2rem", letterSpacing: "1px" }}>{BANK_ACCOUNT.accountNo}</strong>
+                          <button
+                            type="button"
+                            onClick={() => copyBankField("accountNo", BANK_ACCOUNT.accountNo)}
+                            style={{
+                              background: copiedBankField === "accountNo" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                              color: copiedBankField === "accountNo" ? "#22c55e" : "#cbd5e1",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              borderRadius: "6px",
+                              padding: "2px 8px",
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {copiedBankField === "accountNo" ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>BRANCH</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <strong>{BANK_ACCOUNT.branch}</strong>
+                          <button
+                            type="button"
+                            onClick={() => copyBankField("branch", BANK_ACCOUNT.branch)}
+                            style={{
+                              background: copiedBankField === "branch" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                              color: copiedBankField === "branch" ? "#22c55e" : "#cbd5e1",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              borderRadius: "6px",
+                              padding: "2px 8px",
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {copiedBankField === "branch" ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", gap: "1rem" }}>
@@ -1897,8 +2029,59 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
+          {/* 🔐 VPN RENEW CUSTOM POPUP MODAL */}
+          {renewModalOpen && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
+              <div style={{ width: "100%", maxWidth: "480px", padding: "2rem", background: "#10101a", border: `1px solid ${metaData.isRenewUnlocked ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`, borderRadius: "18px", textAlign: "center", boxShadow: "0 20px 45px rgba(0,0,0,0.8)" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.8rem" }}>
+                  {metaData.isRenewUnlocked ? "🔓" : "🔒"}
+                </div>
+                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 1rem 0" }}>
+                  {metaData.isRenewUnlocked ? "VPN Renewal Notice" : "Renewal Not Permitted"}
+                </h2>
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1.2rem", marginBottom: "1.8rem" }}>
+                  <p style={{ color: "#e2e8f0", lineHeight: 1.6, margin: 0, fontSize: "0.95rem", whiteSpace: "pre-wrap" }}>
+                    {metaData.renewPopupMessage || (metaData.isRenewUnlocked ? "You can now renew your VPN package." : "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.")}
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setRenewModalOpen(false)} 
+                    style={{ flex: 1, padding: "0.9rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", borderRadius: "10px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}
+                  >
+                    Close
+                  </button>
+                  {metaData.isRenewUnlocked && (
+                    <button 
+                      type="button" 
+                      onClick={() => { setRenewModalOpen(false); setActiveTab("buy"); }} 
+                      style={{ flex: 2, padding: "0.9rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", color: "#FFF", fontWeight: "bold", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "0.95rem", boxShadow: "0 4px 14px rgba(34,197,94,0.3)" }}
+                    >
+                      Proceed to Renew (Store) →
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
+
+      {/* 📱 FLOATING CONTACT US BUTTON (WHATSAPP SUPPORT) */}
+      <a
+        href="https://wa.me/+441163504152"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="floating-contact-btn"
+        title="Contact Us via WhatsApp"
+        aria-label="Contact Us on WhatsApp"
+      >
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+        </svg>
+      </a>
 
       {/* Floating Taskbar */}
       <nav 
@@ -1961,6 +2144,43 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           transform: translateZ(0);
           backface-visibility: hidden;
           contain: content;
+        }
+
+        /* 📱 Floating Contact Us Button & Mobile / iPhone SE Responsive Positioning */
+        .floating-contact-btn {
+          position: fixed;
+          bottom: 2rem;
+          right: 2rem;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #25D366, #128C7E);
+          color: #FFF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 18px rgba(37, 211, 102, 0.45);
+          z-index: 99;
+          text-decoration: none;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .floating-contact-btn:hover {
+          transform: scale(1.08);
+          box-shadow: 0 6px 24px rgba(37, 211, 102, 0.6);
+        }
+
+        @media (max-width: 768px) {
+          .floating-contact-btn {
+            bottom: 5.2rem !important;
+            right: 1rem !important;
+            width: 46px !important;
+            height: 46px !important;
+          }
+          .floating-contact-btn svg {
+            width: 24px !important;
+            height: 24px !important;
+          }
         }
 
         @media (max-width: 395px) {
