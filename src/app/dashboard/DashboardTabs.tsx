@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
@@ -109,11 +109,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return data;
   }, [user?.subscriptionLink]);
 
-  // 📊 REALTIME 3x-ui DATA USAGE AUTO-SYNC
+  // 📊 REALTIME 3x-ui DATA USAGE STATE & 30s COUNTDOWN
   const [liveDataUsed, setLiveDataUsed] = useState<string>(metaData.lastRecordedUsage || metaData.dataUsed || "0 GB");
   const [liveDataTotal, setLiveDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
   const [isSyncingUsage, setIsSyncingUsage] = useState<boolean>(false);
+  const [refreshCooldown, setRefreshCooldown] = useState<number>(30);
   const [idCopied, setIdCopied] = useState<boolean>(false);
+
+  // ⏱️ Countdown Timer for Refresh Button (Decrements every 1 second)
+  useEffect(() => {
+    if (refreshCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setRefreshCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [refreshCooldown]);
 
   // 🔑 EXTRACT VPN USER ID (UUID) FROM VLESS CONFIG OR ADMIN OVERRIDE
   const vpnUserId = useMemo(() => {
@@ -137,51 +147,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (metaData.dataTotal) setLiveDataTotal(metaData.dataTotal);
   }, [metaData.dataUsed, metaData.dataTotal]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchUsage = async () => {
-      // Bandwidth optimization: pause background fetching when browser tab is inactive/hidden
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-        return;
+  const fetchUsage = useCallback(async () => {
+    try {
+      setIsSyncingUsage(true);
+      const res = await fetch("/api/usage", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success) {
+        if (data.dataUsed) setLiveDataUsed(data.dataUsed);
+        if (data.dataTotal) setLiveDataTotal(data.dataTotal);
       }
-
-      try {
-        setIsSyncingUsage(true);
-        const res = await fetch("/api/usage", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (isMounted && data.success) {
-          if (data.dataUsed) setLiveDataUsed(data.dataUsed);
-          if (data.dataTotal) setLiveDataTotal(data.dataTotal);
-        }
-      } catch (err) {
-        console.error("Auto-sync data usage error:", err);
-      } finally {
-        if (isMounted) setIsSyncingUsage(false);
-      }
-    };
-
-    // 1. Initial instant fetch on mount
-    fetchUsage();
-
-    // 2. Poll every 30 seconds
-    const interval = setInterval(fetchUsage, 30000);
-
-    // 3. Re-sync immediately when tab becomes visible again
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchUsage();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    } catch (err) {
+      console.error("Fetch data usage error:", err);
+    } finally {
+      setIsSyncingUsage(false);
+    }
   }, []);
+
+  // 1. Initial instant fetch when site loads or refreshes
+  useEffect(() => {
+    fetchUsage();
+    setRefreshCooldown(30);
+  }, [fetchUsage]);
+
+  // 2. Manual refresh triggered by user from DATA USED card
+  const handleManualRefreshUsage = () => {
+    if (refreshCooldown > 0 || isSyncingUsage) return;
+    fetchUsage();
+    setRefreshCooldown(30);
+  };
 
   const userIdentifier = user?.id || user?.email || "guest_user";
 
@@ -1022,10 +1016,41 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   </div>
 
-                  {/* 📊 DATA USED (RIGHT TO LIVE CONNECTION) */}
+                  {/* 📊 DATA USED (WITH MANUAL REFRESH & 30s COUNTDOWN) */}
                   <div style={{ background: "#2563eb", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div>
-                      <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📊 DATA USED</p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📊 DATA USED</p>
+                        
+                        {/* 🔄 MANUAL REFRESH BUTTON WITH 30s COUNTDOWN */}
+                        <button
+                          type="button"
+                          onClick={handleManualRefreshUsage}
+                          disabled={refreshCooldown > 0 || isSyncingUsage}
+                          style={{
+                            background: refreshCooldown > 0 || isSyncingUsage ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.2)",
+                            color: refreshCooldown > 0 || isSyncingUsage ? "rgba(255,255,255,0.6)" : "#FFF",
+                            border: "1px solid rgba(255,255,255,0.25)",
+                            borderRadius: "20px",
+                            padding: "3px 10px",
+                            fontSize: "0.72rem",
+                            fontWeight: "bold",
+                            cursor: refreshCooldown > 0 || isSyncingUsage ? "not-allowed" : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            backdropFilter: "blur(4px)",
+                            transition: "all 0.2s ease"
+                          }}
+                          title={refreshCooldown > 0 ? `Wait ${refreshCooldown}s before refreshing again` : "Refresh live data usage"}
+                        >
+                          <span className={isSyncingUsage ? "animate-spin" : ""} style={{ display: "inline-block", fontSize: "0.75rem" }}>
+                            🔄
+                          </span>
+                          {isSyncingUsage ? "Syncing..." : refreshCooldown > 0 ? `${refreshCooldown}s` : "Refresh"}
+                        </button>
+                      </div>
+
                       <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
                         <span>{liveDataUsed || "0 GB"}</span>
                         <span style={{ fontSize: "1.05rem", fontWeight: "normal", opacity: 0.85 }}>
@@ -1034,19 +1059,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </h2>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", margin: "0.8rem 0 0 0" }}>
-                      <span style={{ 
-                        width: "8px", 
-                        height: "8px", 
-                        borderRadius: "50%", 
-                        background: isSyncingUsage ? "#fbbf24" : "#4ade80", 
-                        display: "inline-block",
-                        boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #4ade80",
-                        transition: "all 0.3s ease"
-                      }} />
-                      <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.5px" }}>
-                        {isSyncingUsage ? "Syncing..." : "Auto-Syncs Every 30s · Live"}
-                      </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.8rem 0 0 0", flexWrap: "wrap", gap: "6px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ 
+                          width: "8px", 
+                          height: "8px", 
+                          borderRadius: "50%", 
+                          background: isSyncingUsage ? "#fbbf24" : "#4ade80", 
+                          display: "inline-block",
+                          boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #4ade80",
+                          transition: "all 0.3s ease"
+                        }} />
+                        <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.5px" }}>
+                          {isSyncingUsage ? "Syncing live data..." : "Live Usage Synced"}
+                        </p>
+                      </div>
+
+                      {refreshCooldown > 0 && !isSyncingUsage && (
+                        <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.7)" }}>
+                          Wait: {refreshCooldown}s
+                        </span>
+                      )}
                     </div>
                   </div>
 
