@@ -1713,7 +1713,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                            <div style={{ marginTop: "1rem", background: "#040408", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "1rem 1.2rem", position: "relative" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                                 <span style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: "600", letterSpacing: "1px" }}>CONFIG KEY</span>
-                                <span style={{ fontSize: "0.72rem", color: "#a855f7" }}>v2rayNG / Streisand</span>
+                                <span style={{ fontSize: "0.72rem", color: "#a855f7" }}>NetMod (Android) / NPV Tunnel (Iphone) / Netch (Windows) / MacOS (V2Box)</span>
                                </div>
                               <code style={{ 
                                 display: "block",
