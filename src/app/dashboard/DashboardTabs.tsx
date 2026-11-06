@@ -1169,18 +1169,40 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {activeTab === "dashboard" && (
             <div className="flex flex-col gap-6 animate-fade-in">
               
-              {/* TOP ACTION BUTTONS */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "0.5rem" }}>
+              {/* TOP ACTION BUTTONS (VIBRANT & COLORFUL) */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "2.2rem" }}>
                 
-                {/* 🎁 CLAIM FREE TEST PLAN (HIGHLIGHTED IN TOUR STEP 1) */}
+                {/* CLAIM FREE TEST PLAN (HIGHLIGHTED IN TOUR STEP 1) */}
                 <div 
                   id="tour-step-testplan"
                   onClick={() => setFreeTestModal(true)} 
                   className={`hover-scale-card ${isTourActive && tourStep === 1 ? "tour-spotlight-active" : ""}`}
-                  style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem", transition: "all 0.3s ease" }}
+                  style={{ 
+                    background: "linear-gradient(135deg, rgba(6, 78, 59, 0.55) 0%, rgba(4, 47, 46, 0.75) 50%, rgba(16, 185, 129, 0.25) 100%)", 
+                    border: "1px solid rgba(52, 211, 153, 0.45)", 
+                    borderRadius: "18px", 
+                    padding: "1.4rem", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "1.2rem", 
+                    boxShadow: "0 10px 28px rgba(5, 150, 105, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease" 
+                  }}
                 >
-                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <div style={{ 
+                    width: "52px", 
+                    height: "52px", 
+                    borderRadius: "14px", 
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", 
+                    border: "1px solid rgba(255, 255, 255, 0.3)", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    flexShrink: 0,
+                    boxShadow: "0 6px 18px rgba(16, 185, 129, 0.5)"
+                  }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 12 20 22 4 22 4 12" />
                       <rect x="2" y="7" width="20" height="5" />
                       <line x1="12" y1="22" x2="12" y2="7" />
@@ -1189,37 +1211,98 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </svg>
                   </div>
                   <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.05rem" }}>Claim Free Test Plan</h3>
-                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Experience our premium speeds with a 3GB trial.</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.25rem" }}>
+                      <h3 style={{ margin: 0, color: "#4ade80", fontSize: "1.1rem", fontWeight: "bold" }}>Claim Free Test Plan</h3>
+                      <span style={{ fontSize: "0.7rem", background: "rgba(34, 197, 94, 0.3)", color: "#86efac", border: "1px solid rgba(34, 197, 94, 0.5)", padding: "1px 7px", borderRadius: "10px", fontWeight: "bold" }}>Free Trial</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.82rem", color: "#d1fae5", lineHeight: 1.45 }}>Experience our premium speeds with a 3GB trial.</p>
                   </div>
                 </div>
 
-                {/* 🛒 BUY PREMIUM CONFIG */}
-                <div onClick={() => setActiveTab("buy")} style={{ background: "rgba(16, 16, 29, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {/* BUY PREMIUM CONFIG */}
+                <div 
+                  onClick={() => setActiveTab("buy")} 
+                  className="hover-scale-card"
+                  style={{ 
+                    background: "linear-gradient(135deg, rgba(67, 56, 202, 0.55) 0%, rgba(49, 46, 129, 0.75) 50%, rgba(99, 102, 241, 0.28) 100%)", 
+                    border: "1px solid rgba(129, 140, 248, 0.5)", 
+                    borderRadius: "18px", 
+                    padding: "1.4rem", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "1.2rem", 
+                    boxShadow: "0 10px 28px rgba(79, 70, 229, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease" 
+                  }}
+                >
+                  <div style={{ 
+                    width: "52px", 
+                    height: "52px", 
+                    borderRadius: "14px", 
+                    background: "linear-gradient(135deg, #6366f1 0%, #4338ca 100%)", 
+                    border: "1px solid rgba(255, 255, 255, 0.3)", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    flexShrink: 0,
+                    boxShadow: "0 6px 18px rgba(99, 102, 241, 0.5)"
+                  }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                       <line x1="3" y1="6" x2="21" y2="6" />
                       <path d="M16 10a4 4 0 0 1-8 0" />
                     </svg>
                   </div>
                   <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>Buy Premium Config</h3>
-                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Unlock unlimited internet with our stable plans.</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.25rem" }}>
+                      <h3 style={{ margin: 0, color: "#c7d2fe", fontSize: "1.1rem", fontWeight: "bold" }}>Buy Premium Config</h3>
+                      <span style={{ fontSize: "0.7rem", background: "rgba(99, 102, 241, 0.3)", color: "#e0e7ff", border: "1px solid rgba(129, 140, 248, 0.45)", padding: "1px 7px", borderRadius: "10px", fontWeight: "bold" }}>High Speed</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.82rem", color: "#e0e7ff", lineHeight: 1.45 }}>Unlock unlimited internet with our stable plans.</p>
                   </div>
                 </div>
 
-                {/* 📖 REPLAY GUIDE BUTTON */}
-                <div onClick={() => { setTourStep(1); setIsTourActive(true); setActiveTab("dashboard"); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(129, 140, 248, 0.15)", border: "1px solid rgba(129, 140, 248, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {/* REPLAY GUIDE BUTTON */}
+                <div 
+                  onClick={() => { setTourStep(1); setIsTourActive(true); setActiveTab("dashboard"); }} 
+                  className="hover-scale-card"
+                  style={{ 
+                    background: "linear-gradient(135deg, rgba(126, 34, 206, 0.52) 0%, rgba(88, 28, 135, 0.72) 50%, rgba(168, 85, 247, 0.28) 100%)", 
+                    border: "1px solid rgba(192, 132, 252, 0.5)", 
+                    borderRadius: "18px", 
+                    padding: "1.4rem", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "1.2rem", 
+                    boxShadow: "0 10px 28px rgba(147, 51, 234, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.2)",
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease" 
+                  }}
+                >
+                  <div style={{ 
+                    width: "52px", 
+                    height: "52px", 
+                    borderRadius: "14px", 
+                    background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)", 
+                    border: "1px solid rgba(255, 255, 255, 0.3)", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    flexShrink: 0,
+                    boxShadow: "0 6px 18px rgba(168, 85, 247, 0.5)"
+                  }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10" />
                       <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
                     </svg>
                   </div>
                   <div>
-                    <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>User Guide Tour</h3>
-                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Replay the interactive walkthrough anytime.</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.25rem" }}>
+                      <h3 style={{ margin: 0, color: "#e9d5ff", fontSize: "1.1rem", fontWeight: "bold" }}>User Guide Tour</h3>
+                      <span style={{ fontSize: "0.7rem", background: "rgba(168, 85, 247, 0.3)", color: "#f3e8ff", border: "1px solid rgba(192, 132, 252, 0.45)", padding: "1px 7px", borderRadius: "10px", fontWeight: "bold" }}>Interactive</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.82rem", color: "#f3e8ff", lineHeight: 1.45 }}>Replay the interactive walkthrough anytime.</p>
                   </div>
                 </div>
 
