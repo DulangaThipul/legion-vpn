@@ -1,130 +1,76 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Points, PointMaterial, Icosahedron } from "@react-three/drei";
+import * as random from "maath/random/dist/maath-random.esm";
 
-const VIDEO_SRC = "https://res.cloudinary.com/ddox7uqkb/video/upload/v1790798934/katana-girl-in-shadows.1920x1080_wumo5v.mp4";
+function StarBackground(props: any) {
+  const ref = useRef<any>(null);
+  // Generate 5001 random points in a sphere (must be divisible by 3)
+  const sphere = random.inSphere(new Float32Array(5001), { radius: 1.5 });
 
-// Add a real poster image at this path (public/hero-poster.jpg). A still
-// frame pulled straight from the video works well, e.g.:
-//   ffmpeg -i source.mp4 -ss 00:00:01 -vframes 1 -q:v 3 hero-poster.jpg
-const POSTER_SRC = "https://res.cloudinary.com/ddox7uqkb/image/upload/v1790795701/download_3_vdixj9.jp";
-
-// How far the mobile crop sits from the right edge, in pixels.
-//   100  -> shifts the visible crop 100px toward the LEFT
-//  -100  -> shifts the visible crop 100px toward the RIGHT (past the edge)
-// This is the only number you need to touch to re-tune the mobile crop.
-const MOBILE_CROP_OFFSET_PX = 600;
-
-export default function ThreeScene() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [canPlayVideo, setCanPlayVideo] = useState(false);
-  // Desktop sees the full frame centered; mobile crops in near the right side
-  // of the frame instead of the (less interesting) middle.
-  const [objectPosition, setObjectPosition] = useState("center center");
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const connection = (navigator as any).connection;
-    const isDataConstrained =
-      !!connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || ""));
-
-    // The video is shown on mobile too now (just cropped differently) — only
-    // skip it for accessibility (reduced motion) and genuinely constrained
-    // connections.
-    setCanPlayVideo(!prefersReducedMotion && !isDataConstrained);
-
-    const mobileQuery = window.matchMedia("(max-width: 768px)");
-    const updatePosition = () =>
-      setObjectPosition(mobileQuery.matches ? `calc(100% + ${MOBILE_CROP_OFFSET_PX}px) center` : "center center");
-    updatePosition();
-    mobileQuery.addEventListener("change", updatePosition);
-    return () => mobileQuery.removeEventListener("change", updatePosition);
-  }, []);
-
-  useEffect(() => {
-    if (!canPlayVideo) return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    // Pause decode work the instant the tab isn't visible.
-    const handleVisibility = () => {
-      if (document.hidden) video.pause();
-      else video.play().catch(() => {});
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [canPlayVideo]);
+  useFrame((state, delta) => {
+    if (ref.current) {
+      ref.current.rotation.x -= delta / 10;
+      ref.current.rotation.y -= delta / 15;
+    }
+  });
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 0,
-        pointerEvents: "none",
-        overflow: "hidden",
-        background: "#000000",
-        transform: "translateZ(0)", // GPU Layer Promotion
-        backfaceVisibility: "hidden",
-      }}
-    >
-      {canPlayVideo ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          poster={POSTER_SRC}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition,
-            transition: "object-position 0.2s ease",
-            backfaceVisibility: "hidden",
-            pointerEvents: "none",
-          }}
-        >
-          <source src={VIDEO_SRC} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      ) : (
-        <img
-          src={POSTER_SRC}
-          alt=""
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition,
-          }}
+    <group rotation={[0, 0, Math.PI / 4]}>
+      <Points ref={ref} positions={sphere as Float32Array} stride={3} frustumCulled={false} {...props}>
+        <PointMaterial
+          transparent
+          color="#ffffff"
+          size={0.015}
+          sizeAttenuation={true}
+          depthWrite={false}
         />
-      )}
+      </Points>
+    </group>
+  );
+}
 
-      {/* Dark Overlay */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          background: "rgba(0, 0, 0, 0.45)",
-          zIndex: 1,
-          pointerEvents: "none",
-        }}
-      />
+function WireframeShape() {
+  const meshRef = useRef<any>(null);
+  const groupRef = useRef<any>(null);
+
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      // Continuous base rotation
+      meshRef.current.rotation.x += delta * 0.2;
+      meshRef.current.rotation.y += delta * 0.3;
+    }
+    if (groupRef.current) {
+      // Mouse tracking offset
+      const targetX = (state.mouse.y * Math.PI) / 5;
+      const targetY = (state.mouse.x * Math.PI) / 5;
+      
+      // Smoothly interpolate towards mouse position
+      groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.05;
+      groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * 0.05;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <Icosahedron ref={meshRef} args={[1, 1]} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#ffffff" wireframe={true} transparent opacity={0.5} />
+      </Icosahedron>
+    </group>
+  );
+}
+
+export default function ThreeScene() {
+  return (
+    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: "none" }}>
+      <Canvas style={{ width: "100%", height: "100%", display: "block" }} camera={{ position: [0, 0, 1] }} dpr={[1, 1.5]}>
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[10, 10, 5]} intensity={1} color="#ffffff" />
+        <StarBackground />
+        <WireframeShape />
+      </Canvas>
     </div>
   );
 }
