@@ -36,6 +36,79 @@ const ALL_PACKAGES = [
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "100 GB + USA Bonus Config": 250, "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
 const MOBILE_CONFIG_PRICES: Record<string, number> = { "20 GB Config (Budget)": 100, "50 GB Config (Budget)": 150, "100 GB Config (Budget)": 200, "200 GB Config": 300, "300 GB Config": 400, "Unlimited + USA Bonus": 700 };
 
+// 📱 OFFICIAL VPN CLIENT APPS
+const CLIENT_APPS = [
+  {
+    id: "android",
+    name: "Netmod Syna",
+    platform: "Android",
+    osBadge: "Android 7.0+",
+    url: "https://play.google.com/store/apps/details?id=com.netmod.syna",
+    buttonText: "Google Play",
+    desc: "Fast & stable VLESS client with tun2socks for Android smartphones and tablets.",
+    icon: (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
+        <path d="M3.6 1.8A1.6 1.6 0 0 0 3 3.2v17.6a1.6 1.6 0 0 0 .6 1.4l9.7-9.8L3.6 1.8z" fill="#00C1A6"/>
+        <path d="M16.5 15.6l-3.2-3.2-9.7 9.8c.4.2.9.2 1.4 0l11.5-6.6z" fill="#FF3333"/>
+        <path d="M16.5 8.4L5 1.8c-.5-.2-1-.2-1.4 0l9.7 9.8 3.2-3.2z" fill="#FFBA00"/>
+        <path d="M20.6 10.8l-4.1-2.4-3.2 3.2 3.2 3.2 4.1-2.4c.8-.5.8-1.1 0-1.6z" fill="#0086F0"/>
+      </svg>
+    ),
+    badgeColor: "#10b981",
+    btnGrad: "linear-gradient(135deg, #065f46 0%, #047857 100%)"
+  },
+  {
+    id: "ios",
+    name: "NPv Tunnel",
+    platform: "iOS / iPhone",
+    osBadge: "iOS 14.0+",
+    url: "https://apps.apple.com/us/app/npv-tunnel/id1629465476",
+    buttonText: "App Store",
+    desc: "Official iOS tunneling app. Supports VLESS, TLS, and packet routing for iPhone & iPad.",
+    icon: (
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="#ffffff">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 0.93-2.85-.9.04-1.99.6-2.64 1.35-.57.65-1.07 1.71-.93 2.73 1 .08 2.02-.48 2.64-1.23z"/>
+      </svg>
+    ),
+    badgeColor: "#38bdf8",
+    btnGrad: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)"
+  },
+  {
+    id: "windows",
+    name: "Netch Windows",
+    platform: "Windows OS",
+    osBadge: "Windows 10 / 11",
+    url: "https://www.mediafire.com/file/par1mj2p6l4sad9/Netch.rar/file",
+    buttonText: "Direct Download",
+    desc: "High-performance PC proxy with TUN/TAP adapter bypass and process-level game routing.",
+    icon: (
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="#38bdf8">
+        <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801"/>
+      </svg>
+    ),
+    badgeColor: "#60a5fa",
+    btnGrad: "linear-gradient(135deg, #4338ca 0%, #4f46e5 100%)"
+  },
+  {
+    id: "macos",
+    name: "VBox Mac OS",
+    platform: "macOS",
+    osBadge: "macOS 12+",
+    url: "https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690",
+    buttonText: "Mac App Store",
+    desc: "Native desktop V2Ray & VLESS proxy manager optimized for Apple Silicon & Intel Macs.",
+    icon: (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#c084fc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+    badgeColor: "#a855f7",
+    btnGrad: "linear-gradient(135deg, #581c87 0%, #6b21a8 100%)"
+  }
+];
+
 // 🏆 REALISTIC FAIR RANKS CONFIGURATION
 const RANKS = [
   { name: "Bronze", min: 0, color: "#d97706", badgeBg: "rgba(217, 119, 6, 0.15)", border: "#d97706", icon: "🥉" },
@@ -1207,16 +1280,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                   {/* 🇺🇸 USA VPN DATA CARD (SHOWN ONLY IF ADMIN ACTIVATED showUsaUsage) */}
                   {metaData.showUsaUsage && (
-                    <div style={{ background: "linear-gradient(135deg, #be185d 0%, #9d174d 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", boxShadow: "0 8px 24px rgba(190, 24, 93, 0.25)" }}>
+                    <div style={{ background: "linear-gradient(135deg, #4c1d95 0%, #2e1065 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", border: "1px solid rgba(139, 92, 246, 0.35)", boxShadow: "0 8px 24px rgba(76, 29, 149, 0.35)" }}>
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>USA VPN DATA</p>
-                          <span style={{ fontSize: "0.72rem", background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>Bonus Server</span>
+                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "#ddd6fe" }}>USA VPN DATA</p>
+                          <span style={{ fontSize: "0.72rem", background: "rgba(167, 139, 250, 0.2)", color: "#c4b5fd", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold", border: "1px solid rgba(167, 139, 250, 0.3)" }}>Bonus Server</span>
                         </div>
 
                         <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
                           <span>{liveUsaDataUsed || "0 GB"}</span>
-                          <span style={{ fontSize: "1rem", fontWeight: "normal", opacity: 0.85 }}>
+                          <span style={{ fontSize: "1rem", fontWeight: "normal", opacity: 0.85, color: "#e9d5ff" }}>
                             / {liveUsaDataTotal || "Unlimited"}
                           </span>
                         </h2>
@@ -1228,9 +1301,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             width: "8px", 
                             height: "8px", 
                             borderRadius: "50%", 
-                            background: isSyncingUsage ? "#fbbf24" : "#f472b6", 
+                            background: isSyncingUsage ? "#fbbf24" : "#a78bfa", 
                             display: "inline-block",
-                            boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #f472b6",
+                            boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #a78bfa",
                             transition: "all 0.3s ease"
                           }} />
                           <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.9)", letterSpacing: "0.5px" }}>
@@ -1535,66 +1608,306 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                className={`animate-fade-in store-container ${isTourActive && tourStep === 2 ? "tour-spotlight-active" : ""}`}
                style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s ease" }}
              >
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.5rem" }}>
-                 <button onClick={() => setActiveIsp("All")} style={{ padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === "All" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === "All" ? "rgba(99,102,241,0.25)" : "#0e0e17", color: activeIsp === "All" ? "#FFF" : "#9ca3af" }}>
-                   All ISPs
-                 </button>
-                 {Object.keys(ISP_LOGOS).map(isp => (
-                   <button key={isp} onClick={() => setActiveIsp(isp)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.6rem 1.5rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeIsp === isp ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeIsp === isp ? "rgba(99,102,241,0.25)" : "#0e0e17", color: activeIsp === isp ? "#FFF" : "#9ca3af" }}>
-                     <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%" }} alt={isp} />
-                     {isp}
-                   </button>
-                 ))}
-               </div>
+                {/* 🛒 STORE HEADER & SEARCH/FILTER HUD */}
+                <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+                  <h2 style={{ fontSize: "1.8rem", fontWeight: "bold", margin: "0 0 0.5rem 0", color: "#FFF" }}>
+                    VPN Package Store
+                  </h2>
+                  <p style={{ margin: "0 auto", maxWidth: "600px", fontSize: "0.9rem", color: "#9ca3af", lineHeight: 1.6 }}>
+                    Select your Internet Service Provider (ISP) and connection type below to configure the optimal high-speed VLESS bypass configuration.
+                  </p>
+                </div>
 
-               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
-                 <button onClick={() => setActiveNetworkType("all")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "all" ? "#22c55e" : "rgba(255,255,255,0.1)", background: activeNetworkType === "all" ? "rgba(34,197,94,0.15)" : "transparent", color: activeNetworkType === "all" ? "#22c55e" : "#9ca3af" }}>All Packages</button>
-                 {hasRouter && <button onClick={() => setActiveNetworkType("router")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.1)", background: activeNetworkType === "router" ? "rgba(99,102,241,0.15)" : "transparent", color: activeNetworkType === "router" ? "#818cf8" : "#9ca3af" }}>Router Packages</button>}
-                 {hasMobile && <button onClick={() => setActiveNetworkType("mobile")} style={{ padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", border: "1px solid", borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.1)", background: activeNetworkType === "mobile" ? "rgba(245,158,11,0.15)" : "transparent", color: activeNetworkType === "mobile" ? "#f59e0b" : "#9ca3af" }}>Mobile SIM</button>}
-               </div>
+                {/* 🌐 PRIMARY ISP SELECTOR BAR WITH PLAN COUNTS */}
+                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1.2rem" }}>
+                  <button 
+                    onClick={() => setActiveIsp("All")} 
+                    style={{ 
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "0.65rem 1.4rem", 
+                      borderRadius: "12px", 
+                      fontWeight: "bold", 
+                      fontSize: "0.88rem",
+                      cursor: "pointer", 
+                      border: "1px solid", 
+                      borderColor: activeIsp === "All" ? "rgba(167, 139, 250, 0.6)" : "rgba(255,255,255,0.08)", 
+                      background: activeIsp === "All" ? "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)" : "rgba(14, 10, 26, 0.75)", 
+                      color: activeIsp === "All" ? "#FFF" : "#9ca3af",
+                      boxShadow: activeIsp === "All" ? "0 4px 18px rgba(109, 40, 217, 0.4)" : "none",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <span>All ISPs</span>
+                    <span style={{ 
+                      fontSize: "0.72rem", 
+                      padding: "2px 7px", 
+                      borderRadius: "10px", 
+                      background: activeIsp === "All" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)", 
+                      color: activeIsp === "All" ? "#FFF" : "#cbd5e1" 
+                    }}>
+                      {ALL_PACKAGES.length}
+                    </span>
+                  </button>
 
-               {activeNetworkType === "mobile" && (
-                 <div style={{ background: "rgba(14, 16, 34, 0.8)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "14px", padding: "1.2rem 1.5rem", marginBottom: "2rem", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                   <span style={{ fontSize: "1.4rem", marginTop: "-2px" }}>💡</span>
-                   <div>
-                     <h4 style={{ margin: "0 0 0.3rem 0", color: "#FFF", fontSize: "0.95rem" }}>SIM Connection Speed Notice</h4>
-                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                       SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
-                     </p>
-                   </div>
-                 </div>
-               )}
+                  {Object.keys(ISP_LOGOS).map(isp => {
+                    const count = ALL_PACKAGES.filter(p => p.isp === isp).length;
+                    const isActive = activeIsp === isp;
+                    return (
+                      <button 
+                        key={isp} 
+                        onClick={() => setActiveIsp(isp)} 
+                        style={{ 
+                          display: "inline-flex", 
+                          alignItems: "center", 
+                          gap: "8px", 
+                          padding: "0.65rem 1.4rem", 
+                          borderRadius: "12px", 
+                          fontWeight: "bold", 
+                          fontSize: "0.88rem",
+                          cursor: "pointer", 
+                          border: "1px solid", 
+                          borderColor: isActive ? "rgba(167, 139, 250, 0.6)" : "rgba(255,255,255,0.08)", 
+                          background: isActive ? "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)" : "rgba(14, 10, 26, 0.75)", 
+                          color: isActive ? "#FFF" : "#9ca3af",
+                          boxShadow: isActive ? "0 4px 18px rgba(109, 40, 217, 0.4)" : "none",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        <img src={ISP_LOGOS[isp as keyof typeof ISP_LOGOS]} width={20} height={20} style={{ borderRadius: "50%", objectFit: "cover" }} alt={isp} />
+                        <span>{isp}</span>
+                        <span style={{ 
+                          fontSize: "0.72rem", 
+                          padding: "2px 7px", 
+                          borderRadius: "10px", 
+                          background: isActive ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)", 
+                          color: isActive ? "#FFF" : "#cbd5e1" 
+                        }}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-                 {ALL_PACKAGES
-                   .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
-                   .map((pkg) => (
-                   <div key={pkg.id} className="optimized-card" style={{ background: "rgba(13, 13, 23, 0.85)", backdropFilter: "blur(12px)", border: `1px solid ${pkg.statusType === 'warn' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`, borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
-                     <div style={{ flex: 1 }}>
-                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
-                         <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "6px", fontWeight: "bold", background: pkg.statusType === 'best' ? "rgba(34,197,94,0.15)" : pkg.statusType === 'warn' ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.1)", color: pkg.statusType === 'best' ? "#22c55e" : pkg.statusType === 'warn' ? "#ef4444" : "#FFF" }}>
-                           {pkg.statusText}
-                         </span>
-                         <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "#818cf8", border: "1px solid rgba(129,140,248,0.3)", padding: "4px 10px", borderRadius: "20px" }}>
-                           <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={14} height={14} style={{ borderRadius: "50%" }} alt={pkg.isp} />
-                           {pkg.type === "router" ? "Router Package" : "Mobile Sim"}
-                         </span>
-                       </div>
-                       
-                       <h3 style={{ margin: "0 0 0.4rem 0", fontSize: "1.25rem", color: "#FFF", wordBreak: "break-word" }}>{pkg.name}</h3>
-                       <div style={{ marginBottom: "1rem", color: "#818cf8", fontSize: "0.85rem", fontWeight: "bold" }}>
-                         ISP Package Price: <span style={{ color: "#FFF" }}>{pkg.ispPrice}</span>
-                       </div>
-                       <p style={{ color: pkg.statusType === 'warn' ? "#f87171" : "#9ca3af", fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 0.8rem 0" }}>{pkg.desc}</p>
-                       <p style={{ color: "#818cf8", fontSize: "0.8rem", fontWeight: "bold", margin: 0 }}>💡 {pkg.devices}</p>
-                     </div>
+                {/* 📡 SECONDARY NETWORK TYPE SEGMENTED BAR */}
+                <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
+                  <button 
+                    onClick={() => setActiveNetworkType("all")} 
+                    style={{ 
+                      padding: "0.45rem 1.1rem", 
+                      borderRadius: "20px", 
+                      fontSize: "0.82rem", 
+                      fontWeight: "bold", 
+                      cursor: "pointer", 
+                      border: "1px solid", 
+                      borderColor: activeNetworkType === "all" ? "#a78bfa" : "rgba(255,255,255,0.08)", 
+                      background: activeNetworkType === "all" ? "rgba(124, 58, 237, 0.25)" : "rgba(10, 8, 20, 0.5)", 
+                      color: activeNetworkType === "all" ? "#e9d5ff" : "#9ca3af",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    🌐 All Plans ({availablePackages.length})
+                  </button>
 
-                     <button onClick={() => handleSelectPackage(pkg)} style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", borderRadius: "10px", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", fontWeight: "bold", border: "none", cursor: "pointer" }}>
-                       Select & Configure VPN →
-                     </button>
-                   </div>
-                 ))}
-               </div>
+                  {hasRouter && (
+                    <button 
+                      onClick={() => setActiveNetworkType("router")} 
+                      style={{ 
+                        padding: "0.45rem 1.1rem", 
+                        borderRadius: "20px", 
+                        fontSize: "0.82rem", 
+                        fontWeight: "bold", 
+                        cursor: "pointer", 
+                        border: "1px solid", 
+                        borderColor: activeNetworkType === "router" ? "#818cf8" : "rgba(255,255,255,0.08)", 
+                        background: activeNetworkType === "router" ? "rgba(99, 102, 241, 0.25)" : "rgba(10, 8, 20, 0.5)", 
+                        color: activeNetworkType === "router" ? "#c7d2fe" : "#9ca3af",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      📡 Router & Fiber ({availablePackages.filter(p => p.type === "router").length})
+                    </button>
+                  )}
+
+                  {hasMobile && (
+                    <button 
+                      onClick={() => setActiveNetworkType("mobile")} 
+                      style={{ 
+                        padding: "0.45rem 1.1rem", 
+                        borderRadius: "20px", 
+                        fontSize: "0.82rem", 
+                        fontWeight: "bold", 
+                        cursor: "pointer", 
+                        border: "1px solid", 
+                        borderColor: activeNetworkType === "mobile" ? "#f59e0b" : "rgba(255,255,255,0.08)", 
+                        background: activeNetworkType === "mobile" ? "rgba(245, 158, 11, 0.2)" : "rgba(10, 8, 20, 0.5)", 
+                        color: activeNetworkType === "mobile" ? "#fde68a" : "#9ca3af",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      📱 Mobile SIM ({availablePackages.filter(p => p.type === "mobile").length})
+                    </button>
+                  )}
+                </div>
+
+                {/* 💡 SIM SPEED ADVISORY BANNER */}
+                {activeNetworkType === "mobile" && (
+                  <div style={{ 
+                    background: "linear-gradient(135deg, rgba(20, 14, 38, 0.9) 0%, rgba(14, 10, 26, 0.95) 100%)", 
+                    border: "1px solid rgba(245, 158, 11, 0.35)", 
+                    borderRadius: "16px", 
+                    padding: "1.2rem 1.5rem", 
+                    marginBottom: "2rem", 
+                    display: "flex", 
+                    alignItems: "flex-start", 
+                    gap: "14px",
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)"
+                  }}>
+                    <span style={{ fontSize: "1.5rem", lineHeight: 1 }}>💡</span>
+                    <div>
+                      <h4 style={{ margin: "0 0 0.3rem 0", color: "#fef3c7", fontSize: "0.95rem", fontWeight: "bold" }}>SIM Connection Speed Notice</h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
+                        SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 📦 REDESIGNED PACKAGES GRID */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.4rem" }}>
+                  {ALL_PACKAGES
+                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
+                    .map((pkg) => {
+                      const isWarn = pkg.statusType === "warn";
+                      const isBest = pkg.statusType === "best";
+
+                      return (
+                        <div 
+                          key={pkg.id} 
+                          className="optimized-card" 
+                          style={{ 
+                            background: "linear-gradient(180deg, rgba(16, 11, 30, 0.95) 0%, rgba(9, 7, 18, 0.98) 100%)", 
+                            backdropFilter: "blur(12px)", 
+                            border: `1px solid ${isWarn ? "rgba(239, 68, 68, 0.35)" : "rgba(124, 58, 237, 0.28)"}`, 
+                            borderRadius: "18px", 
+                            padding: "1.6rem", 
+                            display: "flex", 
+                            flexDirection: "column", 
+                            height: "100%", 
+                            justifyContent: "space-between",
+                            boxShadow: "0 12px 32px rgba(0, 0, 0, 0.65), 0 0 15px rgba(124, 58, 237, 0.08)",
+                            transition: "transform 0.2s ease, border-color 0.2s ease"
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            {/* Card Badges Row */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.1rem", flexWrap: "wrap", gap: "8px" }}>
+                              <span style={{ 
+                                fontSize: "0.75rem", 
+                                padding: "4px 10px", 
+                                borderRadius: "20px", 
+                                fontWeight: "bold", 
+                                background: isBest ? "rgba(34, 197, 94, 0.18)" : isWarn ? "rgba(239, 68, 68, 0.18)" : "rgba(124, 58, 237, 0.2)", 
+                                color: isBest ? "#4ade80" : isWarn ? "#f87171" : "#c4b5fd",
+                                border: `1px solid ${isBest ? "rgba(34, 197, 94, 0.35)" : isWarn ? "rgba(239, 68, 68, 0.35)" : "rgba(124, 58, 237, 0.35)"}`
+                              }}>
+                                {pkg.statusText}
+                              </span>
+
+                              <span style={{ 
+                                display: "inline-flex", 
+                                alignItems: "center", 
+                                gap: "6px", 
+                                fontSize: "0.75rem", 
+                                color: "#c4b5fd", 
+                                border: "1px solid rgba(124, 58, 237, 0.35)", 
+                                background: "rgba(124, 58, 237, 0.12)",
+                                padding: "4px 10px", 
+                                borderRadius: "20px",
+                                fontWeight: "600"
+                              }}>
+                                <img src={ISP_LOGOS[pkg.isp as keyof typeof ISP_LOGOS]} width={14} height={14} style={{ borderRadius: "50%" }} alt={pkg.isp} />
+                                {pkg.type === "router" ? "Router Package" : "Mobile SIM"}
+                              </span>
+                            </div>
+                            
+                            {/* Plan Name */}
+                            <h3 style={{ margin: "0 0 0.8rem 0", fontSize: "1.3rem", fontWeight: "bold", color: "#FFF", wordBreak: "break-word" }}>
+                              {pkg.name}
+                            </h3>
+
+                            {/* Pricing Box */}
+                            <div style={{ 
+                              background: "rgba(10, 6, 20, 0.65)", 
+                              border: "1px solid rgba(255, 255, 255, 0.06)", 
+                              borderRadius: "12px", 
+                              padding: "0.85rem 1rem", 
+                              marginBottom: "1rem",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "4px"
+                            }}>
+                              <div style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
+                                ISP Official Price: <strong style={{ color: "#FFF" }}>{pkg.ispPrice}</strong>
+                              </div>
+                              <div style={{ fontSize: "0.82rem", color: "#a78bfa", fontWeight: "600" }}>
+                                VPN Config: <span style={{ color: "#e9d5ff" }}>From Rs. {pkg.type === "router" ? "250" : "100"} / mo</span>
+                              </div>
+                            </div>
+
+                            {/* Description */}
+                            <p style={{ color: isWarn ? "#fca5a5" : "#9ca3af", fontSize: "0.85rem", lineHeight: 1.55, margin: "0 0 1rem 0" }}>
+                              {pkg.desc}
+                            </p>
+
+                            {/* Device Compatibility */}
+                            <div style={{ 
+                              display: "inline-flex", 
+                              alignItems: "center", 
+                              gap: "6px", 
+                              color: "#818cf8", 
+                              fontSize: "0.78rem", 
+                              fontWeight: "600",
+                              background: "rgba(99, 102, 241, 0.1)",
+                              padding: "4px 10px",
+                              borderRadius: "8px",
+                              border: "1px solid rgba(99, 102, 241, 0.2)"
+                            }}>
+                              <span>📱</span> {pkg.devices}
+                            </div>
+                          </div>
+
+                          {/* CTA Button */}
+                          <button 
+                            onClick={() => handleSelectPackage(pkg)} 
+                            style={{ 
+                              width: "100%", 
+                              marginTop: "1.4rem", 
+                              padding: "0.95rem 1.2rem", 
+                              borderRadius: "12px", 
+                              background: "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)", 
+                              color: "#FFF", 
+                              fontWeight: "bold", 
+                              fontSize: "0.92rem",
+                              border: "1px solid rgba(167, 139, 250, 0.45)", 
+                              boxShadow: "0 4px 18px rgba(109, 40, 217, 0.35)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "8px",
+                              transition: "all 0.2s ease"
+                            }}
+                          >
+                            <span>Select & Configure VPN</span>
+                            <span style={{ fontSize: "1.1rem" }}>→</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
              </div>
           )}
 
@@ -1739,6 +2052,91 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                      <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
                   </div>
                )}
+
+                {/* 📱 RECOMMENDED OFFICIAL VPN CLIENT APPS (STEP 1) */}
+                <div style={{ marginTop: "2.5rem", borderTop: "1px solid rgba(124, 58, 237, 0.2)", paddingTop: "2rem" }}>
+                  <div style={{ marginBottom: "1.4rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "10px" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1.35rem", fontWeight: "bold", color: "#FFF", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span>📱</span> Recommended VPN Client Apps
+                      </h3>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#9ca3af" }}>
+                        Download the official tunneling client for your device, copy your config key above, and connect in 1-click.
+                      </p>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", background: "rgba(124, 58, 237, 0.15)", border: "1px solid rgba(124, 58, 237, 0.35)", color: "#c4b5fd", padding: "4px 12px", borderRadius: "20px", fontWeight: "600" }}>
+                      Verified VLESS Clients
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
+                    {CLIENT_APPS.map((app) => (
+                      <div
+                        key={app.id}
+                        className="optimized-card"
+                        style={{
+                          background: "linear-gradient(180deg, rgba(18, 12, 32, 0.92) 0%, rgba(10, 8, 20, 0.98) 100%)",
+                          backdropFilter: "blur(12px)",
+                          borderRadius: "16px",
+                          border: "1px solid rgba(124, 58, 237, 0.28)",
+                          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(124, 58, 237, 0.08)",
+                          padding: "1.4rem",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          gap: "1.2rem",
+                          transition: "transform 0.2s ease, border-color 0.2s ease"
+                        }}
+                      >
+                        <div>
+                          {/* Header with App Icon and OS Badge */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+                            <div style={{ width: "46px", height: "46px", borderRadius: "12px", background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {app.icon}
+                            </div>
+                            <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.12)", color: app.badgeColor, padding: "3px 10px", borderRadius: "12px", fontWeight: "600" }}>
+                              {app.osBadge}
+                            </span>
+                          </div>
+
+                          <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "1.15rem", fontWeight: "bold", color: "#FFF" }}>{app.name}</h4>
+                          <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.78rem", color: "#a78bfa", fontWeight: "600" }}>{app.platform}</p>
+                          <p style={{ margin: 0, fontSize: "0.82rem", color: "#9ca3af", lineHeight: 1.55 }}>{app.desc}</p>
+                        </div>
+
+                        <a
+                          href={app.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                            width: "100%",
+                            padding: "0.75rem 1rem",
+                            borderRadius: "10px",
+                            background: app.btnGrad,
+                            color: "#FFF",
+                            fontSize: "0.85rem",
+                            fontWeight: "bold",
+                            textDecoration: "none",
+                            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.4)",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            transition: "all 0.2s ease"
+                          }}
+                        >
+                          <span>Download on {app.buttonText}</span>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
             </div>
           )}
 
@@ -2493,15 +2891,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 width: shouldExpand ? "auto" : "42px", 
                 justifyContent: "center", 
                 borderRadius: "25px", 
-                border: isActive ? "1px solid rgba(192, 132, 252, 0.45)" : isHovered || isScrubbed ? "1px solid rgba(168, 85, 247, 0.35)" : "1px solid transparent", 
+                border: isActive ? "1px solid rgba(167, 139, 250, 0.55)" : isHovered || isScrubbed ? "1px solid rgba(124, 58, 237, 0.38)" : "1px solid transparent", 
                 background: isActive 
-                  ? "linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.45))" 
+                  ? "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)" 
                   : isHovered || isScrubbed 
-                  ? "rgba(168, 85, 247, 0.2)" 
+                  ? "rgba(109, 40, 217, 0.25)" 
                   : "transparent", 
                 color: isActive ? "#FFF" : isHovered || isScrubbed ? "#e9d5ff" : "rgba(255,255,255,0.6)", 
                 cursor: "pointer",
-                boxShadow: isActive ? "0 0 16px rgba(168, 85, 247, 0.4), inset 0 1px 1px rgba(255,255,255,0.3)" : "none",
+                boxShadow: isActive ? "0 0 18px rgba(109, 40, 217, 0.45), inset 0 1px 1px rgba(255,255,255,0.3)" : "none",
                 transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
               }}
             >
@@ -2728,11 +3126,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           align-items: center;
           gap: 0.35rem;
           padding: 0.4rem 0.5rem;
-          background: rgba(14, 11, 26, 0.72);
-          backdrop-filter: blur(24px) saturate(190%);
-          -webkit-backdrop-filter: blur(24px) saturate(190%);
-          border: 1px solid rgba(168, 85, 247, 0.3);
-          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7), 0 0 25px rgba(168, 85, 247, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+          background: rgba(10, 6, 20, 0.90);
+          backdrop-filter: blur(16px) saturate(180%);
+          -webkit-backdrop-filter: blur(16px) saturate(180%);
+          border: 1px solid rgba(124, 58, 237, 0.35);
+          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(109, 40, 217, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.15);
           border-radius: 9999px;
           z-index: 1000;
           transition: all 0.3s ease;
