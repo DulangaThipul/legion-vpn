@@ -262,7 +262,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     customVpnUserId: "",
     isRenewUnlocked: false,
     renewPopupMessage: "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.",
-    forceShowGuide: false
+    forceShowGuide: false,
+    showUsaUsage: false,
+    usaSubscriptionUrl: "",
+    usaDataTotal: "Unlimited",
+    usaDataUsed: "0 GB",
+    usaLastRecordedUsage: "0 GB",
+    usaPreviousUsage: 0
   };
 
   if (user?.subscriptionLink) {
@@ -337,6 +343,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   const [isRefreshingLive, setIsRefreshingLive] = useState<boolean>(false);
   const [liveRefreshMsg, setLiveRefreshMsg] = useState<string>("");
 
+  // 🇺🇸 USA VPN STATE (PER-CLIENT)
+  const [showUsaUsage, setShowUsaUsage] = useState<boolean>(Boolean(metaData.showUsaUsage));
+  const [usaSubscriptionUrlInput, setUsaSubscriptionUrlInput] = useState<string>(metaData.usaSubscriptionUrl || "");
+  const [usaSelectedDataTotal, setUsaSelectedDataTotal] = useState<string>(metaData.usaDataTotal || "Unlimited");
+  const [usaDataUsedInput, setUsaDataUsedInput] = useState<string>(metaData.usaLastRecordedUsage || metaData.usaDataUsed || "0 GB");
+  const [usaPreviousUsageInput, setUsaPreviousUsageInput] = useState<string | number>(metaData.usaPreviousUsage ?? 0);
+
   const handleRefreshSingleClient = async () => {
     setIsRefreshingLive(true);
     setLiveRefreshMsg("Connecting to 3x-ui...");
@@ -345,7 +358,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       const data = await res.json();
       if (data.success) {
         setDataUsedInput(data.dataUsed);
-        setLiveRefreshMsg(`✓ Live: ${data.dataUsed} (3x-ui: ${data.current3xuiUsageGB || 0} GB + Prev: ${data.previousUsage || 0} GB)`);
+        if (data.showUsaUsage && data.usaDataUsed) {
+          setUsaDataUsedInput(data.usaDataUsed);
+        }
+        setLiveRefreshMsg(`✓ Live: Main: ${data.dataUsed} ${data.showUsaUsage ? `| USA: ${data.usaDataUsed}` : ""}`);
       } else {
         setLiveRefreshMsg(`⚠️ ${data.warning || data.message || "Failed to fetch live usage"}`);
       }
@@ -373,7 +389,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       dataUsed: dataUsedInput,
       lastRecordedUsage: dataUsedInput,
       subscriptionUrl: subscriptionUrlInput.trim(),
-      customVpnUserId: customVpnUserIdInput.trim()
+      customVpnUserId: customVpnUserIdInput.trim(),
+      showUsaUsage,
+      usaSubscriptionUrl: usaSubscriptionUrlInput.trim(),
+      usaDataTotal: usaSelectedDataTotal,
+      usaDataUsed: usaDataUsedInput,
+      usaLastRecordedUsage: usaDataUsedInput,
+      usaPreviousUsage: parseFloat(String(usaPreviousUsageInput)) || 0
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
     setLiveRefreshMsg(`🔒 Successfully locked ${currentNum} GB as Previous Usage!`);
@@ -388,6 +410,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       formattedUsed = "0 GB";
     }
 
+    const rawUsa = usaDataUsedInput.trim();
+    let formattedUsa = rawUsa ? (rawUsa.toLowerCase().includes("gb") || rawUsa.toLowerCase().includes("mb") ? rawUsa : `${rawUsa} GB`) : "0 GB";
+    if (!rawUsa || rawUsa === "0" || rawUsa === "0 GB" || rawUsa.toLowerCase() === "0 gb") {
+      formattedUsa = "0 GB";
+    }
+    const usaOffset = parseFloat(String(usaPreviousUsageInput)) || 0;
+
     const offsetVal = parseFloat(String(previousUsageInput)) || 0;
     const updatedMeta = {
       ...metaData,
@@ -397,7 +426,13 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       subscriptionUrl: subscriptionUrlInput.trim(),
       previousUsage: offsetVal,
       previousUsageGB: offsetVal,
-      customVpnUserId: customVpnUserIdInput.trim()
+      customVpnUserId: customVpnUserIdInput.trim(),
+      showUsaUsage,
+      usaSubscriptionUrl: usaSubscriptionUrlInput.trim(),
+      usaDataTotal: usaSelectedDataTotal,
+      usaDataUsed: formattedUsa,
+      usaLastRecordedUsage: formattedUsa,
+      usaPreviousUsage: usaOffset
     };
     onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
   };
@@ -821,6 +856,105 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             onChange={(e) => setCustomVpnUserIdInput(e.target.value)}
             style={{ marginTop: "8px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#a5b4fc", fontFamily: "monospace", fontSize: "0.85rem", boxSizing: "border-box", outline: "none" }}
           />
+        </div>
+
+        {/* 🇺🇸 USA VPN USAGE CONTROL (PER-CLIENT ON / OFF SWITCH & 3X-UI LINK) */}
+        <div style={{ background: showUsaUsage ? "rgba(236, 72, 153, 0.08)" : "rgba(0,0,0,0.3)", padding: "1.2rem", borderRadius: "12px", border: `1px solid ${showUsaUsage ? "rgba(236, 72, 153, 0.35)" : "rgba(255,255,255,0.08)"}`, marginBottom: "1.2rem", transition: "all 0.3s ease" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem", flexWrap: "wrap", gap: "10px" }}>
+            <div>
+              <h4 style={{ margin: 0, color: showUsaUsage ? "#f472b6" : "#cbd5e1", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>🇺🇸</span> USA VPN Usage Card (Bonus / Router Config)
+              </h4>
+              <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#9ca3af" }}>
+                {showUsaUsage ? "Client Dashboard එකේ USA VPN Usage Card එක පෙන්වයි." : "Off කර ඇති විට Client ට Main Usage Card එක පමණක් පෙන්වයි."}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowUsaUsage(!showUsaUsage)}
+              style={{
+                background: showUsaUsage ? "linear-gradient(90deg, #db2777, #ec4899)" : "rgba(255,255,255,0.08)",
+                color: "#FFF",
+                border: `1px solid ${showUsaUsage ? "#f472b6" : "rgba(255,255,255,0.15)"}`,
+                padding: "0.45rem 1.1rem",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                fontSize: "0.82rem",
+                cursor: "pointer",
+                boxShadow: showUsaUsage ? "0 2px 10px rgba(236,72,153,0.3)" : "none",
+                transition: "all 0.2s"
+              }}
+            >
+              {showUsaUsage ? "🇺🇸 USA VPN Card: ON" : "🇺🇸 USA VPN Card: OFF"}
+            </button>
+          </div>
+
+          {showUsaUsage && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem", borderTop: "1px solid rgba(236, 72, 153, 0.2)", paddingTop: "1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: "0.8rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#f472b6" }}>USA VPN Total Quota</p>
+                  <select 
+                    value={usaSelectedDataTotal} 
+                    onChange={(e) => setUsaSelectedDataTotal(e.target.value)}
+                    style={{ marginTop: "6px", width: "100%", padding: "0.55rem", borderRadius: "6px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", color: "#f472b6", fontWeight: "bold", outline: "none" }}
+                  >
+                    {DATA_PACKAGE_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: "0.8rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#f472b6" }}>USA Data Used (Manual / Auto)</p>
+                    <button
+                      type="button"
+                      onClick={() => setUsaDataUsedInput("0 GB")}
+                      style={{ background: "rgba(236, 72, 153, 0.2)", color: "#f472b6", border: "1px solid rgba(236, 72, 153, 0.4)", borderRadius: "4px", fontSize: "0.65rem", padding: "1px 6px", cursor: "pointer" }}
+                    >
+                      Reset 0 GB
+                    </button>
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="0 GB"
+                    value={usaDataUsedInput} 
+                    onChange={(e) => setUsaDataUsedInput(e.target.value)}
+                    style={{ marginTop: "6px", width: "100%", padding: "0.55rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", fontWeight: "bold", outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: "0.8rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#f472b6" }}>USA Previous Server Offset (GB)</p>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    min="0"
+                    placeholder="0"
+                    value={usaPreviousUsageInput} 
+                    onChange={(e) => setUsaPreviousUsageInput(e.target.value)}
+                    style={{ marginTop: "6px", width: "100%", padding: "0.55rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#eab308", fontWeight: "bold", outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+
+              {/* USA 3x-ui Link */}
+              <div style={{ background: "rgba(0,0,0,0.4)", padding: "0.8rem", borderRadius: "8px", border: "1px solid rgba(236, 72, 153, 0.25)" }}>
+                <p style={{ margin: "0 0 6px 0", fontSize: "0.75rem", color: "#f472b6", fontWeight: "bold" }}>
+                  🔗 USA VPN 3x-ui Subscription Link
+                </p>
+                <input 
+                  type="text" 
+                  placeholder="Paste USA VPN 3x-ui subscription URL (e.g. https://usa-vps.com:2096/sub/...)"
+                  value={usaSubscriptionUrlInput} 
+                  onChange={(e) => setUsaSubscriptionUrlInput(e.target.value)}
+                  style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", color: "#f472b6", fontSize: "0.85rem", boxSizing: "border-box", outline: "none" }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <button 
