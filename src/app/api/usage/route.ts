@@ -208,6 +208,17 @@ export async function GET(req: NextRequest) {
     const fallbackUsed = metaData.lastRecordedUsage || metaData.dataUsed || "0 GB";
     const fallbackTotal = metaData.dataTotal || "Unlimited";
 
+    // 🇺🇸 USA VPN Usage Metadata
+    const showUsaUsage = Boolean(metaData.showUsaUsage);
+    let usaSubscriptionUrl = metaData.usaSubscriptionUrl ? String(metaData.usaSubscriptionUrl).trim() : "";
+    if (usaSubscriptionUrl && !usaSubscriptionUrl.startsWith("http://") && !usaSubscriptionUrl.startsWith("https://")) {
+      usaSubscriptionUrl = "https://" + usaSubscriptionUrl;
+    }
+    const usaPreviousUsage = Number(metaData.usaPreviousUsage ?? 0);
+    let formattedUsaDataUsed = metaData.usaLastRecordedUsage || metaData.usaDataUsed || "0 GB";
+    let calculatedUsaDataTotal = metaData.usaDataTotal || "Unlimited";
+    let usaCurrent3xuiUsageGB = 0;
+
     // Detect 3x-ui subscription URL
     let subscriptionUrl =
       metaData.subscriptionUrl ||
@@ -226,8 +237,46 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // If no subscription URL is configured, return whatever was last recorded safely
+    // Helper to fetch USA VPN Usage
+    const fetchUsaUsageIfEnabled = async () => {
+      if (!showUsaUsage || !usaSubscriptionUrl) return;
+      try {
+        const { headers: usaHeaders } = await fetchSubscriptionHeaders(usaSubscriptionUrl, 6000);
+        const usaParsed = parseUserInfoHeader(usaHeaders);
+        if (usaParsed) {
+          const usaBytes = usaParsed.uploadBytes + usaParsed.downloadBytes;
+          usaCurrent3xuiUsageGB = usaBytes / (1024 * 1024 * 1024);
+          const usaTotalGB = usaPreviousUsage + usaCurrent3xuiUsageGB;
+          formattedUsaDataUsed = `${usaTotalGB.toFixed(2)} GB`;
+          if (usaParsed.totalLimitBytes > 0 && (!metaData.usaDataTotal || metaData.usaDataTotal === "Unlimited")) {
+            calculatedUsaDataTotal = `${(usaParsed.totalLimitBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
+          }
+        }
+      } catch (err) {
+        console.warn("USA 3x-ui server unreachable or timeout:", err);
+      }
+    };
+
+    // If no main subscription URL is configured, return whatever was last recorded safely
     if (!subscriptionUrl) {
+      await fetchUsaUsageIfEnabled();
+
+      if (showUsaUsage) {
+        try {
+          const updatedMeta = {
+            ...metaData,
+            usaDataUsed: formattedUsaDataUsed,
+            usaLastRecordedUsage: formattedUsaDataUsed,
+            usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
+            usaDataTotal: calculatedUsaDataTotal,
+          };
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { subscriptionLink: JSON.stringify(updatedMeta) },
+          });
+        } catch {}
+      }
+
       return NextResponse.json({
         success: true,
         dataUsed: fallbackUsed,
@@ -236,15 +285,25 @@ export async function GET(req: NextRequest) {
         previousUsage,
         current3xuiUsageGB: 0,
         isLiveSync: false,
-        message: "No 3x-ui subscription URL configured",
+        showUsaUsage,
+        usaDataUsed: formattedUsaDataUsed,
+        usaLastRecordedUsage: formattedUsaDataUsed,
+        usaDataTotal: calculatedUsaDataTotal,
+        usaPreviousUsage,
+        usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
+        message: "No main 3x-ui subscription URL configured",
       });
     }
 
+    // Parallel fetch main 3x-ui and USA 3x-ui if enabled
     let parsedHeader: { uploadBytes: number; downloadBytes: number; totalLimitBytes: number } | null = null;
 
     try {
-      const { headers } = await fetchSubscriptionHeaders(subscriptionUrl, 8000);
-      parsedHeader = parseUserInfoHeader(headers);
+      const [mainRes] = await Promise.all([
+        fetchSubscriptionHeaders(subscriptionUrl, 8000),
+        fetchUsaUsageIfEnabled(),
+      ]);
+      parsedHeader = parseUserInfoHeader(mainRes.headers);
     } catch (fetchErr: any) {
       console.warn("3x-ui server unreachable or timeout:", fetchErr?.message || fetchErr);
       return NextResponse.json({
@@ -255,6 +314,12 @@ export async function GET(req: NextRequest) {
         previousUsage,
         current3xuiUsageGB: 0,
         isLiveSync: false,
+        showUsaUsage,
+        usaDataUsed: formattedUsaDataUsed,
+        usaLastRecordedUsage: formattedUsaDataUsed,
+        usaDataTotal: calculatedUsaDataTotal,
+        usaPreviousUsage,
+        usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
         warning: "3x-ui server unreachable, returning last recorded usage from database",
       });
     }
@@ -268,6 +333,12 @@ export async function GET(req: NextRequest) {
         previousUsage,
         current3xuiUsageGB: 0,
         isLiveSync: false,
+        showUsaUsage,
+        usaDataUsed: formattedUsaDataUsed,
+        usaLastRecordedUsage: formattedUsaDataUsed,
+        usaDataTotal: calculatedUsaDataTotal,
+        usaPreviousUsage,
+        usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
         warning: "subscription-userinfo header missing, returning last recorded usage",
       });
     }
@@ -293,6 +364,12 @@ export async function GET(req: NextRequest) {
         previousUsage: previousUsage,
         previousUsageGB: previousUsage,
         lastUsageSync: new Date().toISOString(),
+        ...(showUsaUsage ? {
+          usaDataUsed: formattedUsaDataUsed,
+          usaLastRecordedUsage: formattedUsaDataUsed,
+          usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
+          usaDataTotal: calculatedUsaDataTotal,
+        } : {})
       };
       await prisma.user.update({
         where: { id: user.id },
@@ -312,6 +389,12 @@ export async function GET(req: NextRequest) {
       uploadGB: Number((parsedHeader.uploadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       downloadGB: Number((parsedHeader.downloadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       isLiveSync: true,
+      showUsaUsage,
+      usaDataUsed: formattedUsaDataUsed,
+      usaLastRecordedUsage: formattedUsaDataUsed,
+      usaDataTotal: calculatedUsaDataTotal,
+      usaPreviousUsage,
+      usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
     });
   } catch (error: any) {
     console.error("Error in /api/usage:", error);
