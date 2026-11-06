@@ -1605,7 +1605,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           ======================== */}
           {activeTab === "buy" && (
              <div 
-               className={`animate-fade-in store-container ${isTourActive && tourStep === 2 ? "tour-spotlight-active" : ""}`}
+               className={`animate-fade-in ${isTourActive && tourStep === 2 ? "tour-spotlight-active" : ""}`}
                style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s ease" }}
              >
                 {/* 🛒 STORE HEADER & SEARCH/FILTER HUD */}
@@ -1786,10 +1786,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       return (
                         <div 
                           key={pkg.id} 
-                          className="optimized-card" 
                           style={{ 
-                            background: "linear-gradient(180deg, rgba(16, 11, 30, 0.95) 0%, rgba(9, 7, 18, 0.98) 100%)", 
-                            backdropFilter: "blur(12px)", 
+                            background: "linear-gradient(180deg, rgba(16, 11, 30, 0.97) 0%, rgba(9, 7, 18, 0.99) 100%)", 
                             border: `1px solid ${isWarn ? "rgba(239, 68, 68, 0.35)" : "rgba(124, 58, 237, 0.28)"}`, 
                             borderRadius: "18px", 
                             padding: "1.6rem", 
@@ -1948,8 +1946,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <div 
                           key={idx} 
                           style={{ 
-                            background: "linear-gradient(180deg, rgba(16, 12, 28, 0.95) 0%, rgba(8, 8, 14, 0.98) 100%)", 
-                            backdropFilter: "blur(16px)", 
+                            background: "linear-gradient(180deg, rgba(16, 12, 28, 0.97) 0%, rgba(8, 8, 14, 0.99) 100%)", 
                             borderRadius: "18px", 
                             border: "1px solid rgba(168, 85, 247, 0.28)", 
                             boxShadow: "0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(168, 85, 247, 0.08)",
@@ -2073,10 +2070,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     {CLIENT_APPS.map((app) => (
                       <div
                         key={app.id}
-                        className="optimized-card"
                         style={{
-                          background: "linear-gradient(180deg, rgba(18, 12, 32, 0.92) 0%, rgba(10, 8, 20, 0.98) 100%)",
-                          backdropFilter: "blur(12px)",
+                          background: "linear-gradient(180deg, rgba(18, 12, 32, 0.96) 0%, rgba(10, 8, 20, 0.99) 100%)",
                           borderRadius: "16px",
                           border: "1px solid rgba(124, 58, 237, 0.28)",
                           boxShadow: "0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(124, 58, 237, 0.08)",
@@ -2970,15 +2965,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           -webkit-tap-highlight-color: transparent;
         }
 
-        .store-container {
-          contain: layout paint;
-        }
 
-        .optimized-card {
-          transform: translateZ(0);
-          backface-visibility: hidden;
-          contain: content;
-        }
 
         /* 🧭 Mobile & Desktop Optimized Tour Styles */
         .tour-controller-wrapper {
