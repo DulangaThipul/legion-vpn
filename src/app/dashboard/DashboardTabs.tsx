@@ -531,8 +531,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return ALL_PACKAGES.filter(p => activeIsp === "All" || p.isp === activeIsp);
   }, [activeIsp]);
 
+  const displayedPackages = useMemo(() => {
+    return ALL_PACKAGES.filter(p => 
+      (activeIsp === "All" || p.isp === activeIsp) && 
+      (activeNetworkType === "all" || p.type === activeNetworkType)
+    );
+  }, [activeIsp, activeNetworkType]);
+
   const hasRouter = useMemo(() => availablePackages.some(p => p.type === "router"), [availablePackages]);
   const hasMobile = useMemo(() => availablePackages.some(p => p.type === "mobile"), [availablePackages]);
+  const routerCount = useMemo(() => availablePackages.filter(p => p.type === "router").length, [availablePackages]);
+  const mobileCount = useMemo(() => availablePackages.filter(p => p.type === "mobile").length, [availablePackages]);
 
   useEffect(() => {
     if (!hasRouter && activeNetworkType === "router") setActiveNetworkType("all");
@@ -1170,7 +1179,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   className={`hover-scale-card ${isTourActive && tourStep === 1 ? "tour-spotlight-active" : ""}`}
                   style={{ background: "rgba(12, 23, 18, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem", transition: "all 0.3s ease" }}
                 >
-                  <div style={{ fontSize: "2.3rem" }}>🎁</div>
+                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 12 20 22 4 22 4 12" />
+                      <rect x="2" y="7" width="20" height="5" />
+                      <line x1="12" y1="22" x2="12" y2="7" />
+                      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                    </svg>
+                  </div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#22c55e", fontSize: "1.05rem" }}>Claim Free Test Plan</h3>
                     <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Experience our premium speeds with a 3GB trial.</p>
@@ -1179,7 +1196,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                 {/* 🛒 BUY PREMIUM CONFIG */}
                 <div onClick={() => setActiveTab("buy")} style={{ background: "rgba(16, 16, 29, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ fontSize: "2.3rem" }}>🛒</div>
+                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                      <line x1="3" y1="6" x2="21" y2="6" />
+                      <path d="M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                  </div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>Buy Premium Config</h3>
                     <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Unlock unlimited internet with our stable plans.</p>
@@ -1188,7 +1211,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                 {/* 📖 REPLAY GUIDE BUTTON */}
                 <div onClick={() => { setTourStep(1); setIsTourActive(true); setActiveTab("dashboard"); }} style={{ background: "rgba(18, 16, 38, 0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(129,140,248,0.3)", borderRadius: "16px", padding: "1.4rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "1.2rem" }} className="hover-scale-card">
-                  <div style={{ fontSize: "2.3rem" }}>🧭</div>
+                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(129, 140, 248, 0.15)", border: "1px solid rgba(129, 140, 248, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                    </svg>
+                  </div>
                   <div>
                     <h3 style={{ margin: "0 0 0.3rem 0", color: "#818cf8", fontSize: "1.05rem" }}>User Guide Tour</h3>
                     <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Replay the interactive walkthrough anytime.</p>
@@ -1204,7 +1232,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   {/* 📡 LIVE CONNECTION (LEFT) */}
                   <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px" }}>
                     <div>
-                      <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📡 LIVE CONNECTION</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.8rem" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                          <line x1="12" y1="20" x2="12.01" y2="20" />
+                        </svg>
+                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>LIVE CONNECTION</p>
+                      </div>
                       <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
                         <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block" }}></span>
                         {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
@@ -1217,9 +1253,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <div style={{ background: "#2563eb", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px" }}>
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>
-                          {metaData.showUsaUsage ? "📊 MAIN DATA USED" : "📊 DATA USED"}
-                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <svg width="20" height="14" viewBox="0 0 20 14" style={{ borderRadius: "3px", overflow: "hidden", display: "inline-block", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
+                            <rect width="20" height="7" fill="#ED2939" />
+                            <rect y="7" width="20" height="7" fill="#FFFFFF" />
+                            <circle cx="5" cy="3.5" r="2.2" fill="#FFFFFF" />
+                            <circle cx="5.8" cy="3.5" r="1.9" fill="#ED2939" />
+                            <circle cx="6.2" cy="2.2" r="0.35" fill="#FFFFFF" />
+                            <circle cx="7.2" cy="2.8" r="0.35" fill="#FFFFFF" />
+                            <circle cx="7.2" cy="4.2" r="0.35" fill="#FFFFFF" />
+                            <circle cx="6.2" cy="4.8" r="0.35" fill="#FFFFFF" />
+                            <circle cx="5.6" cy="3.5" r="0.35" fill="#FFFFFF" />
+                          </svg>
+                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>
+                            SG VPN DATA
+                          </p>
+                        </div>
                         
                         {/* MANUAL REFRESH BUTTON WITH 30s COUNTDOWN (NO EMOJI) */}
                         <button
@@ -1278,13 +1327,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   </div>
 
-                  {/* 🇺🇸 USA VPN DATA CARD (SHOWN ONLY IF ADMIN ACTIVATED showUsaUsage) */}
+                  {/* USA VPN DATA CARD (SHOWN ONLY IF ADMIN ACTIVATED showUsaUsage) */}
                   {metaData.showUsaUsage && (
-                    <div style={{ background: "linear-gradient(135deg, #4c1d95 0%, #2e1065 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", border: "1px solid rgba(139, 92, 246, 0.35)", boxShadow: "0 8px 24px rgba(76, 29, 149, 0.35)" }}>
+                    <div style={{ background: "linear-gradient(135deg, #be185d 0%, #7c3aed 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", border: "1px solid rgba(244, 114, 182, 0.4)", boxShadow: "0 8px 24px rgba(190, 24, 93, 0.35)" }}>
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "#ddd6fe" }}>USA VPN DATA</p>
-                          <span style={{ fontSize: "0.72rem", background: "rgba(167, 139, 250, 0.2)", color: "#c4b5fd", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold", border: "1px solid rgba(167, 139, 250, 0.3)" }}>Bonus Server</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <svg width="20" height="14" viewBox="0 0 20 14" style={{ borderRadius: "3px", overflow: "hidden", display: "inline-block", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
+                              <rect width="20" height="14" fill="#B22234" />
+                              <rect y="1.08" width="20" height="1.08" fill="#FFFFFF" />
+                              <rect y="3.24" width="20" height="1.08" fill="#FFFFFF" />
+                              <rect y="5.40" width="20" height="1.08" fill="#FFFFFF" />
+                              <rect y="7.56" width="20" height="1.08" fill="#FFFFFF" />
+                              <rect y="9.72" width="20" height="1.08" fill="#FFFFFF" />
+                              <rect y="11.88" width="20" height="1.08" fill="#FFFFFF" />
+                              <rect width="8.5" height="7.56" fill="#3C3B6E" />
+                              <circle cx="2" cy="1.9" r="0.5" fill="#FFFFFF" />
+                              <circle cx="4.2" cy="1.9" r="0.5" fill="#FFFFFF" />
+                              <circle cx="6.4" cy="1.9" r="0.5" fill="#FFFFFF" />
+                              <circle cx="3.1" cy="3.8" r="0.5" fill="#FFFFFF" />
+                              <circle cx="5.3" cy="3.8" r="0.5" fill="#FFFFFF" />
+                              <circle cx="2" cy="5.7" r="0.5" fill="#FFFFFF" />
+                              <circle cx="4.2" cy="5.7" r="0.5" fill="#FFFFFF" />
+                              <circle cx="6.4" cy="5.7" r="0.5" fill="#FFFFFF" />
+                            </svg>
+                            <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "#fdf2f8" }}>
+                              USA VPN DATA
+                            </p>
+                          </div>
+                          <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.2)", color: "#FFF", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold", border: "1px solid rgba(255, 255, 255, 0.3)" }}>Bonus Server</span>
                         </div>
 
                         <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
@@ -1317,7 +1388,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   {/* ⏳ EXPIRES IN */}
                   <div style={{ background: expiryCardBg, borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", transition: "background 0.3s ease" }}>
                     <div>
-                      <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>⏳ EXPIRES IN</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.8rem" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>EXPIRES IN</p>
+                      </div>
                       <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
                       <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.92rem" }}>{(user?.expiryDate || metaData.expiryDate) ? new Date(user?.expiryDate || metaData.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                     </div>
@@ -1632,10 +1709,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       fontSize: "0.88rem",
                       cursor: "pointer", 
                       border: "1px solid", 
-                      borderColor: activeIsp === "All" ? "rgba(167, 139, 250, 0.6)" : "rgba(255,255,255,0.08)", 
-                      background: activeIsp === "All" ? "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)" : "rgba(14, 10, 26, 0.75)", 
+                      borderColor: activeIsp === "All" ? "rgba(129, 140, 248, 0.55)" : "rgba(255,255,255,0.08)", 
+                      background: activeIsp === "All" ? "linear-gradient(135deg, #3730a3 0%, #581c87 100%)" : "rgba(12, 10, 24, 0.75)", 
                       color: activeIsp === "All" ? "#FFF" : "#9ca3af",
-                      boxShadow: activeIsp === "All" ? "0 4px 18px rgba(109, 40, 217, 0.4)" : "none",
+                      boxShadow: activeIsp === "All" ? "0 4px 18px rgba(79, 70, 229, 0.4)" : "none",
                       transition: "all 0.2s ease"
                     }}
                   >
@@ -1668,10 +1745,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           fontSize: "0.88rem",
                           cursor: "pointer", 
                           border: "1px solid", 
-                          borderColor: isActive ? "rgba(167, 139, 250, 0.6)" : "rgba(255,255,255,0.08)", 
-                          background: isActive ? "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)" : "rgba(14, 10, 26, 0.75)", 
+                          borderColor: isActive ? "rgba(129, 140, 248, 0.55)" : "rgba(255,255,255,0.08)", 
+                          background: isActive ? "linear-gradient(135deg, #3730a3 0%, #581c87 100%)" : "rgba(12, 10, 24, 0.75)", 
                           color: isActive ? "#FFF" : "#9ca3af",
-                          boxShadow: isActive ? "0 4px 18px rgba(109, 40, 217, 0.4)" : "none",
+                          boxShadow: isActive ? "0 4px 18px rgba(79, 70, 229, 0.4)" : "none",
                           transition: "all 0.2s ease"
                         }}
                       >
@@ -1691,30 +1768,41 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   })}
                 </div>
 
-                {/* 📡 SECONDARY NETWORK TYPE SEGMENTED BAR */}
+                {/* SECONDARY NETWORK TYPE SEGMENTED BAR */}
                 <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
                   <button 
                     onClick={() => setActiveNetworkType("all")} 
                     style={{ 
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
                       padding: "0.45rem 1.1rem", 
                       borderRadius: "20px", 
                       fontSize: "0.82rem", 
                       fontWeight: "bold", 
                       cursor: "pointer", 
                       border: "1px solid", 
-                      borderColor: activeNetworkType === "all" ? "#a78bfa" : "rgba(255,255,255,0.08)", 
-                      background: activeNetworkType === "all" ? "rgba(124, 58, 237, 0.25)" : "rgba(10, 8, 20, 0.5)", 
-                      color: activeNetworkType === "all" ? "#e9d5ff" : "#9ca3af",
+                      borderColor: activeNetworkType === "all" ? "rgba(129, 140, 248, 0.55)" : "rgba(255,255,255,0.08)", 
+                      background: activeNetworkType === "all" ? "rgba(79, 70, 229, 0.25)" : "rgba(10, 8, 20, 0.5)", 
+                      color: activeNetworkType === "all" ? "#c7d2fe" : "#9ca3af",
                       transition: "all 0.2s ease"
                     }}
                   >
-                    🌐 All Plans ({availablePackages.length})
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="2" y1="12" x2="22" y2="12" />
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                    <span>All Plans ({availablePackages.length})</span>
                   </button>
 
                   {hasRouter && (
                     <button 
                       onClick={() => setActiveNetworkType("router")} 
                       style={{ 
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
                         padding: "0.45rem 1.1rem", 
                         borderRadius: "20px", 
                         fontSize: "0.82rem", 
@@ -1727,7 +1815,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      📡 Router & Fiber ({availablePackages.filter(p => p.type === "router").length})
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="14" width="20" height="8" rx="2" />
+                        <path d="M6 18h.01" />
+                        <path d="M10 18h.01" />
+                        <line x1="12" y1="2" x2="12" y2="8" />
+                        <line x1="12" y1="8" x2="16" y2="14" />
+                        <line x1="12" y1="8" x2="8" y2="14" />
+                      </svg>
+                      <span>Router & Fiber ({routerCount})</span>
                     </button>
                   )}
 
@@ -1735,6 +1831,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <button 
                       onClick={() => setActiveNetworkType("mobile")} 
                       style={{ 
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
                         padding: "0.45rem 1.1rem", 
                         borderRadius: "20px", 
                         fontSize: "0.82rem", 
@@ -1747,7 +1846,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      📱 Mobile SIM ({availablePackages.filter(p => p.type === "mobile").length})
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                      </svg>
+                      <span>Mobile SIM ({mobileCount})</span>
                     </button>
                   )}
                 </div>
@@ -1765,7 +1868,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     gap: "14px",
                     boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)"
                   }}>
-                    <span style={{ fontSize: "1.5rem", lineHeight: 1 }}>💡</span>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                    </div>
                     <div>
                       <h4 style={{ margin: "0 0 0.3rem 0", color: "#fef3c7", fontSize: "0.95rem", fontWeight: "bold" }}>SIM Connection Speed Notice</h4>
                       <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1", lineHeight: 1.6 }}>
@@ -1775,11 +1884,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 )}
 
-                {/* 📦 REDESIGNED PACKAGES GRID */}
+                {/* REDESIGNED PACKAGES GRID */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.4rem" }}>
-                  {ALL_PACKAGES
-                    .filter(p => (activeIsp === "All" || p.isp === activeIsp) && (activeNetworkType === "all" || p.type === activeNetworkType))
-                    .map((pkg) => {
+                  {displayedPackages.map((pkg) => {
                       const isWarn = pkg.statusType === "warn";
                       const isBest = pkg.statusType === "best";
 
@@ -1838,20 +1945,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                             {/* Pricing Box */}
                             <div style={{ 
-                              background: "rgba(10, 6, 20, 0.65)", 
-                              border: "1px solid rgba(255, 255, 255, 0.06)", 
-                              borderRadius: "12px", 
-                              padding: "0.85rem 1rem", 
-                              marginBottom: "1rem",
+                              background: "rgba(12, 10, 24, 0.8)", 
+                              border: "1px solid rgba(255, 255, 255, 0.08)", 
+                              borderRadius: "14px", 
+                              padding: "1rem 1.15rem", 
+                              marginBottom: "1.1rem",
                               display: "flex",
                               flexDirection: "column",
-                              gap: "4px"
+                              gap: "10px"
                             }}>
-                              <div style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
-                                ISP Official Price: <strong style={{ color: "#FFF" }}>{pkg.ispPrice}</strong>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.84rem", color: "#9ca3af" }}>
+                                <span>ISP Official Price:</span>
+                                <strong style={{ color: "#FFF", fontSize: "0.88rem" }}>{pkg.ispPrice}</strong>
                               </div>
-                              <div style={{ fontSize: "0.82rem", color: "#a78bfa", fontWeight: "600" }}>
-                                VPN Config: <span style={{ color: "#e9d5ff" }}>From Rs. {pkg.type === "router" ? "250" : "100"} / mo</span>
+
+                              <div style={{ height: "1px", background: "rgba(255, 255, 255, 0.06)" }} />
+
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.84rem", color: "#a5b4fc", fontWeight: "600" }}>
+                                <span>VPN Config:</span>
+                                <span style={{ color: "#c7d2fe", fontWeight: "bold", fontSize: "0.88rem" }}>
+                                  starts From Rs. {pkg.type === "router" ? "250" : "100"} / mo
+                                </span>
                               </div>
                             </div>
 
@@ -1873,7 +1987,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               borderRadius: "8px",
                               border: "1px solid rgba(99, 102, 241, 0.2)"
                             }}>
-                              <span>📱</span> {pkg.devices}
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                                <line x1="12" y1="18" x2="12.01" y2="18" />
+                              </svg>
+                              <span>{pkg.devices}</span>
                             </div>
                           </div>
 
@@ -1885,12 +2003,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               marginTop: "1.4rem", 
                               padding: "0.95rem 1.2rem", 
                               borderRadius: "12px", 
-                              background: "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)", 
+                              background: "linear-gradient(135deg, #4338ca 0%, #581c87 100%)", 
                               color: "#FFF", 
                               fontWeight: "bold", 
                               fontSize: "0.92rem",
-                              border: "1px solid rgba(167, 139, 250, 0.45)", 
-                              boxShadow: "0 4px 18px rgba(109, 40, 217, 0.35)",
+                              border: "1px solid rgba(129, 140, 248, 0.45)", 
+                              boxShadow: "0 4px 18px rgba(79, 70, 229, 0.35)",
                               cursor: "pointer",
                               display: "flex",
                               alignItems: "center",
@@ -2055,7 +2173,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <div style={{ marginBottom: "1.4rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "10px" }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: "1.35rem", fontWeight: "bold", color: "#FFF", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span>📱</span> Recommended VPN Client Apps
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                          <line x1="12" y1="18" x2="12.01" y2="18" />
+                        </svg> Recommended VPN Client Apps
                       </h3>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#9ca3af" }}>
                         Download the official tunneling client for your device, copy your config key above, and connect in 1-click.
@@ -2886,15 +3007,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 width: shouldExpand ? "auto" : "42px", 
                 justifyContent: "center", 
                 borderRadius: "25px", 
-                border: isActive ? "1px solid rgba(167, 139, 250, 0.55)" : isHovered || isScrubbed ? "1px solid rgba(124, 58, 237, 0.38)" : "1px solid transparent", 
+                border: isActive ? "1px solid rgba(129, 140, 248, 0.5)" : isHovered || isScrubbed ? "1px solid rgba(99, 102, 241, 0.35)" : "1px solid transparent", 
                 background: isActive 
-                  ? "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)" 
+                  ? "linear-gradient(135deg, #3730a3 0%, #581c87 100%)" 
                   : isHovered || isScrubbed 
-                  ? "rgba(109, 40, 217, 0.25)" 
+                  ? "rgba(79, 70, 229, 0.22)" 
                   : "transparent", 
-                color: isActive ? "#FFF" : isHovered || isScrubbed ? "#e9d5ff" : "rgba(255,255,255,0.6)", 
+                color: isActive ? "#FFF" : isHovered || isScrubbed ? "#e0e7ff" : "rgba(255,255,255,0.6)", 
                 cursor: "pointer",
-                boxShadow: isActive ? "0 0 18px rgba(109, 40, 217, 0.45), inset 0 1px 1px rgba(255,255,255,0.3)" : "none",
+                boxShadow: isActive ? "0 0 16px rgba(79, 70, 229, 0.45), inset 0 1px 1px rgba(255,255,255,0.3)" : "none",
                 transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
               }}
             >
@@ -3113,11 +3234,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           align-items: center;
           gap: 0.35rem;
           padding: 0.4rem 0.5rem;
-          background: rgba(10, 6, 20, 0.90);
+          background: rgba(10, 8, 24, 0.92);
           backdrop-filter: blur(16px) saturate(180%);
           -webkit-backdrop-filter: blur(16px) saturate(180%);
-          border: 1px solid rgba(124, 58, 237, 0.35);
-          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(109, 40, 217, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(99, 102, 241, 0.35);
+          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(79, 70, 229, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.15);
           border-radius: 9999px;
           z-index: 1000;
           transition: all 0.3s ease;
