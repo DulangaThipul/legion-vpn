@@ -97,9 +97,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       previousUsage: 0,
       previousUsageGB: 0,
       customVpnUserId: "",
+      showUsaUsage: false,
+      usaDataTotal: "Unlimited",
+      usaDataUsed: "0 GB",
+      usaLastRecordedUsage: "0 GB",
+      usaSubscriptionUrl: "",
+      usaPreviousUsage: 0,
       isRenewUnlocked: false,
       renewPopupMessage: "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.",
-      forceShowGuide: undefined as boolean | undefined
+      forceShowGuide: undefined as boolean | undefined,
+      expiryDate: undefined as string | undefined
     };
     if (user?.subscriptionLink) {
       try {
@@ -114,11 +121,32 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // 📊 REALTIME 3x-ui DATA USAGE STATE & 30s COUNTDOWN
   const [liveDataUsed, setLiveDataUsed] = useState<string>(metaData.lastRecordedUsage || metaData.dataUsed || "0 GB");
   const [liveDataTotal, setLiveDataTotal] = useState<string>(metaData.dataTotal || "Unlimited");
+  const [liveUsaDataUsed, setLiveUsaDataUsed] = useState<string>(metaData.usaLastRecordedUsage || metaData.usaDataUsed || "0 GB");
+  const [liveUsaDataTotal, setLiveUsaDataTotal] = useState<string>(metaData.usaDataTotal || "Unlimited");
   const [isSyncingUsage, setIsSyncingUsage] = useState<boolean>(false);
   const [refreshCooldown, setRefreshCooldown] = useState<number>(30);
   const [idCopied, setIdCopied] = useState<boolean>(false);
+  const [copiedConfigIndex, setCopiedConfigIndex] = useState<number | null>(null);
+  const [whatsappMenuOpen, setWhatsappMenuOpen] = useState<boolean>(false);
+  const [isTourMinimized, setIsTourMinimized] = useState<boolean>(false);
+  const [scrubbedTabId, setScrubbedTabId] = useState<string | null>(null);
+  const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
+  const whatsappRef = useRef<HTMLDivElement>(null);
   const [renewModalOpen, setRenewModalOpen] = useState<boolean>(false);
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
+
+  // Close WhatsApp popover on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (whatsappRef.current && !whatsappRef.current.contains(e.target as Node)) {
+        setWhatsappMenuOpen(false);
+      }
+    };
+    if (whatsappMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [whatsappMenuOpen]);
 
   const copyBankField = (fieldKey: string, text: string) => {
     if (!text) return;
@@ -156,7 +184,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   useEffect(() => {
     if (metaData.dataUsed) setLiveDataUsed(metaData.dataUsed);
     if (metaData.dataTotal) setLiveDataTotal(metaData.dataTotal);
-  }, [metaData.dataUsed, metaData.dataTotal]);
+    if (metaData.usaDataUsed) setLiveUsaDataUsed(metaData.usaDataUsed);
+    if (metaData.usaDataTotal) setLiveUsaDataTotal(metaData.usaDataTotal);
+  }, [metaData.dataUsed, metaData.dataTotal, metaData.usaDataUsed, metaData.usaDataTotal]);
 
   const fetchUsage = useCallback(async () => {
     try {
@@ -167,6 +197,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       if (data.success) {
         if (data.dataUsed) setLiveDataUsed(data.dataUsed);
         if (data.dataTotal) setLiveDataTotal(data.dataTotal);
+        if (data.usaDataUsed) setLiveUsaDataUsed(data.usaDataUsed);
+        if (data.usaDataTotal) setLiveUsaDataTotal(data.usaDataTotal);
       }
     } catch (err) {
       console.error("Fetch data usage error:", err);
@@ -404,7 +436,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const safeEmail = user?.email || "";
   
   const now = new Date().getTime();
-  const expiry = user?.expiryDate ? new Date(user.expiryDate).getTime() : null;
+  const rawExpiryDate = user?.expiryDate || metaData?.expiryDate;
+  const expiry = rawExpiryDate ? new Date(rawExpiryDate).getTime() : null;
   const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
   const isExpired = daysLeft !== null && daysLeft <= 0;
 
@@ -438,6 +471,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const cleanCode = text.replace(/(?:📦\s*)?\[[\s\S]*?\]\s*/g, "").trim();
     navigator.clipboard.writeText(cleanCode);
     alert("Copied to clipboard!");
+  };
+
+  const handleCopyConfig = (code: string, idx: number) => {
+    if (!code || typeof code !== "string") return;
+    const cleanCode = code.replace(/(?:📦\s*)?\[[\s\S]*?\]\s*/g, "").trim();
+    navigator.clipboard.writeText(cleanCode);
+    setCopiedConfigIndex(idx);
+    setTimeout(() => setCopiedConfigIndex(null), 2000);
   };
 
   // 🚀 CLOUDINARY DIRECT VIEW & DOWNLOAD HANDLER
@@ -810,44 +851,78 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       {/* 🧭 2. ACTIVE GLASSMORPHIC FLOATING WALKTHROUGH CONTROLLER (OPTIMIZED FOR MOBILE & PC) */}
       {isTourActive && (
         <div className="tour-controller-wrapper">
-          <div className="tour-controller-card">
-            
-            {/* Header: Step Dots, Step Count, and Exit Button */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {/* 5 Interactive Progress Dots */}
-                <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-                  {[1, 2, 3, 4, 5].map((step) => (
-                    <span
-                      key={step}
-                      onClick={() => goToTourStep(step)}
-                      style={{
-                        width: tourStep === step ? "20px" : "7px",
-                        height: "7px",
-                        borderRadius: "4px",
-                        background: tourStep === step ? "linear-gradient(90deg, #6366f1, #a855f7)" : "rgba(255,255,255,0.22)",
-                        cursor: "pointer",
-                        transition: "all 0.3s ease",
-                        display: "inline-block"
-                      }}
-                      title={`Go to Step ${step}`}
-                    />
-                  ))}
+          {isTourMinimized ? (
+            <div 
+              className="tour-controller-minimized" 
+              onClick={() => setIsTourMinimized(false)}
+              style={{
+                background: "rgba(14, 14, 28, 0.95)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: "1px solid rgba(129, 140, 248, 0.4)",
+                borderRadius: "30px",
+                padding: "0.5rem 1rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                cursor: "pointer",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.7)",
+                margin: "0 auto"
+              }}
+            >
+              <span style={{ fontSize: "1.1rem" }}>🧭</span>
+              <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#FFF" }}>Tour: Step {tourStep}/5</span>
+              <span style={{ fontSize: "0.72rem", color: "#818cf8", background: "rgba(99,102,241,0.2)", padding: "2px 8px", borderRadius: "10px" }}>Expand ↗</span>
+            </div>
+          ) : (
+            <div className="tour-controller-card">
+              
+              {/* Header: Step Dots, Step Count, Minimize and Exit Button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {/* 5 Interactive Progress Dots */}
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    {[1, 2, 3, 4, 5].map((step) => (
+                      <span
+                        key={step}
+                        onClick={() => goToTourStep(step)}
+                        style={{
+                          width: tourStep === step ? "20px" : "7px",
+                          height: "7px",
+                          borderRadius: "4px",
+                          background: tourStep === step ? "linear-gradient(90deg, #6366f1, #a855f7)" : "rgba(255,255,255,0.22)",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                          display: "inline-block"
+                        }}
+                        title={`Go to Step ${step}`}
+                      />
+                    ))}
+                  </div>
+
+                  <span style={{ fontSize: "0.76rem", color: "#818cf8", fontWeight: "bold", letterSpacing: "0.5px", background: "rgba(99,102,241,0.15)", padding: "2px 8px", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.25)" }}>
+                    Step {tourStep} / 5
+                  </span>
                 </div>
 
-                <span style={{ fontSize: "0.76rem", color: "#818cf8", fontWeight: "bold", letterSpacing: "0.5px", background: "rgba(99,102,241,0.15)", padding: "2px 8px", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.25)" }}>
-                  Step {tourStep} / 5
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <button 
+                    type="button"
+                    onClick={() => setIsTourMinimized(true)}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", padding: "3px 8px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}
+                    title="Minimize Guide Tour"
+                  >
+                    ─ Minimize
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleExitTour} 
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", padding: "3px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s" }}
+                  >
+                    ✕ Exit Tour
+                  </button>
+                </div>
               </div>
-
-              <button 
-                type="button"
-                onClick={handleExitTour} 
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", padding: "3px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s" }}
-              >
-                ✕ Exit Tour
-              </button>
-            </div>
 
             {/* Step Message Content */}
             <div style={{ minHeight: "56px", color: "#e2e8f0" }}>
@@ -928,7 +1003,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               )}
             </div>
 
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1050,25 +1126,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {/* 🛡️ ACTIVE STATUS CARDS: ONLY DISPLAYED IF ADMIN VERIFIED PAYMENT AND ACTIVATED CONFIG */}
               {isVpnActivated ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.2rem", borderRadius: "18px" }}>
+                <div className={`status-cards-grid ${metaData.showUsaUsage ? "has-4-cards" : "has-3-cards"}`} style={{ borderRadius: "18px" }}>
                   
                   {/* 📡 LIVE CONNECTION (LEFT) */}
-                  <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px" }}>
                     <div>
                       <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📡 LIVE CONNECTION</p>
-                      <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+                      <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
                         <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block" }}></span>
                         {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
                       </h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
+                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.92rem", wordBreak: "break-all" }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
                     </div>
                   </div>
 
-                  {/* 📊 DATA USED (WITH MANUAL REFRESH & 30s COUNTDOWN) */}
-                  <div style={{ background: "#2563eb", borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  {/* 📊 MAIN DATA USED (WITH MANUAL REFRESH & 30s COUNTDOWN) */}
+                  <div style={{ background: "#2563eb", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px" }}>
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>📊 DATA USED</p>
+                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>
+                          {metaData.showUsaUsage ? "📊 MAIN DATA USED" : "📊 DATA USED"}
+                        </p>
                         
                         {/* MANUAL REFRESH BUTTON WITH 30s COUNTDOWN (NO EMOJI) */}
                         <button
@@ -1095,9 +1173,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </button>
                       </div>
 
-                      <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                      <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
                         <span>{liveDataUsed || "0 GB"}</span>
-                        <span style={{ fontSize: "1.05rem", fontWeight: "normal", opacity: 0.85 }}>
+                        <span style={{ fontSize: "1rem", fontWeight: "normal", opacity: 0.85 }}>
                           / {liveDataTotal || "Unlimited"}
                         </span>
                       </h2>
@@ -1127,12 +1205,48 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   </div>
 
+                  {/* 🇺🇸 USA VPN DATA CARD (SHOWN ONLY IF ADMIN ACTIVATED showUsaUsage) */}
+                  {metaData.showUsaUsage && (
+                    <div style={{ background: "linear-gradient(135deg, #be185d 0%, #9d174d 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", boxShadow: "0 8px 24px rgba(190, 24, 93, 0.25)" }}>
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
+                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>🇺🇸 USA VPN DATA</p>
+                          <span style={{ fontSize: "0.72rem", background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>Bonus Server</span>
+                        </div>
+
+                        <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                          <span>{liveUsaDataUsed || "0 GB"}</span>
+                          <span style={{ fontSize: "1rem", fontWeight: "normal", opacity: 0.85 }}>
+                            / {liveUsaDataTotal || "Unlimited"}
+                          </span>
+                        </h2>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.8rem 0 0 0", flexWrap: "wrap", gap: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ 
+                            width: "8px", 
+                            height: "8px", 
+                            borderRadius: "50%", 
+                            background: isSyncingUsage ? "#fbbf24" : "#f472b6", 
+                            display: "inline-block",
+                            boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #f472b6",
+                            transition: "all 0.3s ease"
+                          }} />
+                          <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.9)", letterSpacing: "0.5px" }}>
+                            {isSyncingUsage ? "Syncing USA data..." : "USA Server Synced"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ⏳ EXPIRES IN */}
-                  <div style={{ background: expiryCardBg, borderRadius: "16px", padding: "1.8rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", transition: "background 0.3s ease" }}>
+                  <div style={{ background: expiryCardBg, borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", transition: "background 0.3s ease" }}>
                     <div>
                       <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>⏳ EXPIRES IN</p>
-                      <h2 style={{ margin: 0, fontSize: "2rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.95rem" }}>{user?.expiryDate ? new Date(user.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
+                      <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
+                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.92rem" }}>{(user?.expiryDate || metaData.expiryDate) ? new Date(user?.expiryDate || metaData.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
                     </div>
 
                     {/* RENEW VPN BUTTON (NO EMOJI) */}
@@ -1492,15 +1606,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               className={`animate-fade-in flex flex-col gap-6 ${isTourActive && tourStep === 3 ? "tour-spotlight-active" : ""}`}
               style={{ borderRadius: "20px", padding: "0.5rem", transition: "all 0.3s ease" }}
             >
-               <h2 style={{ fontSize: "1.6rem", margin: 0 }}>Your Configurations</h2>
+               <div>
+                 <h2 style={{ fontSize: "1.6rem", margin: "0 0 0.4rem 0", color: "#FFF" }}>Your Configurations</h2>
+                 <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>High-speed secure VLESS tunneling configs. Click &apos;Copy Config&apos; and import directly into your VPN client.</p>
+               </div>
                
                {hasPendingReview && (
-                 <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "12px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
-                   <div style={{ display: "flex", alignItems: "center", gap: "15px", fontWeight: "bold" }}>
-                     <span style={{ fontSize: "1.5rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
+                 <div style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "14px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
+                   <div style={{ display: "flex", alignItems: "center", gap: "12px", fontWeight: "bold" }}>
+                     <span style={{ fontSize: "1.4rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
                    </div>
                    {receiptLink && (
-                      <a href={getCleanReceiptUrl(receiptLink, false)} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.5rem" }}>
+                      <a href={getCleanReceiptUrl(receiptLink, false)} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.3rem" }}>
                         View Uploaded Receipt ↗
                       </a>
                    )}
@@ -1508,20 +1625,113 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                )}
 
                {activeConfigs.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    {activeConfigs.map((cfg, idx) => (
-                      <div key={idx} style={{ background: "rgba(12, 12, 20, 0.85)", backdropFilter: "blur(12px)", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                         <div style={{ background: "rgba(99,102,241,0.08)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#818cf8" }}>📦 {cfg.name}</h3>
-                            <button onClick={() => handleCopyCleanCode(cfg.code)} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.85rem", cursor: "pointer", fontWeight: "bold" }}>📋 Copy Code</button>
-                         </div>
-                         <div style={{ padding: "1.5rem" }}>
-                            <code style={{ color: user?.vpnStatus === "Suspended" ? "#9ca3af" : "#22c55e", fontSize: "0.85rem", fontFamily: "monospace", wordBreak: "break-all", whiteSpace: "pre-wrap" }}>
-                              {cfg.code}
-                            </code>
-                         </div>
-                      </div>
-                    ))}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+                    {activeConfigs.map((cfg, idx) => {
+                      const cleanName = (cfg.name || `Server ${idx + 1}`).replace(/^📦\s*/, "").replace(/[\[\]]/g, "").trim();
+                      const isCopied = copiedConfigIndex === idx;
+                      const isSuspended = user?.vpnStatus === "Suspended";
+
+                      return (
+                        <div 
+                          key={idx} 
+                          style={{ 
+                            background: "linear-gradient(180deg, rgba(16, 12, 28, 0.95) 0%, rgba(8, 8, 14, 0.98) 100%)", 
+                            backdropFilter: "blur(16px)", 
+                            borderRadius: "18px", 
+                            border: "1px solid rgba(168, 85, 247, 0.28)", 
+                            boxShadow: "0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(168, 85, 247, 0.08)",
+                            overflow: "hidden",
+                            padding: "1.4rem",
+                            transition: "border-color 0.2s ease, box-shadow 0.2s ease"
+                          }}
+                        >
+                           {/* Card Top: Title, Protocol & Status Badges, Copy Button */}
+                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "1rem" }}>
+                             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                               <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "bold", color: "#FFF", letterSpacing: "0.3px" }}>
+                                 {cleanName}
+                               </h3>
+                               
+                               {/* Badges */}
+                               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                 <span style={{ 
+                                   background: "rgba(168, 85, 247, 0.15)", 
+                                   border: "1px solid rgba(168, 85, 247, 0.35)", 
+                                   color: "#c084fc", 
+                                   padding: "3px 10px", 
+                                   borderRadius: "20px", 
+                                   fontSize: "0.74rem", 
+                                   fontWeight: "600",
+                                   letterSpacing: "0.5px"
+                                 }}>
+                                   Protocol: VLESS / TLS
+                                 </span>
+
+                                 <span style={{ 
+                                   background: isSuspended ? "rgba(239, 68, 68, 0.15)" : "rgba(34, 197, 94, 0.15)", 
+                                   border: `1px solid ${isSuspended ? "rgba(239, 68, 68, 0.35)" : "rgba(34, 197, 94, 0.35)"}`, 
+                                   color: isSuspended ? "#f87171" : "#4ade80", 
+                                   padding: "3px 10px", 
+                                   borderRadius: "20px", 
+                                   fontSize: "0.74rem", 
+                                   fontWeight: "600",
+                                   display: "inline-flex",
+                                   alignItems: "center",
+                                   gap: "5px"
+                                 }}>
+                                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isSuspended ? "#ef4444" : "#22c55e", display: "inline-block" }}></span>
+                                   {isSuspended ? "Suspended" : "Active"}
+                                 </span>
+                               </div>
+                             </div>
+
+                             {/* Copy Button */}
+                             <button 
+                               type="button"
+                               onClick={() => handleCopyConfig(cfg.code, idx)} 
+                               style={{ 
+                                 background: isCopied ? "#059669" : "linear-gradient(90deg, #7c3aed, #9333ea)", 
+                                 color: "#FFF", 
+                                 border: isCopied ? "1px solid #10b981" : "1px solid rgba(168, 85, 247, 0.5)", 
+                                 padding: "0.6rem 1.3rem", 
+                                 borderRadius: "10px", 
+                                 fontSize: "0.85rem", 
+                                 cursor: "pointer", 
+                                 fontWeight: "bold",
+                                 display: "inline-flex",
+                                 alignItems: "center",
+                                 gap: "6px",
+                                 boxShadow: isCopied ? "0 4px 14px rgba(16, 185, 129, 0.3)" : "0 4px 14px rgba(147, 51, 234, 0.3)",
+                                 transition: "all 0.2s ease"
+                               }}
+                             >
+                               {isCopied ? "✓ Copied!" : "📋 Copy Config"}
+                             </button>
+                           </div>
+
+                           {/* Card Body: Code Box */}
+                           <div style={{ marginTop: "1rem", background: "#040408", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "1rem 1.2rem", position: "relative" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                                <span style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: "600", letterSpacing: "1px" }}>CONFIG KEY</span>
+                                <span style={{ fontSize: "0.72rem", color: "#a855f7" }}>v2rayNG / Streisand</span>
+                               </div>
+                              <code style={{ 
+                                display: "block",
+                                color: isSuspended ? "#9ca3af" : "#a7f3d0", 
+                                fontSize: "0.83rem", 
+                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", 
+                                wordBreak: "break-all", 
+                                whiteSpace: "pre-wrap",
+                                lineHeight: 1.6,
+                                maxHeight: "110px",
+                                overflowY: "auto"
+                              }}>
+                                {cfg.code}
+                              </code>
+                           </div>
+                        </div>
+                      );
+                    })}
                   </div>
                ) : (
                   <div style={{ padding: "3rem", textAlign: "center", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -2098,31 +2308,209 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       </main>
 
-      {/* 📱 FLOATING CONTACT US BUTTON (WHATSAPP SUPPORT) */}
-      <a
-        href="https://wa.me/+441163504152"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`floating-contact-btn ${isTourActive ? "tour-active-hide" : ""}`}
-        title="Contact Us via WhatsApp"
-        aria-label="Contact Us on WhatsApp"
+      {/* 📱 FLOATING WHATSAPP POPOVER HUB (STEP 3) */}
+      <div 
+        ref={whatsappRef}
+        className={`floating-contact-container ${isTourActive ? "tour-active-hide" : ""}`}
       >
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-        </svg>
-      </a>
+        {/* Animated Glassmorphism Popover Card (Above the button) */}
+        {whatsappMenuOpen && (
+          <div className="whatsapp-popover-card">
+            {/* Popover Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", paddingBottom: "0.5rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "1.1rem" }}>💬</span>
+                <span style={{ fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>Legion WhatsApp Hub</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWhatsappMenuOpen(false)}
+                style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "#9ca3af", width: "24px", height: "24px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", transition: "all 0.2s" }}
+              >
+                ✕
+              </button>
+            </div>
 
-      {/* Floating Taskbar */}
+            <p style={{ margin: "0 0 0.9rem 0", fontSize: "0.78rem", color: "#94a3b8", lineHeight: 1.45 }}>
+              Official Legion VPN community channel & direct admin assistance:
+            </p>
+
+            {/* Button 1: Join Channel */}
+            <a
+              href="https://whatsapp.com/channel/0029VbDrZJTISTkOlKJ5X307"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setWhatsappMenuOpen(false)}
+              className="whatsapp-hub-item"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "0.7rem 0.9rem",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.22))",
+                border: "1px solid rgba(168, 85, 247, 0.35)",
+                color: "#FFF",
+                textDecoration: "none",
+                marginBottom: "0.6rem",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <span style={{ fontSize: "1.3rem" }}>📢</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: "#c084fc", fontWeight: "bold", fontSize: "0.82rem" }}>Join our Channel to get UPDATES</div>
+                <div style={{ fontSize: "0.7rem", color: "#cbd5e1" }}>New configs, fixes & server notices</div>
+              </div>
+            </a>
+
+            {/* Button 2: Contact Admin */}
+            <a
+              href="https://wa.me/+441163504152"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setWhatsappMenuOpen(false)}
+              className="whatsapp-hub-item"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "0.7rem 0.9rem",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, rgba(37, 211, 102, 0.22), rgba(18, 140, 126, 0.26))",
+                border: "1px solid rgba(37, 211, 102, 0.4)",
+                color: "#FFF",
+                textDecoration: "none",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <span style={{ fontSize: "1.3rem" }}>💬</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: "#4ade80", fontWeight: "bold", fontSize: "0.82rem" }}>Contact Admin</div>
+                <div style={{ fontSize: "0.7rem", color: "#cbd5e1" }}>Direct 1-on-1 support on WhatsApp</div>
+              </div>
+            </a>
+          </div>
+        )}
+
+        {/* The Floating WhatsApp Circular Trigger Button */}
+        <button
+          type="button"
+          onClick={() => setWhatsappMenuOpen(!whatsappMenuOpen)}
+          className="floating-contact-btn"
+          title="Open WhatsApp Support Hub"
+          aria-label="Open WhatsApp Support Hub"
+          style={{
+            border: "none",
+            cursor: "pointer",
+            outline: "none"
+          }}
+        >
+          {whatsappMenuOpen ? (
+            <span style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#FFF" }}>✕</span>
+          ) : (
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* 🚀 LIQUID GLASS NAVIGATION TASKBAR (STEP 5) */}
       <nav 
-        className={isTourActive ? "tour-dim-non-focused" : ""}
-        style={{ position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.4rem", background: "rgba(10,10,18,0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50px", zIndex: 100, transition: "filter 0.4s ease, opacity 0.4s ease" }}
+        className={`liquid-glass-taskbar ${isTourActive ? "tour-dim-non-focused" : ""}`}
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest("[data-tab-id]") as HTMLElement | null;
+          if (el?.dataset.tabId) setScrubbedTabId(el.dataset.tabId);
+        }}
+        onTouchMove={(e) => {
+          const touch = e.touches[0];
+          const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest("[data-tab-id]") as HTMLElement | null;
+          if (el?.dataset.tabId) setScrubbedTabId(el.dataset.tabId);
+        }}
+        onTouchEnd={() => {
+          if (scrubbedTabId) {
+            const matched = tabs.find(t => t.id === scrubbedTabId);
+            if (matched) {
+              if (matched.isLink && matched.href) {
+                router.push(matched.href);
+              } else {
+                setActiveTab(scrubbedTabId);
+                setActiveTool(null);
+              }
+            }
+          }
+          setScrubbedTabId(null);
+        }}
       >
         {tabs.map(tab => {
-          if (tab.isLink) return <Link key={tab.id} href={tab.href as string} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", borderRadius: "50%", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}><span>{tab.icon}</span></Link>;
+          if (tab.isLink) {
+            return (
+              <Link 
+                key={tab.id} 
+                href={tab.href as string} 
+                data-tab-id={tab.id}
+                onMouseEnter={() => setHoveredTabId(tab.id)}
+                onMouseLeave={() => setHoveredTabId(null)}
+                className={`taskbar-item ${hoveredTabId === tab.id || scrubbedTabId === tab.id ? "hovered" : ""}`}
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  width: "42px", 
+                  height: "42px", 
+                  borderRadius: "50%", 
+                  color: "rgba(255,255,255,0.7)", 
+                  textDecoration: "none",
+                  transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
+                }}
+              >
+                <span>{tab.icon}</span>
+              </Link>
+            );
+          }
+
           const isActive = activeTab === tab.id;
+          const isHovered = hoveredTabId === tab.id;
+          const isScrubbed = scrubbedTabId === tab.id;
+          const shouldExpand = isActive || isScrubbed;
+
           return (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setActiveTool(null); }} style={{ display: "flex", alignItems: "center", gap: isActive ? "0.5rem" : "0", padding: isActive ? "0 1rem" : "0", height: "42px", minWidth: "42px", width: isActive ? "auto" : "42px", justifyContent: "center", background: isActive ? "rgba(99,102,241,0.25)" : "transparent", color: isActive ? "#818cf8" : "rgba(255,255,255,0.5)", borderRadius: "25px", border: "none", cursor: "pointer" }}>
-              <span>{tab.icon}</span>{isActive && <span style={{ fontWeight: "bold", fontSize: "0.85rem" }}>{tab.label}</span>}
+            <button 
+              key={tab.id} 
+              data-tab-id={tab.id}
+              onClick={() => { setActiveTab(tab.id); setActiveTool(null); }} 
+              onMouseEnter={() => setHoveredTabId(tab.id)}
+              onMouseLeave={() => setHoveredTabId(null)}
+              className={`taskbar-item ${isActive ? "active" : ""} ${isHovered || isScrubbed ? "hovered" : ""}`}
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: shouldExpand ? "0.45rem" : "0", 
+                padding: shouldExpand ? "0 1.1rem" : "0", 
+                height: "42px", 
+                minWidth: "42px", 
+                width: shouldExpand ? "auto" : "42px", 
+                justifyContent: "center", 
+                borderRadius: "25px", 
+                border: isActive ? "1px solid rgba(192, 132, 252, 0.45)" : isHovered || isScrubbed ? "1px solid rgba(168, 85, 247, 0.35)" : "1px solid transparent", 
+                background: isActive 
+                  ? "linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.45))" 
+                  : isHovered || isScrubbed 
+                  ? "rgba(168, 85, 247, 0.2)" 
+                  : "transparent", 
+                color: isActive ? "#FFF" : isHovered || isScrubbed ? "#e9d5ff" : "rgba(255,255,255,0.6)", 
+                cursor: "pointer",
+                boxShadow: isActive ? "0 0 16px rgba(168, 85, 247, 0.4), inset 0 1px 1px rgba(255,255,255,0.3)" : "none",
+                transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
+              }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center" }}>{tab.icon}</span>
+              {shouldExpand && (
+                <span style={{ fontWeight: "bold", fontSize: "0.83rem", whiteSpace: "nowrap" }}>
+                  {tab.label}
+                </span>
+              )}
             </button>
           );
         })}
@@ -2133,16 +2521,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* When tour is active, non-focused background elements become grayscale and dimmed */
+        /* Status Cards 4-in-a-row Parallel Desktop Grid & Mobile Single-Column */
+        .status-cards-grid {
+          display: grid;
+          gap: 1.2rem;
+          width: 100%;
+        }
+        @media (min-width: 901px) {
+          .status-cards-grid.has-4-cards {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+          .status-cards-grid.has-3-cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          }
+        }
+        @media (max-width: 900px) {
+          .status-cards-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        /* Subtle gentle dimming for walkthrough */
         .tour-dim-non-focused {
-          filter: grayscale(85%) contrast(0.9);
-          opacity: 0.38;
+          opacity: 0.52;
+          transition: opacity 0.3s ease;
           pointer-events: none;
         }
 
         /* The explicitly focused active card pops up in full color, bright glow and full opacity */
         .tour-spotlight-active {
-          filter: none !important;
           opacity: 1 !important;
           pointer-events: auto !important;
           position: relative !important;
@@ -2230,18 +2637,54 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         }
 
         /* Hide WhatsApp button during tour to prevent overlap on mobile */
-        .floating-contact-btn.tour-active-hide {
+        .floating-contact-container.tour-active-hide {
           opacity: 0 !important;
           pointer-events: none !important;
           transform: scale(0.6) !important;
           transition: opacity 0.25s ease, transform 0.25s ease;
         }
 
-        /* 📱 Floating Contact Us Button & Mobile / iPhone SE Responsive Positioning */
-        .floating-contact-btn {
+        /* 📱 Floating Contact Us Container & WhatsApp Popover Hub Styles */
+        .floating-contact-container {
           position: fixed;
           bottom: 2rem;
           right: 2rem;
+          z-index: 1001;
+        }
+
+        .whatsapp-popover-card {
+          position: absolute;
+          bottom: 68px;
+          right: 0;
+          width: 290px;
+          background: rgba(10, 10, 20, 0.96);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(168, 85, 247, 0.35);
+          box-shadow: 0 20px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(37, 211, 102, 0.2);
+          border-radius: 18px;
+          padding: 1.2rem;
+          animation: popoverSpring 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          transform-origin: bottom right;
+        }
+
+        @keyframes popoverSpring {
+          from {
+            opacity: 0;
+            transform: scale(0.7) translateY(15px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .whatsapp-hub-item:hover {
+          transform: translateY(-2px);
+          filter: brightness(1.1);
+        }
+
+        .floating-contact-btn {
           width: 56px;
           height: 56px;
           border-radius: 50%;
@@ -2251,7 +2694,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           align-items: center;
           justify-content: center;
           box-shadow: 0 4px 18px rgba(37, 211, 102, 0.45);
-          z-index: 99;
           text-decoration: none;
           transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -2262,16 +2704,40 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         }
 
         @media (max-width: 768px) {
-          .floating-contact-btn {
+          .floating-contact-container {
             bottom: 5.2rem !important;
             right: 1rem !important;
-            width: 46px !important;
-            height: 46px !important;
+          }
+          .floating-contact-btn {
+            width: 48px !important;
+            height: 48px !important;
           }
           .floating-contact-btn svg {
             width: 24px !important;
             height: 24px !important;
           }
+        }
+
+        /* 🚀 LIQUID GLASS TASKBAR STYLING */
+        .liquid-glass-taskbar {
+          position: fixed;
+          bottom: 1.5rem;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.4rem 0.5rem;
+          background: rgba(14, 11, 26, 0.72);
+          backdrop-filter: blur(24px) saturate(190%);
+          -webkit-backdrop-filter: blur(24px) saturate(190%);
+          border: 1px solid rgba(168, 85, 247, 0.3);
+          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7), 0 0 25px rgba(168, 85, 247, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+          border-radius: 9999px;
+          z-index: 1000;
+          transition: all 0.3s ease;
+          user-select: none;
+          touch-action: pan-x;
         }
 
         @media (max-width: 395px) {
