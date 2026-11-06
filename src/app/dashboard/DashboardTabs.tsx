@@ -3130,7 +3130,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         /* Status Cards 4-in-a-row Parallel Desktop Grid & Mobile Single-Column */
         .status-cards-grid {
           display: grid;
-          gap: clamp(0.75rem, 1.1vw, 1.2rem);
+          gap: clamp(0.9rem, 1.25vw, 1.35rem);
           width: 100%;
           align-items: stretch;
         }
@@ -3149,13 +3149,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         }
 
         .status-card {
-          border-radius: 16px;
-          padding: 1.4rem clamp(0.8rem, 1.1vw, 1.35rem);
+          border-radius: 18px;
+          padding: 1.5rem clamp(1rem, 1.3vw, 1.45rem);
           color: #FFF;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          min-height: 185px;
+          min-height: 195px;
           height: 100%;
           box-sizing: border-box;
           transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -3165,47 +3165,47 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          height: 28px;
-          margin-bottom: 0.8rem;
-          gap: 6px;
+          height: 30px;
+          margin-bottom: 0.85rem;
+          gap: 8px;
           box-sizing: border-box;
         }
 
         .status-card-title-group {
           display: flex;
           align-items: center;
-          gap: clamp(4px, 0.5vw, 7px);
+          gap: clamp(6px, 0.6vw, 9px);
           min-width: 0;
           flex-shrink: 1;
         }
 
         .status-card-title {
           margin: 0;
-          font-size: clamp(0.68rem, 0.8vw, 0.82rem);
-          font-weight: bold;
-          letter-spacing: clamp(0.2px, 0.05vw, 0.5px);
+          font-size: clamp(0.78rem, 0.88vw, 0.88rem);
+          font-weight: 700;
+          letter-spacing: 0.5px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
         .status-card-badge {
-          font-size: clamp(0.62rem, 0.72vw, 0.72rem);
-          background: rgba(255, 255, 255, 0.2);
+          font-size: clamp(0.7rem, 0.78vw, 0.78rem);
+          background: rgba(255, 255, 255, 0.22);
           color: #FFF;
-          padding: 2px clamp(5px, 0.6vw, 8px);
-          border-radius: 10px;
-          font-weight: bold;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          padding: 3px clamp(7px, 0.75vw, 10px);
+          border-radius: 12px;
+          font-weight: 700;
+          border: 1px solid rgba(255, 255, 255, 0.35);
           white-space: nowrap;
           flex-shrink: 0;
         }
 
         .status-card-btn {
-          font-size: clamp(0.62rem, 0.72vw, 0.75rem);
+          font-size: clamp(0.7rem, 0.78vw, 0.8rem);
           border-radius: 20px;
-          padding: 2px clamp(6px, 0.8vw, 11px);
-          font-weight: bold;
+          padding: 3px clamp(8px, 0.9vw, 12px);
+          font-weight: 700;
           white-space: nowrap;
           flex-shrink: 0;
           display: inline-flex;
@@ -3214,64 +3214,63 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
         .status-card-stat {
           margin: 0;
-          font-size: clamp(1.35rem, 1.8vw, 1.85rem);
-          font-weight: bold;
-          line-height: 1.2;
+          font-size: clamp(1.65rem, 2.1vw, 2.1rem);
+          font-weight: 800;
+          line-height: 1.15;
           display: flex;
           align-items: baseline;
-          gap: 6px;
+          gap: 7px;
           white-space: nowrap;
         }
 
         .status-card-stat-total {
-          font-size: clamp(0.78rem, 1vw, 0.95rem);
-          font-weight: normal;
-          opacity: 0.85;
+          font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+          font-weight: 500;
+          opacity: 0.88;
           white-space: nowrap;
         }
 
         .status-card-sub {
-          margin: 0.35rem 0 0 0;
-          font-size: clamp(0.75rem, 0.88vw, 0.9rem);
+          margin: 0.45rem 0 0 0;
+          font-size: clamp(0.84rem, 0.96vw, 0.96rem);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
         .status-card-footer {
-          margin-top: 0.8rem;
+          margin-top: 0.9rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          min-height: 24px;
+          min-height: 26px;
           gap: 6px;
         }
 
-        /* 4-Card Responsive Grid Tightening on 901px - 1320px screens */
-        @media (min-width: 901px) and (max-width: 1320px) {
+        /* Responsive 4-card desktop scaling */
+        @media (min-width: 901px) and (max-width: 1250px) {
           .status-cards-grid.has-4-cards {
-            gap: 0.7rem !important;
+            gap: 0.8rem !important;
           }
           .status-cards-grid.has-4-cards .status-card {
-            padding: 1.25rem 0.75rem !important;
+            padding: 1.35rem 0.9rem !important;
           }
           .status-cards-grid.has-4-cards .status-card-title {
-            font-size: 0.68rem !important;
-            letter-spacing: 0.2px !important;
+            font-size: 0.76rem !important;
           }
           .status-cards-grid.has-4-cards .status-card-badge {
-            font-size: 0.6rem !important;
-            padding: 1px 5px !important;
+            font-size: 0.68rem !important;
+            padding: 2px 7px !important;
           }
           .status-cards-grid.has-4-cards .status-card-btn {
-            font-size: 0.64rem !important;
-            padding: 2px 6px !important;
+            font-size: 0.7rem !important;
+            padding: 2px 8px !important;
           }
           .status-cards-grid.has-4-cards .status-card-stat {
-            font-size: 1.45rem !important;
+            font-size: 1.6rem !important;
           }
           .status-cards-grid.has-4-cards .status-card-stat-total {
-            font-size: 0.82rem !important;
+            font-size: 0.88rem !important;
           }
         }
 
