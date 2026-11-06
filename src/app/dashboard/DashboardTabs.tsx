@@ -1312,32 +1312,38 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               {isVpnActivated ? (
                 <div className={`status-cards-grid ${metaData.showUsaUsage ? "has-4-cards" : "has-3-cards"}`} style={{ borderRadius: "18px" }}>
                   
-                  {/* 📡 LIVE CONNECTION (LEFT) */}
-                  <div style={{ background: isVpnConnected === true ? "#059669" : "#d97706", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px" }}>
+                  {/* 📡 1. LIVE CONNECTION */}
+                  <div className="status-card" style={{ background: isVpnConnected === true ? "#059669" : "#d97706" }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.8rem" }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-                          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-                          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-                          <line x1="12" y1="20" x2="12.01" y2="20" />
-                        </svg>
-                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>LIVE CONNECTION</p>
+                      <div className="status-card-header">
+                        <div className="status-card-title-group">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                            <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                            <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                            <line x1="12" y1="20" x2="12.01" y2="20" />
+                          </svg>
+                          <p className="status-card-title">LIVE CONNECTION</p>
+                        </div>
                       </div>
-                      <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{ width: "12px", height: "12px", background: "#FFF", borderRadius: "50%", display: "inline-block" }}></span>
-                        {isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}
+                      <h2 className="status-card-stat">
+                        <span style={{ width: "10px", height: "10px", background: "#FFF", borderRadius: "50%", display: "inline-block", flexShrink: 0 }}></span>
+                        <span>{isVpnConnected === null ? "Checking..." : isVpnConnected ? "Secured" : "VPN is OFF"}</span>
                       </h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.92rem", wordBreak: "break-all" }}>{isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}</p>
+                    </div>
+                    <div className="status-card-footer">
+                      <p className="status-card-sub" style={{ margin: 0 }}>
+                        {isVpnConnected ? `IP: ${ipData?.ip}` : "Connect your VPN app!"}
+                      </p>
                     </div>
                   </div>
 
-                  {/* 📊 MAIN DATA USED (WITH MANUAL REFRESH & 30s COUNTDOWN) */}
-                  <div style={{ background: "#2563eb", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px" }}>
+                  {/* 📊 2. SG VPN DATA */}
+                  <div className="status-card" style={{ background: "#2563eb" }}>
                     <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <svg width="20" height="14" viewBox="0 0 20 14" style={{ borderRadius: "3px", overflow: "hidden", display: "inline-block", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
+                      <div className="status-card-header">
+                        <div className="status-card-title-group">
+                          <svg width="18" height="13" viewBox="0 0 20 14" style={{ borderRadius: "2px", overflow: "hidden", display: "inline-block", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
                             <rect width="20" height="7" fill="#ED2939" />
                             <rect y="7" width="20" height="7" fill="#FFFFFF" />
                             <circle cx="5" cy="3.5" r="2.2" fill="#FFFFFF" />
@@ -1348,27 +1354,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             <circle cx="6.2" cy="4.8" r="0.35" fill="#FFFFFF" />
                             <circle cx="5.6" cy="3.5" r="0.35" fill="#FFFFFF" />
                           </svg>
-                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>
-                            SG VPN DATA
-                          </p>
+                          <p className="status-card-title">SG VPN DATA</p>
                         </div>
                         
-                        {/* MANUAL REFRESH BUTTON WITH 30s COUNTDOWN (NO EMOJI) */}
+                        {/* MANUAL REFRESH BUTTON WITH 30s COUNTDOWN */}
                         <button
                           type="button"
                           onClick={handleManualRefreshUsage}
                           disabled={refreshCooldown > 0 || isSyncingUsage}
+                          className="status-card-btn"
                           style={{
                             background: refreshCooldown > 0 || isSyncingUsage ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.2)",
                             color: refreshCooldown > 0 || isSyncingUsage ? "rgba(255,255,255,0.6)" : "#FFF",
                             border: "1px solid rgba(255,255,255,0.25)",
-                            borderRadius: "20px",
-                            padding: "3px 12px",
-                            fontSize: "0.75rem",
-                            fontWeight: "bold",
                             cursor: refreshCooldown > 0 || isSyncingUsage ? "not-allowed" : "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
                             backdropFilter: "blur(4px)",
                             transition: "all 0.2s ease"
                           }}
@@ -1378,15 +1377,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </button>
                       </div>
 
-                      <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                      <h2 className="status-card-stat">
                         <span>{liveDataUsed || "0 GB"}</span>
-                        <span style={{ fontSize: "1rem", fontWeight: "normal", opacity: 0.85 }}>
+                        <span className="status-card-stat-total">
                           / {liveDataTotal || "Unlimited"}
                         </span>
                       </h2>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.8rem 0 0 0", flexWrap: "wrap", gap: "6px" }}>
+                    <div className="status-card-footer">
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span style={{ 
                           width: "8px", 
@@ -1395,28 +1394,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           background: isSyncingUsage ? "#fbbf24" : "#4ade80", 
                           display: "inline-block",
                           boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #4ade80",
-                          transition: "all 0.3s ease"
+                          transition: "all 0.3s ease",
+                          flexShrink: 0
                         }} />
-                        <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.5px" }}>
+                        <p style={{ margin: 0, fontSize: "clamp(0.68rem, 0.78vw, 0.75rem)", color: "rgba(255,255,255,0.85)", letterSpacing: "0.2px", whiteSpace: "nowrap" }}>
                           {isSyncingUsage ? "Syncing live data..." : "Live Usage Synced"}
                         </p>
                       </div>
 
                       {refreshCooldown > 0 && !isSyncingUsage && (
-                        <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.7)" }}>
+                        <span style={{ fontSize: "clamp(0.64rem, 0.72vw, 0.7rem)", color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}>
                           Wait: {refreshCooldown}s
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* USA VPN DATA CARD (SHOWN ONLY IF ADMIN ACTIVATED showUsaUsage) */}
+                  {/* 🇺🇸 3. USA VPN DATA (SHOWN ONLY IF ADMIN ACTIVATED showUsaUsage) */}
                   {metaData.showUsaUsage && (
-                    <div style={{ background: "linear-gradient(135deg, #be185d 0%, #7c3aed 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", border: "1px solid rgba(244, 114, 182, 0.4)", boxShadow: "0 8px 24px rgba(190, 24, 93, 0.35)" }}>
+                    <div className="status-card" style={{ background: "linear-gradient(135deg, #be185d 0%, #7c3aed 100%)", border: "1px solid rgba(244, 114, 182, 0.4)", boxShadow: "0 8px 24px rgba(190, 24, 93, 0.35)" }}>
                       <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <svg width="20" height="14" viewBox="0 0 20 14" style={{ borderRadius: "3px", overflow: "hidden", display: "inline-block", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
+                        <div className="status-card-header">
+                          <div className="status-card-title-group">
+                            <svg width="18" height="13" viewBox="0 0 20 14" style={{ borderRadius: "2px", overflow: "hidden", display: "inline-block", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
                               <rect width="20" height="14" fill="#B22234" />
                               <rect y="1.08" width="20" height="1.08" fill="#FFFFFF" />
                               <rect y="3.24" width="20" height="1.08" fill="#FFFFFF" />
@@ -1434,22 +1434,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               <circle cx="4.2" cy="5.7" r="0.5" fill="#FFFFFF" />
                               <circle cx="6.4" cy="5.7" r="0.5" fill="#FFFFFF" />
                             </svg>
-                            <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px", color: "#fdf2f8" }}>
+                            <p className="status-card-title" style={{ color: "#fdf2f8" }}>
                               USA VPN DATA
                             </p>
                           </div>
-                          <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.2)", color: "#FFF", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold", border: "1px solid rgba(255, 255, 255, 0.3)" }}>Bonus Server</span>
+                          <span className="status-card-badge">Bonus Server</span>
                         </div>
 
-                        <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold", display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                        <h2 className="status-card-stat">
                           <span>{liveUsaDataUsed || "0 GB"}</span>
-                          <span style={{ fontSize: "1rem", fontWeight: "normal", opacity: 0.85, color: "#e9d5ff" }}>
+                          <span className="status-card-stat-total" style={{ color: "#e9d5ff" }}>
                             / {liveUsaDataTotal || "Unlimited"}
                           </span>
                         </h2>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.8rem 0 0 0", flexWrap: "wrap", gap: "6px" }}>
+                      <div className="status-card-footer">
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                           <span style={{ 
                             width: "8px", 
@@ -1458,9 +1458,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             background: isSyncingUsage ? "#fbbf24" : "#a78bfa", 
                             display: "inline-block",
                             boxShadow: isSyncingUsage ? "0 0 8px #fbbf24" : "0 0 8px #a78bfa",
-                            transition: "all 0.3s ease"
+                            transition: "all 0.3s ease",
+                            flexShrink: 0
                           }} />
-                          <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.9)", letterSpacing: "0.5px" }}>
+                          <p style={{ margin: 0, fontSize: "clamp(0.68rem, 0.78vw, 0.75rem)", color: "rgba(255,255,255,0.9)", letterSpacing: "0.2px", whiteSpace: "nowrap" }}>
                             {isSyncingUsage ? "Syncing USA data..." : "USA Server Synced"}
                           </p>
                         </div>
@@ -1468,45 +1469,53 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   )}
 
-                  {/* ⏳ EXPIRES IN */}
-                  <div style={{ background: expiryCardBg, borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", transition: "background 0.3s ease" }}>
+                  {/* ⏳ 4. EXPIRES IN */}
+                  <div className="status-card" style={{ background: expiryCardBg, transition: "background 0.3s ease" }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.8rem" }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>EXPIRES IN</p>
+                      <div className="status-card-header">
+                        <div className="status-card-title-group">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          <p className="status-card-title">EXPIRES IN</p>
+                        </div>
                       </div>
-                      <h2 style={{ margin: 0, fontSize: "1.85rem", fontWeight: "bold" }}>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</h2>
-                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.92rem" }}>{(user?.expiryDate || metaData.expiryDate) ? new Date(user?.expiryDate || metaData.expiryDate).toLocaleDateString() : "Unlimited Plan"}</p>
+                      <h2 className="status-card-stat">
+                        <span>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</span>
+                      </h2>
+                      <p className="status-card-sub">
+                        {(user?.expiryDate || metaData.expiryDate) ? new Date(user?.expiryDate || metaData.expiryDate).toLocaleDateString() : "Unlimited Plan"}
+                      </p>
                     </div>
 
-                    {/* RENEW VPN BUTTON (NO EMOJI) */}
-                    <button
-                      type="button"
-                      onClick={() => setRenewModalOpen(true)}
-                      style={{
-                        marginTop: "1.2rem",
-                        width: "100%",
-                        padding: "0.65rem 1rem",
-                        borderRadius: "10px",
-                        border: "1px solid rgba(255,255,255,0.3)",
-                        background: metaData.isRenewUnlocked ? "rgba(34, 197, 94, 0.25)" : "rgba(0, 0, 0, 0.35)",
-                        color: "#FFF",
-                        fontWeight: "bold",
-                        fontSize: "0.85rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                        backdropFilter: "blur(6px)",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      Renew VPN
-                    </button>
+                    {/* RENEW VPN BUTTON */}
+                    <div className="status-card-footer" style={{ marginTop: "0.8rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => setRenewModalOpen(true)}
+                        style={{
+                          width: "100%",
+                          padding: "0.5rem 0.8rem",
+                          borderRadius: "10px",
+                          border: "1px solid rgba(255,255,255,0.3)",
+                          background: metaData.isRenewUnlocked ? "rgba(34, 197, 94, 0.25)" : "rgba(0, 0, 0, 0.35)",
+                          color: "#FFF",
+                          fontWeight: "bold",
+                          fontSize: "clamp(0.75rem, 0.85vw, 0.85rem)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                          backdropFilter: "blur(6px)",
+                          transition: "all 0.2s ease",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        Renew VPN
+                      </button>
+                    </div>
                   </div>
 
                 </div>
@@ -3121,8 +3130,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         /* Status Cards 4-in-a-row Parallel Desktop Grid & Mobile Single-Column */
         .status-cards-grid {
           display: grid;
-          gap: 1.2rem;
+          gap: clamp(0.75rem, 1.1vw, 1.2rem);
           width: 100%;
+          align-items: stretch;
         }
         @media (min-width: 901px) {
           .status-cards-grid.has-4-cards {
@@ -3135,6 +3145,133 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         @media (max-width: 900px) {
           .status-cards-grid {
             grid-template-columns: 1fr !important;
+          }
+        }
+
+        .status-card {
+          border-radius: 16px;
+          padding: 1.4rem clamp(0.8rem, 1.1vw, 1.35rem);
+          color: #FFF;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 185px;
+          height: 100%;
+          box-sizing: border-box;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .status-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          height: 28px;
+          margin-bottom: 0.8rem;
+          gap: 6px;
+          box-sizing: border-box;
+        }
+
+        .status-card-title-group {
+          display: flex;
+          align-items: center;
+          gap: clamp(4px, 0.5vw, 7px);
+          min-width: 0;
+          flex-shrink: 1;
+        }
+
+        .status-card-title {
+          margin: 0;
+          font-size: clamp(0.68rem, 0.8vw, 0.82rem);
+          font-weight: bold;
+          letter-spacing: clamp(0.2px, 0.05vw, 0.5px);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .status-card-badge {
+          font-size: clamp(0.62rem, 0.72vw, 0.72rem);
+          background: rgba(255, 255, 255, 0.2);
+          color: #FFF;
+          padding: 2px clamp(5px, 0.6vw, 8px);
+          border-radius: 10px;
+          font-weight: bold;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .status-card-btn {
+          font-size: clamp(0.62rem, 0.72vw, 0.75rem);
+          border-radius: 20px;
+          padding: 2px clamp(6px, 0.8vw, 11px);
+          font-weight: bold;
+          white-space: nowrap;
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .status-card-stat {
+          margin: 0;
+          font-size: clamp(1.35rem, 1.8vw, 1.85rem);
+          font-weight: bold;
+          line-height: 1.2;
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+          white-space: nowrap;
+        }
+
+        .status-card-stat-total {
+          font-size: clamp(0.78rem, 1vw, 0.95rem);
+          font-weight: normal;
+          opacity: 0.85;
+          white-space: nowrap;
+        }
+
+        .status-card-sub {
+          margin: 0.35rem 0 0 0;
+          font-size: clamp(0.75rem, 0.88vw, 0.9rem);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .status-card-footer {
+          margin-top: 0.8rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 24px;
+          gap: 6px;
+        }
+
+        /* 4-Card Responsive Grid Tightening on 901px - 1320px screens */
+        @media (min-width: 901px) and (max-width: 1320px) {
+          .status-cards-grid.has-4-cards {
+            gap: 0.7rem !important;
+          }
+          .status-cards-grid.has-4-cards .status-card {
+            padding: 1.25rem 0.75rem !important;
+          }
+          .status-cards-grid.has-4-cards .status-card-title {
+            font-size: 0.68rem !important;
+            letter-spacing: 0.2px !important;
+          }
+          .status-cards-grid.has-4-cards .status-card-badge {
+            font-size: 0.6rem !important;
+            padding: 1px 5px !important;
+          }
+          .status-cards-grid.has-4-cards .status-card-btn {
+            font-size: 0.64rem !important;
+            padding: 2px 6px !important;
+          }
+          .status-cards-grid.has-4-cards .status-card-stat {
+            font-size: 1.45rem !important;
+          }
+          .status-cards-grid.has-4-cards .status-card-stat-total {
+            font-size: 0.82rem !important;
           }
         }
 
