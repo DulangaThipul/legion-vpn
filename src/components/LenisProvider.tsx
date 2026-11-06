@@ -1,47 +1,57 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 
 export default function LenisProvider({ children }: { children: React.ReactNode }) {
+  const lenisRef = useRef<Lenis | null>(null);
+
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+    // Check if device is touch-enabled (smartphones, tablets) or prefers reduced motion
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.matchMedia("(pointer: coarse)").matches);
 
-    // Skip the smooth-scroll layer on touch devices and reduced-motion users.
-    // Native scrolling is already smooth on phones, and Lenis's continuous
-    // rAF loop just adds overhead on top of it — this alone is one of the
-    // biggest low-end mobile wins available here.
-    if (prefersReducedMotion || isTouchDevice) return;
+    const prefersReducedMotion =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    // Heavily low-end optimized Lenis configuration:
+    // - On touch/mobile: let native GPU momentum scrolling run without software interference.
+    // - On desktop: snappy lerp (0.1) and responsive wheel multiplier for zero FPS drop.
     const lenis = new Lenis({
-      lerp: 0.08,
-      smoothWheel: true,
+      lerp: 0.1,
+      duration: isTouchDevice ? 0 : 0.85,
+      smoothWheel: !isTouchDevice && !prefersReducedMotion,
+      syncTouch: false,
+      touchMultiplier: 1.0,
+      wheelMultiplier: 0.95,
+      prevent: (node) => {
+        if (!node) return false;
+        const el = node as HTMLElement;
+        return (
+          el.tagName === "CODE" ||
+          el.tagName === "PRE" ||
+          el.classList?.contains("no-lenis") ||
+          el.getAttribute?.("role") === "dialog"
+        );
+      },
     });
+
+    lenisRef.current = lenis;
 
     let rafId: number;
     function raf(time: number) {
       lenis.raf(time);
       rafId = requestAnimationFrame(raf);
     }
+
     rafId = requestAnimationFrame(raf);
 
-    // Pause the loop while the tab is in the background instead of letting
-    // it keep ticking.
-    const handleVisibility = () => {
-      if (document.hidden) {
-        cancelAnimationFrame(rafId);
-      } else {
-        rafId = requestAnimationFrame(raf);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
       cancelAnimationFrame(rafId);
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
 
