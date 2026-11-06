@@ -1210,7 +1210,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ background: "linear-gradient(135deg, #be185d 0%, #9d174d 100%)", borderRadius: "16px", padding: "1.6rem 1.4rem", color: "#FFF", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "180px", boxShadow: "0 8px 24px rgba(190, 24, 93, 0.25)" }}>
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem" }}>
-                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>🇺🇸 USA VPN DATA</p>
+                          <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "1px" }}>USA VPN DATA</p>
                           <span style={{ fontSize: "0.72rem", background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>Bonus Server</span>
                         </div>
 
