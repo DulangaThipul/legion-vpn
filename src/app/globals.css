@@ -131,3 +131,58 @@ h1, h2, h3 {
 .btn-outline:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
+
+/* Line Check Floating Pill & Smooth Morphing Studio */
+.linecheck-pill-button {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: pulseGlow 3.5s infinite ease-in-out;
+}
+.linecheck-pill-button:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 28px rgba(168, 85, 247, 0.55) !important;
+  border-color: rgba(192, 132, 252, 0.7) !important;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 14px rgba(168, 85, 247, 0.25);
+  }
+  50% {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7), 0 0 24px rgba(168, 85, 247, 0.48);
+  }
+}
+
+@keyframes linecheckModalExpand {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(24px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes linecheckItemReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.linecheck-item-stagger-1 {
+  animation: linecheckItemReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+.linecheck-item-stagger-2 {
+  animation: linecheckItemReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+.linecheck-item-stagger-3 {
+  animation: linecheckItemReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
