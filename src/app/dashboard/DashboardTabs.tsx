@@ -787,6 +787,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   
   // 🔍 V2RAY LINE CHECK & DIAGNOSTICS (PXN STORES INSPIRED)
   const [lineCheckConfig, setLineCheckConfig] = useState<string>("");
+  const [verdictLang, setVerdictLang] = useState<"en" | "si">("en");
   const [isCheckingLine, setIsCheckingLine] = useState<boolean>(false);
   const [includeDownloadCheck, setIncludeDownloadCheck] = useState<boolean>(true);
   const [lineCheckResults, setLineCheckResults] = useState<{
@@ -808,9 +809,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     serverStatus: string;
     isVpnActive: boolean;
     verdictStatus: "ok" | "warn" | "bad";
-    verdictCategory: string;
-    verdictHeadline: string;
-    verdictExplanation: string;
+    verdictCategoryEn: string;
+    verdictCategorySi: string;
+    verdictHeadlineEn: string;
+    verdictHeadlineSi: string;
+    verdictExplanationEn: string;
+    verdictExplanationSi: string;
   } | null>(null);
 
   const runLineCheck = async (customConfig?: string) => {
@@ -943,12 +947,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const clientIp = ipData?.ip || "Detected (Hidden)";
     const serverAnswerMs = hostCheckResult?.latencyMs ? hostCheckResult.latencyMs : Math.round(Math.max(6, roundTrip * 0.35));
 
-    // 6. Intelligent Verdict Engine
+    // 6. Intelligent Verdict Engine (Bilingual: Default English + Sinhala Toggle)
     const isVpnActive = isVpnConnected === true;
     let verdictStatus: "ok" | "warn" | "bad" = "ok";
-    let verdictCategory = "Line & Network Operational";
-    let verdictHeadline = "All Systems Running at Peak Performance!";
-    let verdictExplanation = `ඔබගේ Local Connection එක සහ VPN Server අතර සන්නිවේදනය සාර්ථකයි. Local Ping අගය ${roundTrip}ms වන අතර Packet Loss 0% කි.`;
+    const displayServerName = serverHost.toLowerCase().includes("legiongraphics.site") ? "LEGION VPN SERVER 10Gbps" : serverHost;
+
+    let verdictCategoryEn = "VERDICT · LINE & NETWORK OPERATIONAL";
+    let verdictCategorySi = "VERDICT · සම්බන්ධතාවය සාර්ථකයි";
+    let verdictHeadlineEn = "All Systems Running at Peak Performance!";
+    let verdictHeadlineSi = "සියලුම පද්ධති උපරිම වේගයෙන් සහ ස්ථාවරව ක්‍රියාත්මක වේ!";
+    let verdictExplanationEn = `Communication between your device and ${displayServerName} is fast and stable. Round-trip ping is ${roundTrip}ms with 0% packet loss.`;
+    let verdictExplanationSi = `ඔබගේ Local Connection එක සහ VPN Server අතර සන්නිවේදනය සාර්ථකයි. Local Ping අගය ${roundTrip}ms වන අතර Packet Loss 0% කි.`;
     let serverStatus = hostCheckResult?.ip ? `Online · ${hostCheckResult.ip}` : "Online · 99.98% SLA";
 
     const lowerSni = (sni + " " + configName).toLowerCase();
@@ -956,42 +965,63 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
     if (!configValid && rawConfig) {
       verdictStatus = "bad";
-      verdictCategory = "Verdict · Invalid Config Format";
-      verdictHeadline = "Config URL එකෙහි ආකෘතිය වැරදියි (Invalid VLESS Link).";
-      verdictExplanation = "කරුණාකර Dashboard එකෙන් ඔබගේ නිවැරදි vless:// key එක Copy කර මෙහි ඇතුළත් කරන්න.";
+      verdictCategoryEn = "VERDICT · INVALID CONFIG FORMAT";
+      verdictCategorySi = "VERDICT · අක්‍රිය CONFIG ආකෘතියකි";
+      verdictHeadlineEn = "Invalid VLESS Config Link Format.";
+      verdictHeadlineSi = "Config URL එකෙහි ආකෘතිය වැරදියි (Invalid VLESS Link).";
+      verdictExplanationEn = "Please copy your full and valid vless:// configuration key from My VPNs and paste it here.";
+      verdictExplanationSi = "කරුණාකර Dashboard එකෙන් ඔබගේ නිවැරදි vless:// key එක Copy කර මෙහි ඇතුළත් කරන්න.";
       serverStatus = "Unknown Host";
     } else if (hostCheckResult && !hostCheckResult.dnsOk) {
       verdictStatus = "bad";
-      verdictCategory = "Verdict · Server Domain / DNS Error";
-      verdictHeadline = `Server Subdomain (${serverHost}) DNS Records වල හමු නොවීය.`;
-      verdictExplanation = `මෙම Config එකෙහි සඳහන් Server Domain එක ("${serverHost}") DNS මඟින් Resolve කරගත නොහැක (Domain Not Found). මෙම Server Domain එක හෝ Subdomain එක ක්‍රියාත්මක නොවේ. ඔබගේ VPN එක Connect නොවීම හෝ Slow වීමට ප්‍රධාන හේතුව මෙයයි. කරුණාකර නව Config එකක් ලබා ගැනීමට Admin සම්බන්ධ කරගන්න.`;
+      verdictCategoryEn = "VERDICT · SERVER DOMAIN / DNS ERROR";
+      verdictCategorySi = "VERDICT · SERVER DOMAIN / DNS දෝෂයකි";
+      verdictHeadlineEn = `Server Subdomain (${displayServerName}) was not found in DNS records.`;
+      verdictHeadlineSi = `Server Subdomain (${displayServerName}) DNS Records වල හමු නොවීය.`;
+      verdictExplanationEn = `The server address ("${serverHost}") specified in this config cannot be resolved by DNS (Domain Not Found). This server or subdomain is currently inactive or not routed. This is why your VPN cannot connect or fails to tunnel. Please contact Admin for a working config.`;
+      verdictExplanationSi = `මෙම Config එකෙහි සඳහන් Server Domain එක ("${serverHost}") DNS මඟින් සොයාගත නොහැක (Domain Not Found). මෙම Server Domain එක හෝ Subdomain එක ක්‍රියාත්මක නොවේ. ඔබගේ VPN එක Connect නොවීම හෝ වැඩ නොකිරීමට ප්‍රධාන හේතුව මෙයයි. කරුණාකර නව Server එකක් හෝ Config එකක් ලබා ගැනීමට Admin සම්බන්ධ කරගන්න.`;
       serverStatus = "Offline (DNS Record Not Found)";
     } else if (hostCheckResult && hostCheckResult.reachable === false) {
       verdictStatus = "bad";
-      verdictCategory = "Verdict · Server Port Unreachable";
-      verdictHeadline = `Server Host (${serverHost}:${serverPort}) වෙත සම්බන්ධ විය නොහැක.`;
-      verdictExplanation = `Server Subdomain එක DNS මඟින් IP එකකට (${hostCheckResult.ip || "IP"}) Resolve වුවද, Server Port එක (${serverPort}) ප්‍රතිචාර නොදක්වයි (Connection Timed Out / Refused). Server එකෙහි හෝ Firewall එකෙහි දෝෂයක් පවතී. කරුණාකර Admin සම්බන්ධ කරගන්න.`;
+      verdictCategoryEn = "VERDICT · SERVER PORT UNREACHABLE";
+      verdictCategorySi = "VERDICT · SERVER PORT වෙත සම්බන්ධ විය නොහැක";
+      verdictHeadlineEn = `Unable to connect to Server Host (${displayServerName}:${serverPort}).`;
+      verdictHeadlineSi = `Server Host (${displayServerName}:${serverPort}) වෙත සම්බන්ධ විය නොහැක.`;
+      verdictExplanationEn = `The server domain resolved to an IP (${hostCheckResult.ip || "IP"}), but server port ${serverPort} is not responding (Connection Refused or Timed Out). The server software is offline or blocked. Please contact Admin.`;
+      verdictExplanationSi = `Server Subdomain එක DNS මඟින් IP එකකට (${hostCheckResult.ip || "IP"}) Resolve වුවද, Server Port එක (${serverPort}) ප්‍රතිචාර නොදක්වයි (Connection Timed Out / Refused). Server එකෙහි හෝ Firewall එකෙහි දෝෂයක් පවතී. කරුණාකර Admin සම්බන්ධ කරගන්න.`;
       serverStatus = "Offline (Port Unreachable)";
     } else if (lowerSni.includes("mobitel") && (lowerIsp.includes("slt") || lowerIsp.includes("dialog") || lowerIsp.includes("airtel"))) {
       verdictStatus = "warn";
-      verdictCategory = "Verdict · Network Mismatch";
-      verdictHeadline = `මෙම Config එක Mobitel සඳහා සකසා ඇත, නමුත් ඔබ දැනට ${detectedIsp} ජාලයේ සිටී.`;
-      verdictExplanation = "ශ්‍රී ලංකාවේ ISP Unlimited VPN පැකේජ ක්‍රියාත්මක වන්නේ අදාළ SIM එකෙන් පමණි. SLT/Dialog හරහා සම්බන්ධ කළහොත් Normal Data කැපී යාම හෝ Connect නොවී යාම සිදුවේ. කරුණාකර Mobitel Connection එකට මාරු වී නැවත බලන්න.";
+      verdictCategoryEn = "VERDICT · NETWORK MISMATCH";
+      verdictCategorySi = "VERDICT · ජාලය නොගැලපේ (NETWORK MISMATCH)";
+      verdictHeadlineEn = `This config is configured for Mobitel, but your device is on ${detectedIsp}.`;
+      verdictHeadlineSi = `මෙම Config එක Mobitel සඳහා සකසා ඇත, නමුත් ඔබ දැනට ${detectedIsp} ජාලයේ සිටී.`;
+      verdictExplanationEn = "Sri Lankan ISP unlimited bypass configs only work through their designated SIM networks. Using SLT/Dialog on a Mobitel config will consume regular data or fail to connect. Please switch to Mobitel to test.";
+      verdictExplanationSi = "ශ්‍රී ලංකාවේ ISP Unlimited VPN පැකේජ ක්‍රියාත්මක වන්නේ අදාළ SIM එකෙන් පමණි. SLT/Dialog හරහා සම්බන්ධ කළහොත් Normal Data කැපී යාම හෝ Connect නොවී යාම සිදුවේ. කරුණාකර Mobitel Connection එකට මාරු වී නැවත බලන්න.";
     } else if (lowerSni.includes("dialog") && !lowerIsp.includes("dialog") && !isVpnActive) {
       verdictStatus = "warn";
-      verdictCategory = "Verdict · Network Mismatch";
-      verdictHeadline = `මෙම Config එක Dialog සඳහා වන අතර, ඔබගේ වත්මන් ජාලය ${detectedIsp} වේ.`;
-      verdictExplanation = "Dialog Zoom / Social bypass ක්‍රියාත්මක වීමට ඔබගේ Dialog SIM එක සහ Package එක සක්‍රීයව තිබිය යුතුය.";
+      verdictCategoryEn = "VERDICT · NETWORK MISMATCH";
+      verdictCategorySi = "VERDICT · ජාලය නොගැලපේ (NETWORK MISMATCH)";
+      verdictHeadlineEn = `This config is for Dialog, but your current ISP is detected as ${detectedIsp}.`;
+      verdictHeadlineSi = `මෙම Config එක Dialog සඳහා වන අතර, ඔබගේ වත්මන් ජාලය ${detectedIsp} වේ.`;
+      verdictExplanationEn = "Dialog Zoom & Social bypass packages require an active Dialog SIM connection.";
+      verdictExplanationSi = "Dialog Zoom / Social bypass ක්‍රියාත්මක වීමට ඔබගේ Dialog SIM එක සහ Package එක සක්‍රීයව තිබිය යුතුය.";
     } else if (packetLoss > 0) {
       verdictStatus = "bad";
-      verdictCategory = "Verdict · Packet Loss";
-      verdictHeadline = `ඔබගේ Connection එකෙහි ${packetLoss}% Packet Loss තත්ත්වයක් පවතී.`;
-      verdictExplanation = "දුරකථන Signal දුර්වල වීම හෝ Mobile Tower එක තදබද වීම නිසා Packets Drop වේ. මෙය VPN නිතර Disconnect වීමට ප්‍රධාන හේතුවයි. Airplane Mode තත්පර 5ක් දමා නැවත Off කරන්න (IP Hunt).";
+      verdictCategoryEn = "VERDICT · PACKET LOSS DETECTED";
+      verdictCategorySi = "VERDICT · PACKET LOSS හඳුනාගැනුණි";
+      verdictHeadlineEn = `Your local connection is experiencing ${packetLoss}% Packet Loss.`;
+      verdictHeadlineSi = `ඔබගේ Connection එකෙහි ${packetLoss}% Packet Loss තත්ත්වයක් පවතී.`;
+      verdictExplanationEn = "Weak mobile signal or cell tower congestion is causing dropped network packets. This is the main reason why VPN tunnels drop or disconnect. Toggle Airplane Mode for 5 seconds to acquire a fresh, stable IP (IP Hunt).";
+      verdictExplanationSi = "දුරකථන Signal දුර්වල වීම හෝ Mobile Tower එක තදබද වීම නිසා Packets Drop වේ. මෙය VPN නිතර Disconnect වීමට ප්‍රධාන හේතුවයි. Airplane Mode තත්පර 5ක් දමා නැවත Off කරන්න (IP Hunt).";
     } else if (jitter > 80 || roundTrip > 160) {
       verdictStatus = "warn";
-      verdictCategory = "Verdict · High Jitter & Latency";
-      verdictHeadline = `Line Jitter (±${jitter}ms) සහ Ping අගය (${roundTrip}ms) සාමාන්‍ය මට්ටමට වඩා වැඩිය.`;
-      verdictExplanation = "ඔබ සිටින ප්‍රදේශයේ සිග්නල් තත්ත්වය හෝ Signal Tower එක අධික තදබදයක පවතී. Router එක Restart කිරීමෙන් හෝ Airplane Mode Toggle කිරීමෙන් වඩාත් වේගවත් IP එකක් ලබාගත හැක.";
+      verdictCategoryEn = "VERDICT · HIGH JITTER & LATENCY";
+      verdictCategorySi = "VERDICT · HIGH JITTER & LATENCY";
+      verdictHeadlineEn = `Line Jitter (±${jitter}ms) and Ping (${roundTrip}ms) are higher than normal.`;
+      verdictHeadlineSi = `Line Jitter (±${jitter}ms) සහ Ping අගය (${roundTrip}ms) සාමාන්‍ය මට්ටමට වඩා වැඩිය.`;
+      verdictExplanationEn = "The server is running normally without issues. However, your local cellular tower or Wi-Fi channel is congested. Restarting your router or toggling Airplane Mode can help acquire a faster IP.";
+      verdictExplanationSi = "Server එකෙහි දෝෂයක් නොමැත; ඔබ සිටින ප්‍රදේශයේ සිග්නල් තත්ත්වය හෝ Signal Tower එක අධික තදබදයක පවතී. Router එක Restart කිරීමෙන් හෝ Airplane Mode Toggle කිරීමෙන් වඩාත් වේගවත් IP එකක් ලබාගත හැක.";
     }
 
     const now = new Date();
@@ -1016,9 +1046,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       serverStatus,
       isVpnActive,
       verdictStatus,
-      verdictCategory,
-      verdictHeadline,
-      verdictExplanation,
+      verdictCategoryEn,
+      verdictCategorySi,
+      verdictHeadlineEn,
+      verdictHeadlineSi,
+      verdictExplanationEn,
+      verdictExplanationSi,
     });
 
     setIsCheckingLine(false);
@@ -1544,7 +1577,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 >
                   {isCheckingLine ? (
                     <>
-                      <div style={{ width: "16px", height: "16px", border: "2px solid #FFF", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}></div>
+                      <svg className="animate-spin" style={{ animation: "spin 0.8s linear infinite", width: "16px", height: "16px" }} viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
                       <span>Testing Line...</span>
                     </>
                   ) : (
@@ -1644,7 +1677,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         </p>
                       </div>
                       <div style={{ textAlign: "right", maxWidth: "28%" }}>
-                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>{lineCheckResults.serverHost}</p>
+                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>{lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") ? "LEGION VPN SERVER 10Gbps" : lineCheckResults.serverHost}</p>
                         <p style={{ margin: 0, fontSize: "0.72rem", color: lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#c084fc", fontWeight: lineCheckResults.serverStatus.includes("Offline") ? "bold" : "normal" }}>
                           {lineCheckResults.serverStatus}
                         </p>
@@ -1653,7 +1686,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 </div>
 
-                {/* 2. SMART VERDICT BANNER (className="linecheck-item-stagger-3") */}
+                {/* 2. SMART VERDICT BANNER (WITH ENG / SIN TOGGLE) */}
                 <div className="linecheck-item-stagger-3" style={{ 
                   background: lineCheckResults.verdictStatus === "ok" 
                     ? "linear-gradient(135deg, rgba(6, 78, 59, 0.5) 0%, rgba(4, 47, 46, 0.7) 100%)" 
@@ -1666,7 +1699,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   marginBottom: "1.4rem",
                   boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.4rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem", flexWrap: "wrap", gap: "8px" }}>
                     <span style={{ 
                       fontSize: "0.72rem", 
                       fontWeight: "bold", 
@@ -1674,14 +1707,53 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       textTransform: "uppercase",
                       color: lineCheckResults.verdictStatus === "ok" ? "#86efac" : lineCheckResults.verdictStatus === "warn" ? "#fcd34d" : "#fca5a5"
                     }}>
-                      {lineCheckResults.verdictCategory}
+                      {verdictLang === "en" ? lineCheckResults.verdictCategoryEn : lineCheckResults.verdictCategorySi}
                     </span>
+
+                    {/* Language Switcher: ENG / SIN (Default English) */}
+                    <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "20px", padding: "2px", gap: "2px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setVerdictLang("en")}
+                        style={{
+                          background: verdictLang === "en" ? "linear-gradient(90deg, #8b5cf6, #7c3aed)" : "transparent",
+                          color: verdictLang === "en" ? "#FFF" : "#9ca3af",
+                          border: "none",
+                          borderRadius: "14px",
+                          padding: "3px 10px",
+                          fontSize: "0.72rem",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        ENG
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVerdictLang("si")}
+                        style={{
+                          background: verdictLang === "si" ? "linear-gradient(90deg, #8b5cf6, #7c3aed)" : "transparent",
+                          color: verdictLang === "si" ? "#FFF" : "#9ca3af",
+                          border: "none",
+                          borderRadius: "14px",
+                          padding: "3px 10px",
+                          fontSize: "0.72rem",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        SIN
+                      </button>
+                    </div>
                   </div>
+
                   <h3 style={{ margin: "0 0 0.5rem 0", color: "#FFF", fontSize: "1.2rem", fontWeight: "bold" }}>
-                    {lineCheckResults.verdictHeadline}
+                    {verdictLang === "en" ? lineCheckResults.verdictHeadlineEn : lineCheckResults.verdictHeadlineSi}
                   </h3>
                   <p style={{ margin: 0, color: "#e5e7eb", fontSize: "0.88rem", lineHeight: 1.6 }}>
-                    {lineCheckResults.verdictExplanation}
+                    {verdictLang === "en" ? lineCheckResults.verdictExplanationEn : lineCheckResults.verdictExplanationSi}
                   </p>
                 </div>
 
@@ -1742,7 +1814,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
                         <span style={{ color: "#9ca3af" }}>Server Domain / Host</span>
-                        <strong style={{ color: lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7" }}>{lineCheckResults.serverHost}:{lineCheckResults.serverPort}</strong>
+                        <strong style={{ color: lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7" }}>{lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") ? "LEGION VPN SERVER 10Gbps" : `${lineCheckResults.serverHost}:${lineCheckResults.serverPort}`}</strong>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
                         <span style={{ color: "#9ca3af" }}>SNI Mask</span>
@@ -2987,48 +3059,82 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                </div>
                              </div>
 
-                             {/* Copy Button */}
-                             <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                             {/* Action Buttons: Line Check pill button on left, Copy Config on rightmost edge */}
+                             <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
+                               
+                               {/* Button styled like Image 4 (to the left of Copy Button) */}
+                               <button
+                                 type="button"
+                                 onClick={() => {
+                                   setLineCheckConfig(cfg.code);
+                                   setIsLineCheckModalOpen(true);
+                                   runLineCheck(cfg.code);
+                                 }}
+                                 className="linecheck-pill-button"
+                                 style={{
+                                   display: "inline-flex",
+                                   alignItems: "center",
+                                   gap: "8px",
+                                   background: "rgba(12, 10, 20, 0.92)",
+                                   border: "1px solid rgba(168, 85, 247, 0.45)",
+                                   borderRadius: "9999px",
+                                   padding: "0.55rem 1.15rem",
+                                   color: "#FFF",
+                                   fontSize: "0.82rem",
+                                   fontWeight: "600",
+                                   cursor: "pointer",
+                                   backdropFilter: "blur(12px)",
+                                   boxShadow: "0 4px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(168, 85, 247, 0.25)",
+                                   transition: "all 0.2s ease"
+                                 }}
+                                 title="Check health & speed of this line"
+                               >
+                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                                 </svg>
+                                 <span>Slow or not connecting? Check it</span>
+                               </button>
+
+                               {/* Copy Config Button (Fixed JSX & positioned on rightmost edge) */}
                                <button 
                                  type="button"
                                  onClick={() => handleCopyConfig(cfg.code, idx)} 
-                               style={{ 
-                                 background: isCopied ? "#059669" : "linear-gradient(90deg, #7c3aed, #9333ea)", 
-                                 color: "#FFF", 
-                                 border: isCopied ? "1px solid #10b981" : "1px solid rgba(168, 85, 247, 0.5)", 
-                                 padding: "0.6rem 1.3rem", 
-                                 borderRadius: "10px", 
-                                 fontSize: "0.85rem", 
-                                 cursor: "pointer", 
-                                 fontWeight: "bold",
-                                 display: "inline-flex",
-                                 alignItems: "center",
-                                 gap: "6px",
-                                 boxShadow: isCopied ? "0 4px 14px rgba(16, 185, 129, 0.3)" : "0 4px 14px rgba(147, 51, 234, 0.3)",
-                                 transition: "all 0.2s ease"
-                               }}
-                             >
-                               isCopied ? (
-                                    <>
-                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                      <span>Copied!</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                      <span>Copy Config</span>
-                                    </>
-                                  )
-                             </button>
+                                 style={{ 
+                                   background: isCopied ? "#059669" : "linear-gradient(90deg, #7c3aed, #9333ea)", 
+                                   color: "#FFF", 
+                                   border: isCopied ? "1px solid #10b981" : "1px solid rgba(168, 85, 247, 0.5)", 
+                                   padding: "0.58rem 1.3rem", 
+                                   borderRadius: "10px", 
+                                   fontSize: "0.85rem", 
+                                   cursor: "pointer", 
+                                   fontWeight: "bold",
+                                   display: "inline-flex", 
+                                   alignItems: "center", 
+                                   gap: "6px",
+                                   boxShadow: isCopied ? "0 4px 14px rgba(16, 185, 129, 0.3)" : "0 4px 14px rgba(147, 51, 234, 0.3)",
+                                   transition: "all 0.2s ease"
+                                 }}
+                               >
+                                 {isCopied ? (
+                                   <>
+                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                     <span>Copied!</span>
+                                   </>
+                                 ) : (
+                                   <>
+                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                     <span>Copy Config</span>
+                                   </>
+                                 )}
+                               </button>
                              </div>
                            </div>
 
-                           {/* Card Body: Code Box */}
+                           {/* Card Body: Code Box (Removed app names list as requested) */}
                            <div style={{ marginTop: "1rem", background: "#040408", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "1rem 1.2rem", position: "relative" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                                 <span style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: "600", letterSpacing: "1px" }}>CONFIG KEY</span>
-                                <span style={{ fontSize: "0.72rem", color: "#a855f7" }}>NetMod (Android) / NPV Tunnel (Iphone) / Netch (Windows) / MacOS (V2Box)</span>
-                               </div>
+                              </div>
                               <code style={{ 
                                 display: "block",
                                 color: isSuspended ? "#9ca3af" : "#a7f3d0", 
