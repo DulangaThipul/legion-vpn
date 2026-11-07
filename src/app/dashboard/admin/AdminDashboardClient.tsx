@@ -480,13 +480,18 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
     const matches = [...raw.matchAll(regex)];
     if (matches.length > 0) {
-      return matches.map((m, idx) => ({
-        id: `${idx}-${Date.now()}`,
-        name: m[1].trim(),
-        code: m[2].trim(),
-      }));
+      return matches
+        .filter(m => m[2] && m[2].trim().length > 0)
+        .map((m, idx) => ({
+          id: `${idx}-${Date.now()}`,
+          name: (m[1] || "").replace(/^📦\s*/, "").replace(/[\[\]]/g, "").trim(),
+          code: m[2].trim(),
+        }));
     }
-    return [{ id: `0-${Date.now()}`, name: "Default Package", code: raw.trim() }];
+    if (raw.trim().length > 0) {
+      return [{ id: `0-${Date.now()}`, name: "Default Package", code: raw.trim() }];
+    }
+    return [];
   };
 
   const [configItems, setConfigItems] = useState<ConfigItem[]>(parseRawConfigsToItems(user?.vpnConfigKey || ""));
@@ -496,7 +501,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   }, [user?.vpnConfigKey, userId]);
 
   const serializeConfigItems = (items: ConfigItem[]): string => {
-    return items.map(item => `📦 [ ${item.name} ]\n${item.code}`).join("\n\n");
+    return items
+      .filter(item => item && item.code && item.code.trim().length > 0)
+      .map(item => `[ ${(item.name || "Default Package").replace(/^📦\s*/, "").replace(/[\[\]]/g, "").trim()} ]\n${item.code.trim()}`)
+      .join("\n\n");
   };
 
   const handleAddNewConfigSection = () => {
@@ -505,9 +513,7 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       name: PACKAGE_LIST[0],
       code: ""
     };
-    const updated = [...configItems, newItem];
-    setConfigItems(updated);
-    onUpdate(userId, { vpnConfigKey: serializeConfigItems(updated), vpnStatus: "Active" });
+    setConfigItems(prev => [...prev, newItem]);
   };
 
   const handleRemoveConfigSection = (idToRemove: string) => {
