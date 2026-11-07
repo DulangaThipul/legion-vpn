@@ -18,19 +18,19 @@ const ISP_LOGOS = {
 const BANK_ACCOUNT = { bankName: "Commercial Bank", accountName: "W DULANGA THIPUL", accountNo: "8029138148", branch: "Yatiyanthota" };
 
 const ALL_PACKAGES = [
-  { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "Home Broadband & Router Zoom unlimited bypass." },
-  { id: "dialog-social", isp: "Dialog", type: "mobile", name: "Dialog Social (20 GB)", ispPrice: "Rs. 348 (20 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Dialog 20GB Social work plan tunnel." },
-  { id: "dialog-tiktok-warn", isp: "Dialog", type: "mobile", name: "Dialog TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "warn", statusText: "✗ Not Recommended", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "50GB පසු වේගය 2Mbps දක්වා අඩුවේ. 50GB වඩා අවශ්‍ය නම් 1-Week plan එක සතියෙන් සතිය renew කරන්න." },
+  { id: "dialog-zoom", isp: "Dialog", type: "router", name: "Dialog Zoom Unlimited", ispPrice: "Rs. 724 (Unlimited)", statusType: "best", statusText: "Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "Home Broadband & Router Zoom unlimited bypass." },
+  { id: "dialog-social", isp: "Dialog", type: "mobile", name: "Dialog Social (20 GB)", ispPrice: "Rs. 348 (20 GB)", statusType: "normal", statusText: "Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Dialog 20GB Social work plan tunnel." },
+  { id: "dialog-tiktok-warn", isp: "Dialog", type: "mobile", name: "Dialog TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "warn", statusText: "Not Recommended", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "50GB පසු වේගය 2Mbps දක්වා අඩුවේ. 50GB වඩා අවශ්‍ය නම් 1-Week plan එක සතියෙන් සතිය renew කරන්න." },
   
-  { id: "airtel-tiktok", isp: "Airtel", type: "mobile", name: "Airtel TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "best", statusText: "★ Best Choice", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Fastest speeds and zero restrictions on Airtel network." },
-  { id: "airtel-yt", isp: "Airtel", type: "mobile", name: "Airtel YouTube Unlimited", ispPrice: "Rs. 260 (Unlimited)", statusType: "best", statusText: "★ Best Choice", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "High stability tunneling for unlimited daily browsing." },
-  { id: "airtel-zoom-old", isp: "Airtel", type: "mobile", name: "Airtel Zoom (30 GB)", ispPrice: "Rs. 215 (Old SIMs only)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Standard speed tunneling for registered older SIMs." },
+  { id: "airtel-tiktok", isp: "Airtel", type: "mobile", name: "Airtel TikTok Unlimited", ispPrice: "Rs. 297/Wk | Rs. 997/Mo", statusType: "best", statusText: "Best Choice", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Fastest speeds and zero restrictions on Airtel network." },
+  { id: "airtel-yt", isp: "Airtel", type: "mobile", name: "Airtel YouTube Unlimited", ispPrice: "Rs. 260 (Unlimited)", statusType: "best", statusText: "Best Choice", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "High stability tunneling for unlimited daily browsing." },
+  { id: "airtel-zoom-old", isp: "Airtel", type: "mobile", name: "Airtel Zoom (30 GB)", ispPrice: "Rs. 215 (Old SIMs only)", statusType: "normal", statusText: "Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Standard speed tunneling for registered older SIMs." },
   
-  { id: "hutch-zoom", isp: "Hutch", type: "mobile", name: "Hutch Zoom (30 GB)", ispPrice: "Rs. 224 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Hutch network bypass for day-to-day internet needs." },
+  { id: "hutch-zoom", isp: "Hutch", type: "mobile", name: "Hutch Zoom (30 GB)", ispPrice: "Rs. 224 (30 GB)", statusType: "normal", statusText: "Normal Package", devices: "Up to 2 Logins (Unlimited 3 Logins)", desc: "Hutch network bypass for day-to-day internet needs." },
   
-  { id: "slt-fiber-zoom", isp: "SLT", type: "router", name: "SLT Fiber Zoom", ispPrice: "Rs. 195(30GB) | Rs. 490(100GB)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT Fiber Zoom bypass without quota reduction." },
-  { id: "slt-fiber-ent", isp: "SLT", type: "router", name: "SLT Fiber Unlimited Entertainment", ispPrice: "Rs. 1,990 (Unlimited)", statusType: "best", statusText: "★ Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "4K Netflix, YouTube and entertainment streaming." },
-  { id: "slt-router-zoom", isp: "SLT", type: "router", name: "SLT Router Zoom", ispPrice: "Rs. 235 (30 GB)", statusType: "normal", statusText: "✓ Normal Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT 4G Wireless Router Zoom package bypass." }
+  { id: "slt-fiber-zoom", isp: "SLT", type: "router", name: "SLT Fiber Zoom", ispPrice: "Rs. 195(30GB) | Rs. 490(100GB)", statusType: "best", statusText: "Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT Fiber Zoom bypass without quota reduction." },
+  { id: "slt-fiber-ent", isp: "SLT", type: "router", name: "SLT Fiber Unlimited Entertainment", ispPrice: "Rs. 1,990 (Unlimited)", statusType: "best", statusText: "Best Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "4K Netflix, YouTube and entertainment streaming." },
+  { id: "slt-router-zoom", isp: "SLT", type: "router", name: "SLT Router Zoom", ispPrice: "Rs. 235 (30 GB)", statusType: "normal", statusText: "Normal Package", devices: "Up to 3 Logins (Unlimited 6 Logins)", desc: "SLT 4G Wireless Router Zoom package bypass." }
 ];
 
 const ROUTER_CONFIG_PRICES: Record<string, number> = { "100 GB + USA Bonus Config": 250, "200 GB + USA Bonus Config": 400, "500 GB + USA Bonus Config": 700, "Unlimited + USA Bonus Config": 1000 };
@@ -109,13 +109,49 @@ const CLIENT_APPS = [
   }
 ];
 
-// 🏆 REALISTIC FAIR RANKS CONFIGURATION
+// REALISTIC FAIR RANKS CONFIGURATION WITH VECTOR LOGOS
+function getRankSvg(name: string, color = "#FFF", size = 18) {
+  if (name === "Diamond") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle" }}>
+        <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v2H5z"></path>
+      </svg>
+    );
+  }
+  if (name === "Platinum") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle" }}>
+        <path d="M6 3h12l4 6-10 12L2 9l4-6z"></path>
+      </svg>
+    );
+  }
+  if (name === "Gold") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle" }}>
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+        <path d="M4 22h16"></path>
+        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+      </svg>
+    );
+  }
+  // Silver & Bronze: Medal
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle" }}>
+      <circle cx="12" cy="8" r="6"></circle>
+      <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"></path>
+    </svg>
+  );
+}
+
 const RANKS = [
-  { name: "Bronze", min: 0, color: "#d97706", badgeBg: "rgba(217, 119, 6, 0.15)", border: "#d97706", icon: "🥉" },
-  { name: "Silver", min: 3, color: "#94a3b8", badgeBg: "rgba(148, 163, 184, 0.15)", border: "#94a3b8", icon: "⭐" },
-  { name: "Gold", min: 6, color: "#eab308", badgeBg: "rgba(234, 179, 8, 0.15)", border: "#eab308", icon: "🏆" },
-  { name: "Platinum", min: 10, color: "#06b6d4", badgeBg: "rgba(6, 182, 212, 0.15)", border: "#06b6d4", icon: "💎" },
-  { name: "Diamond", min: 15, color: "#a855f7", badgeBg: "rgba(168, 85, 247, 0.15)", border: "#a855f7", icon: "👑" },
+  { name: "Bronze", min: 0, color: "#d97706", badgeBg: "rgba(217, 119, 6, 0.15)", border: "#d97706", icon: getRankSvg("Bronze", "#d97706") },
+  { name: "Silver", min: 3, color: "#94a3b8", badgeBg: "rgba(148, 163, 184, 0.15)", border: "#94a3b8", icon: getRankSvg("Silver", "#94a3b8") },
+  { name: "Gold", min: 6, color: "#eab308", badgeBg: "rgba(234, 179, 8, 0.15)", border: "#eab308", icon: getRankSvg("Gold", "#eab308") },
+  { name: "Platinum", min: 10, color: "#06b6d4", badgeBg: "rgba(6, 182, 212, 0.15)", border: "#06b6d4", icon: getRankSvg("Platinum", "#06b6d4") },
+  { name: "Diamond", min: 15, color: "#a855f7", badgeBg: "rgba(168, 85, 247, 0.15)", border: "#a855f7", icon: getRankSvg("Diamond", "#a855f7") },
 ];
 
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
@@ -124,7 +160,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [activeIsp, setActiveIsp] = useState<string>("All");
   const [activeNetworkType, setActiveNetworkType] = useState<"all" | "router" | "mobile">("all");
   
-  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "webrtc" | "linecheck" | null>(null);
+  const [activeTool, setActiveTool] = useState<"speed" | "ip" | "ping" | "webrtc" | null>(null);
+  const [isLineCheckModalOpen, setIsLineCheckModalOpen] = useState(false);
   const [ipData, setIpData] = useState<any>(null);
   const [isVpnConnected, setIsVpnConnected] = useState<boolean | null>(null);
   
@@ -447,42 +484,58 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const parseConfigs = (rawText: string | null) => {
     if (!rawText || typeof rawText !== "string" || !rawText.trim()) return [];
     
+    let configs: { name: string; code: string }[] = [];
+
     try {
       if (rawText.trim().startsWith("[") || rawText.trim().startsWith("{")) {
         const parsed = JSON.parse(rawText);
         if (Array.isArray(parsed)) {
-          return parsed
+          configs = parsed
             .filter((item: any) => item && typeof item === "object" && typeof item.code === "string" && item.code.trim().length > 0)
             .map((item: any, idx: number) => ({
-              name: (typeof item.name === "string" && item.name.trim()) ? item.name.trim() : `Server ${idx + 1}`,
+              name: (typeof item.name === "string" && item.name.trim()) ? item.name.replace(/📦/g, "").replace(/[\[\]]/g, "").trim() : `Server ${idx + 1}`,
               code: item.code.trim()
-            }))
-            .filter(c => !c.name.toLowerCase().includes("payment verifying"));
+            }));
         }
       }
     } catch {}
 
-    try {
-      const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
-      let matches = [...rawText.matchAll(regex)];
-      let configs = [];
-      if (matches.length > 0) {
-        configs = matches
-          .filter(m => m && m[1] !== undefined && m[2] !== undefined)
-          .map(m => ({
-            name: (m[1] || "").trim(),
-            code: (m[2] || "").trim()
-          }))
-          .filter(c => !c.name.toLowerCase().includes("payment verifying") && c.code.length > 0);
-      } else if (!rawText.includes("Payment Verifying")) {
-        const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
-        if (vlessLinks) configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link.trim() }));
-        else if (rawText.trim().length > 5) configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
+    if (configs.length === 0) {
+      try {
+        const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
+        const matches = [...rawText.matchAll(regex)];
+        if (matches.length > 0) {
+          configs = matches
+            .filter(m => m && m[1] !== undefined && m[2] !== undefined && m[2].trim().length > 0)
+            .map(m => ({
+              name: (m[1] || "").replace(/📦/g, "").replace(/[\[\]]/g, "").trim(),
+              code: (m[2] || "").trim()
+            }));
+        } else if (!rawText.includes("Payment Verifying")) {
+          const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
+          if (vlessLinks) {
+            configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link.trim() }));
+          } else if (rawText.trim().length > 5) {
+            configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
+          }
+        }
+      } catch {
+        configs = [];
       }
-      return configs;
-    } catch {
-      return [];
     }
+
+    // Filter out payment verifying, remove empty codes, and deduplicate strictly by code
+    const seenCodes = new Set<string>();
+    const deduplicated = configs
+      .filter(c => c && c.code && c.code.trim().length > 0 && !c.name.toLowerCase().includes("payment verifying"))
+      .filter(c => {
+        const normCode = c.code.trim();
+        if (seenCodes.has(normCode)) return false;
+        seenCodes.add(normCode);
+        return true;
+      });
+
+    return deduplicated;
   };
 
   const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
@@ -767,7 +820,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     // 1. Parse VLESS config URL
     let configValid = false;
     let uuid = "";
-    let serverHost = "Singapore SG5";
+    let serverHost = "";
     let serverPort = "443";
     let sni = "";
     let configName = "Legion VPN Line";
@@ -786,11 +839,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           const netType = queryParams.get("type") || "ws";
           const sec = queryParams.get("security") || "tls";
           protocol = `VLESS + ${netType.toUpperCase()} + ${sec.toUpperCase()}`;
-          configName = decodeURIComponent(vlessMatch[5] || "Legion V2Ray Line");
+          configName = decodeURIComponent(vlessMatch[5] || "Legion V2Ray Line").replace(/📦/g, "").replace(/[\[\]]/g, "").trim();
         } else if (rawConfig.startsWith("vless://")) {
           configValid = true;
           const simple = rawConfig.replace("vless://", "").split("@");
           uuid = simple[0] || "";
+          const rest = simple[1] || "";
+          const slashIdx = rest.indexOf("/");
+          const hostPart = slashIdx > -1 ? rest.substring(0, slashIdx) : rest;
+          if (hostPart.includes(":")) {
+            const parts = hostPart.split(":");
+            serverHost = parts[0];
+            serverPort = parts[1];
+          } else {
+            serverHost = hostPart;
+          }
           configName = "Custom VLESS Config";
         }
       } catch {
@@ -798,7 +861,36 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     }
 
-    // 2. Measure local client network latency & jitter (5 probes)
+    if (!serverHost) {
+      serverHost = "Singapore SG5";
+    }
+
+    // 2. Real server host & DNS probe via /api/line-check
+    let hostCheckResult: {
+      success: boolean;
+      dnsOk: boolean;
+      reachable: boolean;
+      ip?: string | null;
+      latencyMs?: number;
+      error?: string | null;
+    } | null = null;
+
+    if (serverHost && serverHost !== "Singapore SG5") {
+      try {
+        const res = await fetch("/api/line-check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ host: serverHost, port: serverPort }),
+        });
+        if (res.ok) {
+          hostCheckResult = await res.json();
+        }
+      } catch (err) {
+        console.warn("Failed to check server host via backend:", err);
+      }
+    }
+
+    // 3. Measure local client network latency & jitter (5 probes)
     let pings: number[] = [];
     let failedProbes = 0;
     const totalProbes = 5;
@@ -830,7 +922,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const jitter = Math.round(Math.abs(maxPing - minPing));
     const packetLoss = Math.round((failedProbes / totalProbes) * 100);
 
-    // 3. Optional Download measurement
+    // 4. Optional Download measurement
     let downloadSpeed = 0;
     if (includeDownloadCheck) {
       try {
@@ -846,23 +938,41 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     }
 
-    // 4. Detected ISP & Client Network
+    // 5. Detected ISP & Client Network
     const detectedIsp = (ipData?.org || ipData?.isp || (isVpnConnected ? "Legion Cloud Network" : "Dialog / SLT Mobile")).replace(/PLC|Lanka|Telecommunications/gi, "").trim();
     const clientIp = ipData?.ip || "Detected (Hidden)";
-    const serverAnswerMs = Math.round(Math.max(6, roundTrip * 0.35));
+    const serverAnswerMs = hostCheckResult?.latencyMs ? hostCheckResult.latencyMs : Math.round(Math.max(6, roundTrip * 0.35));
 
-    // 5. Intelligent Verdict Engine
+    // 6. Intelligent Verdict Engine
     const isVpnActive = isVpnConnected === true;
     let verdictStatus: "ok" | "warn" | "bad" = "ok";
     let verdictCategory = "Line & Network Operational";
     let verdictHeadline = "All Systems Running at Peak Performance!";
-    let verdictExplanation = `ඔබගේ Local Connection එක සහ VPN Server අතර සන්නිවේදනය අතිශය සාර්ථකයි. Ping අගය ${roundTrip}ms වන අතර Packet Loss 0% කි.`;
+    let verdictExplanation = `ඔබගේ Local Connection එක සහ VPN Server අතර සන්නිවේදනය සාර්ථකයි. Local Ping අගය ${roundTrip}ms වන අතර Packet Loss 0% කි.`;
+    let serverStatus = hostCheckResult?.ip ? `Online · ${hostCheckResult.ip}` : "Online · 99.98% SLA";
 
     const lowerSni = (sni + " " + configName).toLowerCase();
     const lowerIsp = detectedIsp.toLowerCase();
 
-    // Check ISP vs Package SNI mismatch
-    if (lowerSni.includes("mobitel") && (lowerIsp.includes("slt") || lowerIsp.includes("dialog") || lowerIsp.includes("airtel"))) {
+    if (!configValid && rawConfig) {
+      verdictStatus = "bad";
+      verdictCategory = "Verdict · Invalid Config Format";
+      verdictHeadline = "Config URL එකෙහි ආකෘතිය වැරදියි (Invalid VLESS Link).";
+      verdictExplanation = "කරුණාකර Dashboard එකෙන් ඔබගේ නිවැරදි vless:// key එක Copy කර මෙහි ඇතුළත් කරන්න.";
+      serverStatus = "Unknown Host";
+    } else if (hostCheckResult && !hostCheckResult.dnsOk) {
+      verdictStatus = "bad";
+      verdictCategory = "Verdict · Server Domain / DNS Error";
+      verdictHeadline = `Server Subdomain (${serverHost}) DNS Records වල හමු නොවීය.`;
+      verdictExplanation = `මෙම Config එකෙහි සඳහන් Server Domain එක ("${serverHost}") DNS මඟින් Resolve කරගත නොහැක (Domain Not Found). මෙම Server Domain එක හෝ Subdomain එක ක්‍රියාත්මක නොවේ. ඔබගේ VPN එක Connect නොවීම හෝ Slow වීමට ප්‍රධාන හේතුව මෙයයි. කරුණාකර නව Config එකක් ලබා ගැනීමට Admin සම්බන්ධ කරගන්න.`;
+      serverStatus = "Offline (DNS Record Not Found)";
+    } else if (hostCheckResult && hostCheckResult.reachable === false) {
+      verdictStatus = "bad";
+      verdictCategory = "Verdict · Server Port Unreachable";
+      verdictHeadline = `Server Host (${serverHost}:${serverPort}) වෙත සම්බන්ධ විය නොහැක.`;
+      verdictExplanation = `Server Subdomain එක DNS මඟින් IP එකකට (${hostCheckResult.ip || "IP"}) Resolve වුවද, Server Port එක (${serverPort}) ප්‍රතිචාර නොදක්වයි (Connection Timed Out / Refused). Server එකෙහි හෝ Firewall එකෙහි දෝෂයක් පවතී. කරුණාකර Admin සම්බන්ධ කරගන්න.`;
+      serverStatus = "Offline (Port Unreachable)";
+    } else if (lowerSni.includes("mobitel") && (lowerIsp.includes("slt") || lowerIsp.includes("dialog") || lowerIsp.includes("airtel"))) {
       verdictStatus = "warn";
       verdictCategory = "Verdict · Network Mismatch";
       verdictHeadline = `මෙම Config එක Mobitel සඳහා සකසා ඇත, නමුත් ඔබ දැනට ${detectedIsp} ජාලයේ සිටී.`;
@@ -881,12 +991,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       verdictStatus = "warn";
       verdictCategory = "Verdict · High Jitter & Latency";
       verdictHeadline = `Line Jitter (±${jitter}ms) සහ Ping අගය (${roundTrip}ms) සාමාන්‍ය මට්ටමට වඩා වැඩිය.`;
-      verdictExplanation = "Server එකෙහි දෝෂයක් නොමැත; ඔබ සිටින ප්‍රදේශයේ සිග්නල් තත්ත්වය හෝ Signal Tower එක අධික තදබදයක පවතී. Router එක Restart කිරීමෙන් හෝ Airplane Mode Toggle කිරීමෙන් වඩාත් වේගවත් IP එකක් ලබාගත හැක.";
-    } else if (!configValid && rawConfig) {
-      verdictStatus = "bad";
-      verdictCategory = "Verdict · Invalid Config Format";
-      verdictHeadline = "Config URL එකෙහි ආකෘතිය වැරදියි (Invalid VLESS Link).";
-      verdictExplanation = "කරුණාකර Dashboard එකෙන් හෝ My VPNs Tab එකෙන් ඔබගේ සම්පූර්ණ vless:// key එක Copy කර මෙහි Paste කරන්න.";
+      verdictExplanation = "ඔබ සිටින ප්‍රදේශයේ සිග්නල් තත්ත්වය හෝ Signal Tower එක අධික තදබදයක පවතී. Router එක Restart කිරීමෙන් හෝ Airplane Mode Toggle කිරීමෙන් වඩාත් වේගවත් IP එකක් ලබාගත හැක.";
     }
 
     const now = new Date();
@@ -908,7 +1013,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       sni: sni || serverHost,
       protocol,
       serverAnswerMs,
-      serverStatus: "Online · 99.98% SLA",
+      serverStatus,
       isVpnActive,
       verdictStatus,
       verdictCategory,
@@ -1052,7 +1157,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return (
       <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#050505", color: "#FFF", textAlign: "center", padding: "2rem" }}>
          <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", padding: "3rem", borderRadius: "16px", maxWidth: "500px" }}>
-            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🚫</div>
+            <div style={{ width: "70px", height: "70px", borderRadius: "20px", background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.2rem auto" }}>
+             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+           </div>
             <h1 style={{ color: "#ef4444", marginBottom: "1rem" }}>Account Suspended</h1>
             <p style={{ color: "#9ca3af", marginBottom: "2rem", lineHeight: 1.6 }}>Your account has been banned due to a violation of our terms of service. Please contact customer support for more information.</p>
             <button onClick={() => window.open("https://wa.me/+441163504152", "_blank")} style={{ background: "#22c55e", color: "#FFF", fontWeight: "bold", border: "none", padding: "1rem 2rem", borderRadius: "8px", cursor: "pointer", fontSize: "1.1rem" }}>
@@ -1095,7 +1202,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       {guidePromptOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1.5rem" }}>
           <div style={{ background: "rgba(16, 16, 32, 0.85)", backdropFilter: "blur(25px)", border: "1px solid rgba(129,140,248,0.35)", borderRadius: "24px", padding: "2.5rem 2rem", maxWidth: "490px", width: "100%", textAlign: "center", boxShadow: "0 25px 60px rgba(0,0,0,0.85), 0 0 30px rgba(99,102,241,0.2)", animation: "fadeInUp 0.3s ease" }}>
-            <div style={{ fontSize: "3.2rem", marginBottom: "0.8rem" }}>🧭</div>
+            <div style={{ width: "64px", height: "64px", borderRadius: "18px", background: "linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(168,85,247,0.25) 100%)", border: "1px solid rgba(168,85,247,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.2rem auto" }}>
+             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+           </div>
             <h2 style={{ color: "#FFF", fontSize: "1.5rem", margin: "0 0 0.8rem 0", fontWeight: "bold" }}>User Guide එකක් අවශ්‍යද?</h2>
             <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
               LEGION Dashboard එකෙන් <strong>Free Test Plan</strong> එකක් ලබාගන්නා ආකාරය, Store එකෙන් Order එකක් දමන ආකාරය සහ VPN එක Connect කරන ආකාරය පිළිබඳ කෙටි Interactive Walkthrough එකක් බලමුද?
@@ -1111,7 +1220,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 onClick={handleStartTour} 
                 style={{ flex: 1.3, padding: "0.9rem", background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "0.95rem", boxShadow: "0 10px 25px rgba(99,102,241,0.4)" }}
               >
-                ඔව්, පෙන්වන්න (Start Tour) ✨
+                ඔව්, පෙන්වන්න (Start Tour)
               </button>
             </div>
           </div>
@@ -1140,7 +1249,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 margin: "0 auto"
               }}
             >
-              <span style={{ fontSize: "1.1rem" }}>🧭</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
               <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#FFF" }}>Tour: Step {tourStep}/5</span>
               <span style={{ fontSize: "0.72rem", color: "#818cf8", background: "rgba(99,102,241,0.2)", padding: "2px 8px", borderRadius: "10px" }}>Expand ↗</span>
             </div>
@@ -1189,7 +1298,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     onClick={handleExitTour} 
                     style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", padding: "3px 10px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", transition: "all 0.2s" }}
                   >
-                    ✕ Exit Tour
+                    Exit Tour
                   </button>
                 </div>
               </div>
@@ -1198,7 +1307,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div style={{ minHeight: "56px", color: "#e2e8f0" }}>
               {tourStep === 1 && (
                 <div>
-                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#4ade80", fontWeight: "bold" }}>🎁 1. Claim Free 3GB Test Plan</h4>
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#4ade80", fontWeight: "bold" }}>1. Claim Free 3GB Test Plan</h4>
                   <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
                     අපගේ Ultra-Fast VIP VPN එක මුදල් නොගෙවා අත්හදා බැලීමට <strong>3GB Free Test Plan</strong> එකක් ලබාගන්න. මෙම Card එක ක්ලික් කර WhatsApp හරහා Free Request එකක් දමන්න!
                   </p>
@@ -1207,7 +1316,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {tourStep === 2 && (
                 <div>
-                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#818cf8", fontWeight: "bold" }}>🛒 2. Store එකෙන් Package තෝරාගැනීම</h4>
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#818cf8", fontWeight: "bold" }}>2. Store එකෙන් Package තෝරාගැනීම</h4>
                   <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
                     Dialog, Airtel, Hutch, SLT සඳහා Unlimited bypass configs මෙතැනින් ලබාගත හැක. <strong>'Select & Configure VPN'</strong> ඔබා Bank Slip එක Upload කර Order එක Submit කරන්න.
                   </p>
@@ -1216,7 +1325,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {tourStep === 3 && (
                 <div>
-                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#38bdf8", fontWeight: "bold" }}>🔑 3. ඔබගේ Secret VLESS Configs</h4>
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#38bdf8", fontWeight: "bold" }}>3. ඔබගේ Secret VLESS Configs</h4>
                   <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
                     Admin විසින් Payment එක Verify කළ පසු ඔබගේ රහසිගත <strong>VLESS Key</strong> එක මෙතැන දිස්වේ. <strong>'Copy Code'</strong> ඔබා v2rayNG හෝ Streisand app එකට Paste කර Connect වන්න!
                   </p>
@@ -1225,7 +1334,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {tourStep === 4 && (
                 <div>
-                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#fbbf24", fontWeight: "bold" }}>🧾 4. Payment History & Receipts</h4>
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#fbbf24", fontWeight: "bold" }}>4. Payment History & Receipts</h4>
                   <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
                     ඔබ සිදු කළ ගෙවීම් වාර්තා, Slip බාගත කිරීම සහ ඒවායේ Verified තත්ත්වය ඕනෑම මොහොතක මෙතැනින් ආරක්ෂිතව පරීක්ෂා කරගත හැක.
                   </p>
@@ -1234,9 +1343,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
               {tourStep === 5 && (
                 <div>
-                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#e879f9", fontWeight: "bold" }}>🏆 5. VIP Fair Rank Progress</h4>
+                  <h4 className="tour-step-title" style={{ margin: "0 0 0.25rem 0", color: "#e879f9", fontWeight: "bold" }}>5. VIP Fair Rank Progress</h4>
                   <p className="tour-step-text" style={{ margin: 0, color: "#cbd5e1" }}>
-                    ඔබ සිදුකරන orders ගණන අනුව (3, 6, 10, 15) Bronze 🥉 සිට Diamond 👑 දක්වා ඔබගේ Profile Rank එක ස්වයංක්‍රීයව Level Up වේ!
+                    ඔබ සිදුකරන orders ගණන අනුව (3, 6, 10, 15) Bronze සිට Diamond දක්වා ඔබගේ Profile Rank එක ස්වයංක්‍රීයව Level Up වේ!
                   </p>
                 </div>
               )}
@@ -1268,7 +1377,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   onClick={handleExitTour} 
                   style={{ padding: "0.5rem 1.4rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", border: "none", color: "#000", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 4px 15px rgba(34,197,94,0.4)" }}
                 >
-                  ✓ Finish Tour
+                  Finish Tour
                 </button>
               )}
             </div>
@@ -1278,11 +1387,420 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
+      {/* 📈 POPUP MODAL: V2RAY LINE CHECK STUDIO WITH FLUID EXPAND ANIMATION */}
+      {isLineCheckModalOpen && (
+        <div 
+          onClick={() => setIsLineCheckModalOpen(false)}
+          style={{ 
+            position: "fixed", 
+            inset: 0, 
+            background: "rgba(0, 0, 0, 0.82)", 
+            backdropFilter: "blur(16px)", 
+            WebkitBackdropFilter: "blur(16px)",
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            zIndex: 99999, 
+            padding: "1rem" 
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              background: "linear-gradient(180deg, rgba(16, 12, 28, 0.98) 0%, rgba(8, 8, 14, 0.99) 100%)", 
+              border: "1px solid rgba(168, 85, 247, 0.4)", 
+              borderRadius: "24px", 
+              padding: "2rem", 
+              maxWidth: "880px", 
+              width: "100%", 
+              maxHeight: "92vh",
+              overflowY: "auto",
+              boxShadow: "0 30px 80px rgba(0,0,0,0.9), 0 0 40px rgba(168, 85, 247, 0.25)",
+              animation: "linecheckModalExpand 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+              position: "relative"
+            }}
+          >
+            {/* Modal Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsLineCheckModalOpen(false)}
+              style={{
+                position: "absolute",
+                top: "1.2rem",
+                right: "1.2rem",
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                color: "#9ca3af",
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            {/* Top Header & Intro */}
+            <div style={{ marginBottom: "1.8rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.4rem" }}>
+                <span style={{ fontSize: "0.72rem", background: "rgba(168, 85, 247, 0.2)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.4)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  Line check · V2Ray Diagnostics
+                </span>
+              </div>
+              <h2 style={{ margin: "0 0 0.5rem 0", color: "#FFF", fontSize: "1.75rem", fontWeight: "bold", lineHeight: 1.2 }}>
+                Is it <span style={{ color: "#a855f7" }}>the config</span>, or <span style={{ color: "#38bdf8" }}>the connection?</span>
+              </h2>
+              <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.9rem", lineHeight: 1.6, maxWidth: "620px" }}>
+                Paste your config. We test it against our server in Singapore, measure your own line latency & jitter from this device, and tell you which of the two is letting you down.
+              </p>
+            </div>
+
+            {/* Input & Action Bar */}
+            <form onSubmit={(e) => { e.preventDefault(); runLineCheck(); }} className="linecheck-item-stagger-1" style={{ marginBottom: "1.8rem" }}>
+              <div style={{ 
+                display: "flex", 
+                flexWrap: "wrap",
+                alignItems: "center", 
+                gap: "8px", 
+                background: "rgba(6, 6, 12, 0.9)", 
+                border: "1px solid rgba(168, 85, 247, 0.35)", 
+                borderRadius: "16px", 
+                padding: "6px",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.08)"
+              }}>
+                <input 
+                  type="text" 
+                  placeholder="vless://... or leave empty to use active account config" 
+                  value={lineCheckConfig} 
+                  onChange={(e) => setLineCheckConfig(e.target.value)}
+                  spellCheck={false}
+                  style={{ 
+                    flex: 1, 
+                    minWidth: "220px", 
+                    background: "transparent", 
+                    border: "none", 
+                    color: "#FFF", 
+                    padding: "0.75rem 1rem", 
+                    fontSize: "0.88rem", 
+                    outline: "none",
+                    fontFamily: "ui-monospace, monospace"
+                  }} 
+                />
+
+                {/* Quick Paste Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) setLineCheckConfig(text.trim());
+                    } catch {
+                      if (user?.vpnConfigKey) {
+                        setLineCheckConfig(user?.vpnConfigKey || "");
+                      }
+                    }
+                  }}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#d1d5db",
+                    padding: "0.6rem 0.9rem",
+                    borderRadius: "10px",
+                    fontSize: "0.8rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                  <span>Paste</span>
+                </button>
+
+                {/* Submit / Test Line Button */}
+                <button
+                  type="submit"
+                  disabled={isCheckingLine}
+                  style={{
+                    background: isCheckingLine ? "rgba(168, 85, 247, 0.4)" : "linear-gradient(90deg, #a855f7 0%, #7c3aed 100%)",
+                    color: "#FFF",
+                    border: "none",
+                    padding: "0.75rem 1.6rem",
+                    borderRadius: "12px",
+                    fontSize: "0.92rem",
+                    fontWeight: "bold",
+                    cursor: isCheckingLine ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 6px 20px rgba(168, 85, 247, 0.4)",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  {isCheckingLine ? (
+                    <>
+                      <div style={{ width: "16px", height: "16px", border: "2px solid #FFF", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}></div>
+                      <span>Testing Line...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      <span>Check Line</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Toggles & Helper hints */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.6rem", flexWrap: "wrap", gap: "8px", fontSize: "0.78rem", color: "#6b7280" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  {user?.vpnConfigKey ? "Auto-detects your active Legion config" : "Your config is tested securely in browser memory"}
+                </span>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", color: "#9ca3af" }}>
+                  <input 
+                    type="checkbox" 
+                    checked={includeDownloadCheck} 
+                    onChange={(e) => setIncludeDownloadCheck(e.target.checked)} 
+                    style={{ accentColor: "#a855f7" }}
+                  />
+                  <span>Run download speed sample</span>
+                </label>
+              </div>
+            </form>
+
+            {/* Interactive Route Graph & Diagnostics Results */}
+            {lineCheckResults && (
+              <div className="linecheck-item-stagger-2">
+                
+                {/* 1. INTERACTIVE PIPELINE ROUTE VISUALIZER (SVG GRAPH) */}
+                <div style={{ 
+                  background: "rgba(10, 10, 18, 0.75)", 
+                  border: "1px solid rgba(255, 255, 255, 0.08)", 
+                  borderRadius: "18px", 
+                  padding: "1.4rem", 
+                  marginBottom: "1.4rem",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 8px #22c55e" }}></span>
+                      <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: "#e5e7eb", textTransform: "uppercase", letterSpacing: "1px" }}>Live Route Trace</span>
+                    </div>
+                    <span style={{ fontSize: "0.76rem", color: "#9ca3af" }}>Checked at {lineCheckResults.testedAt}</span>
+                  </div>
+
+                  <div style={{ position: "relative", width: "100%", overflowX: "auto" }}>
+                    <svg viewBox="0 0 700 110" style={{ width: "100%", minWidth: "460px", height: "auto" }}>
+                      
+                      {/* Animated connecting curve: Device -> Local ISP */}
+                      <path 
+                        d="M 30 55 C 60 40, 100 70, 150 45 C 200 65, 250 45, 330 55" 
+                        fill="none" 
+                        stroke={lineCheckResults.packetLoss > 0 ? "#ef4444" : lineCheckResults.jitter > 70 ? "#f59e0b" : "#22c55e"} 
+                        strokeWidth="2.8" 
+                        strokeLinecap="round" 
+                        strokeDasharray="6 4"
+                      />
+                      
+                      {/* Animated connecting curve: Local ISP -> Singapore Server */}
+                      <path 
+                        d="M 330 55 C 410 65, 490 35, 570 65 C 610 50, 640 55, 670 55" 
+                        fill="none" 
+                        stroke={lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7"} 
+                        strokeWidth="2.8" 
+                        strokeLinecap="round" 
+                        strokeDasharray="6 4"
+                      />
+
+                      {/* Node 1: Local Device (cx=30) */}
+                      <circle cx="30" cy="55" r="16" fill="rgba(34, 197, 94, 0.18)" />
+                      <circle cx="30" cy="55" r="8" fill="#22c55e" stroke="#FFF" strokeWidth="2" />
+
+                      {/* Node 2: Local ISP (cx=330) */}
+                      <circle cx="330" cy="55" r="16" fill={lineCheckResults.packetLoss > 0 ? "rgba(239, 68, 68, 0.18)" : "rgba(245, 158, 11, 0.18)"} />
+                      <circle cx="330" cy="55" r="8" fill={lineCheckResults.packetLoss > 0 ? "#ef4444" : "#f59e0b"} stroke="#FFF" strokeWidth="2" />
+
+                      {/* Node 3: Singapore VPN Server (cx=670) */}
+                      <circle cx="670" cy="55" r="16" fill={lineCheckResults.serverStatus.includes("Offline") ? "rgba(239, 68, 68, 0.25)" : "rgba(168, 85, 247, 0.25)"} />
+                      <circle cx="670" cy="55" r="8" fill={lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7"} stroke="#FFF" strokeWidth="2" />
+                    </svg>
+
+                    {/* Node Labels below SVG */}
+                    <div style={{ display: "flex", justifyContent: "space-between", minWidth: "460px", marginTop: "4px" }}>
+                      <div style={{ textAlign: "left", maxWidth: "22%" }}>
+                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>This Device</p>
+                        <p style={{ margin: 0, fontSize: "0.72rem", color: "#9ca3af" }}>{lineCheckResults.clientIp}</p>
+                      </div>
+                      <div style={{ textAlign: "center", maxWidth: "25%" }}>
+                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>Local ISP ({lineCheckResults.detectedIsp})</p>
+                        <p style={{ margin: 0, fontSize: "0.72rem", color: lineCheckResults.jitter > 70 ? "#f59e0b" : "#9ca3af" }}>
+                          Ping ~{lineCheckResults.roundTrip}ms · Jitter ±{lineCheckResults.jitter}ms
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right", maxWidth: "28%" }}>
+                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>{lineCheckResults.serverHost}</p>
+                        <p style={{ margin: 0, fontSize: "0.72rem", color: lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#c084fc", fontWeight: lineCheckResults.serverStatus.includes("Offline") ? "bold" : "normal" }}>
+                          {lineCheckResults.serverStatus}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. SMART VERDICT BANNER (className="linecheck-item-stagger-3") */}
+                <div className="linecheck-item-stagger-3" style={{ 
+                  background: lineCheckResults.verdictStatus === "ok" 
+                    ? "linear-gradient(135deg, rgba(6, 78, 59, 0.5) 0%, rgba(4, 47, 46, 0.7) 100%)" 
+                    : lineCheckResults.verdictStatus === "warn" 
+                    ? "linear-gradient(135deg, rgba(120, 53, 15, 0.5) 0%, rgba(69, 26, 3, 0.7) 100%)" 
+                    : "linear-gradient(135deg, rgba(127, 29, 29, 0.55) 0%, rgba(69, 10, 10, 0.75) 100%)",
+                  border: `1px solid ${lineCheckResults.verdictStatus === "ok" ? "rgba(52, 211, 153, 0.4)" : lineCheckResults.verdictStatus === "warn" ? "rgba(245, 158, 11, 0.4)" : "rgba(239, 68, 68, 0.45)"}`,
+                  borderRadius: "16px",
+                  padding: "1.4rem",
+                  marginBottom: "1.4rem",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.4rem" }}>
+                    <span style={{ 
+                      fontSize: "0.72rem", 
+                      fontWeight: "bold", 
+                      letterSpacing: "1px", 
+                      textTransform: "uppercase",
+                      color: lineCheckResults.verdictStatus === "ok" ? "#86efac" : lineCheckResults.verdictStatus === "warn" ? "#fcd34d" : "#fca5a5"
+                    }}>
+                      {lineCheckResults.verdictCategory}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: "0 0 0.5rem 0", color: "#FFF", fontSize: "1.2rem", fontWeight: "bold" }}>
+                    {lineCheckResults.verdictHeadline}
+                  </h3>
+                  <p style={{ margin: 0, color: "#e5e7eb", fontSize: "0.88rem", lineHeight: 1.6 }}>
+                    {lineCheckResults.verdictExplanation}
+                  </p>
+                </div>
+
+                {/* 3. DUAL SIDE-BY-SIDE BREAKDOWN CARDS */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.2rem", marginBottom: "1.5rem" }}>
+                  
+                  {/* Card Left: Local Line Diagnostics */}
+                  <div style={{ background: "rgba(10, 10, 18, 0.7)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "16px", padding: "1.3rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                      <h4 style={{ margin: 0, color: "#FFF", fontSize: "0.95rem", fontWeight: "bold" }}>Your Local Line</h4>
+                      <span style={{ fontSize: "0.72rem", background: "rgba(59, 130, 246, 0.2)", color: "#93c5fd", padding: "2px 8px", borderRadius: "8px" }}>
+                        {lineCheckResults.detectedIsp}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", fontSize: "0.85rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
+                        <span style={{ color: "#9ca3af" }}>Local Latency (Ping)</span>
+                        <strong style={{ color: lineCheckResults.roundTrip > 120 ? "#f59e0b" : "#22c55e" }}>{lineCheckResults.roundTrip} ms</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
+                        <span style={{ color: "#9ca3af" }}>Line Jitter</span>
+                        <strong style={{ color: lineCheckResults.jitter > 60 ? "#f59e0b" : "#FFF" }}>±{lineCheckResults.jitter} ms</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
+                        <span style={{ color: "#9ca3af" }}>Packet Loss</span>
+                        <strong style={{ color: lineCheckResults.packetLoss > 0 ? "#ef4444" : "#22c55e" }}>{lineCheckResults.packetLoss}%</strong>
+                      </div>
+                      {lineCheckResults.downloadSpeed > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "#9ca3af" }}>Sample Bandwidth</span>
+                          <strong style={{ color: "#38bdf8" }}>{lineCheckResults.downloadSpeed} Mbps</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Right: VPN Server & Config Diagnostics */}
+                  <div style={{ background: "rgba(10, 10, 18, 0.7)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "16px", padding: "1.3rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                      <h4 style={{ margin: 0, color: "#FFF", fontSize: "0.95rem", fontWeight: "bold" }}>VPN Server & Config</h4>
+                      <span style={{ 
+                        fontSize: "0.72rem", 
+                        background: lineCheckResults.serverStatus.includes("Offline") ? "rgba(239, 68, 68, 0.2)" : "rgba(168, 85, 247, 0.2)", 
+                        color: lineCheckResults.serverStatus.includes("Offline") ? "#fca5a5" : "#c084fc", 
+                        padding: "2px 8px", 
+                        borderRadius: "8px",
+                        fontWeight: "bold"
+                      }}>
+                        {lineCheckResults.serverStatus.includes("Offline") ? "OFFLINE" : "VERIFIED"}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", fontSize: "0.85rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
+                        <span style={{ color: "#9ca3af" }}>Config Name</span>
+                        <strong style={{ color: "#FFF", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lineCheckResults.configName}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
+                        <span style={{ color: "#9ca3af" }}>Server Domain / Host</span>
+                        <strong style={{ color: lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7" }}>{lineCheckResults.serverHost}:{lineCheckResults.serverPort}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
+                        <span style={{ color: "#9ca3af" }}>SNI Mask</span>
+                        <strong style={{ color: "#FFF" }}>{lineCheckResults.sni}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "#9ca3af" }}>Config Format</span>
+                        <strong style={{ color: lineCheckResults.configValid ? "#22c55e" : "#ef4444" }}>
+                          {lineCheckResults.configValid ? "Active VLESS Key" : "Unknown Format"}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Helper action footer */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "0.9rem 1.2rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "#9ca3af" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <span>{lineCheckResults.isVpnActive ? "You are currently connected via VPN tunnel." : "Switch your VPN app ON and check again to compare with the encrypted line."}</span>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => runLineCheck()}
+                      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#FFF", padding: "0.45rem 1rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                      <span>Test Again</span>
+                    </button>
+                    <a
+                      href="https://wa.me/+441163504152"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ background: "rgba(37, 211, 102, 0.2)", border: "1px solid rgba(37, 211, 102, 0.4)", color: "#86efac", padding: "0.45rem 1rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: "bold", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                      <span>WhatsApp Help</span>
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
       {/* 🎁 POPUP MODAL: CLAIM FREE TEST PLAN */}
       {freeTestModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "1.5rem" }}>
           <div style={{ background: "#10101c", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "20px", padding: "2.5rem 2rem", maxWidth: "480px", width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.8)", animation: "fadeInUp 0.3s ease" }}>
-            <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>🎁</div>
+            <div style={{ width: "70px", height: "70px", borderRadius: "20px", background: "rgba(34,197,94,0.18)", border: "1px solid rgba(34,197,94,0.35)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.2rem auto" }}>
+             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+           </div>
             <h2 style={{ color: "#FFF", fontSize: "1.5rem", margin: "0 0 0.8rem 0" }}>Claim Free 3GB Test Plan</h2>
             <p style={{ color: "#cbd5e1", fontSize: "0.95rem", lineHeight: 1.6, margin: "0 0 2rem 0" }}>
               අපගේ Ultra-Fast VIP VPN සේවාව නොමිලේ අත්හදා බැලීමට <strong>3GB Free Test Plan</strong> එකක් ලබාගත හැක. පහත බටන් එක ක්ලික් කර WhatsApp හරහා අපගේ Support වෙත සෘජුවම Request එකක් යොමු කරන්න.
@@ -1298,7 +1816,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 }} 
                 style={{ flex: 1.5, padding: "0.9rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", color: "#000", border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 10px 25px rgba(34,197,94,0.3)" }}
               >
-                Request via WhatsApp 💬
+                Request via WhatsApp
               </button>
             </div>
           </div>
@@ -1710,13 +2228,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               ) : (
                 /* NEW USER STATE */
                 <div style={{ background: "rgba(14, 16, 34, 0.75)", border: "1px dashed rgba(99,102,241,0.35)", borderRadius: "18px", padding: "1.8rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8rem" }}>
-                  <div style={{ fontSize: "2.5rem" }}>🛡️</div>
+                  <div style={{ width: "60px", height: "60px", borderRadius: "16px", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
+                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                   </div>
                   <h3 style={{ margin: 0, color: "#FFF", fontSize: "1.2rem" }}>No Active VPN Subscription</h3>
                   <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.85rem", maxWidth: "480px", lineHeight: 1.6 }}>
                     ඔබ තවමත් VPN පැකේජයක් සක්‍රීය කර නොමැත. Store වෙතින් Package එකක් තෝරාගෙන Payment එක Admin විසින් Verify කළ පසු <strong>Live Connection, Data Used</strong> සහ <strong>Expires In</strong> cards මෙතැන සජීවීව දිස්වේ.
                   </p>
                   <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.6rem 1.6rem", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem", marginTop: "4px" }}>
-                    🛒 Go to Store
+                    Go to Store
                   </button>
                 </div>
               )}
@@ -1726,410 +2246,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div style={{ background: "rgba(14, 14, 23, 0.8)", backdropFilter: "blur(12px)", padding: "1.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                     <h2 style={{ margin: 0, color: "#FFF", fontSize: "1.3rem" }}>
-                      {activeTool === "speed" && "🚀 Legion Network Speedtest"}
-                      {activeTool === "ip" && "🌍 Connection & IP Test"}
-                      {activeTool === "ping" && "⚡ Latency (Ping) Test"}
-                      {activeTool === "webrtc" && "🛡️ WebRTC Leak Test"}
+                      {activeTool === "speed" && "Legion Network Speedtest"}
+                      {activeTool === "ip" && "Connection & IP Test"}
+                      {activeTool === "ping" && "Latency (Ping) Test"}
+                      {activeTool === "webrtc" && "WebRTC Leak Test"}
                     </h2>
                     <button onClick={() => { setActiveTool(null); cancelTest(); }} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}>✕ Close</button>
                   </div>
-
-                  {/* SPEEDTEST */}
-                  {activeTool === "linecheck" && (
-                    <div style={{ maxWidth: "860px", margin: "0 auto", animation: "fadeInUp 0.3s ease" }}>
-                      
-                      {/* Top Header & Intro */}
-                      <div style={{ marginBottom: "1.8rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.4rem" }}>
-                          <span style={{ fontSize: "0.72rem", background: "rgba(168, 85, 247, 0.2)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.4)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "1px", textTransform: "uppercase" }}>
-                            Line check · V2Ray Diagnostics
-                          </span>
-                        </div>
-                        <h2 style={{ margin: "0 0 0.5rem 0", color: "#FFF", fontSize: "1.75rem", fontWeight: "bold", lineHeight: 1.2 }}>
-                          Is it <span style={{ color: "#a855f7" }}>the config</span>, or <span style={{ color: "#38bdf8" }}>the connection?</span>
-                        </h2>
-                        <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.9rem", lineHeight: 1.6, maxWidth: "620px" }}>
-                          Paste your config. We test it against our server in Singapore, measure your own line latency & jitter from this device, and tell you which of the two is letting you down.
-                        </p>
-                      </div>
-
-                      {/* Input & Action Bar */}
-                      <form onSubmit={(e) => { e.preventDefault(); runLineCheck(); }} style={{ marginBottom: "1.8rem" }}>
-                        <div style={{ 
-                          display: "flex", 
-                          flexWrap: "wrap",
-                          alignItems: "center", 
-                          gap: "8px", 
-                          background: "rgba(6, 6, 12, 0.9)", 
-                          border: "1px solid rgba(168, 85, 247, 0.35)", 
-                          borderRadius: "16px", 
-                          padding: "6px",
-                          boxShadow: "0 8px 30px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.08)"
-                        }}>
-                          <input 
-                            type="text" 
-                            placeholder="vless://... or leave empty to use active account config" 
-                            value={lineCheckConfig} 
-                            onChange={(e) => setLineCheckConfig(e.target.value)}
-                            spellCheck={false}
-                            style={{ 
-                              flex: 1, 
-                              minWidth: "220px", 
-                              background: "transparent", 
-                              border: "none", 
-                              color: "#FFF", 
-                              padding: "0.75rem 1rem", 
-                              fontSize: "0.88rem", 
-                              outline: "none",
-                              fontFamily: "ui-monospace, monospace"
-                            }} 
-                          />
-
-                          {/* Quick Paste Button */}
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const text = await navigator.clipboard.readText();
-                                if (text) setLineCheckConfig(text.trim());
-                              } catch {
-                                if (user?.vpnConfigKey) {
-                                  setLineCheckConfig(user?.vpnConfigKey || "");
-                                }
-                              }
-                            }}
-                            style={{
-                              background: "rgba(255,255,255,0.06)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              color: "#cbd5e1",
-                              padding: "0.6rem 1rem",
-                              borderRadius: "10px",
-                              fontSize: "0.82rem",
-                              fontWeight: "600",
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px"
-                            }}
-                          >
-                            📋 Paste
-                          </button>
-
-                          {/* Check Line Button */}
-                          <button
-                            type="submit"
-                            disabled={isCheckingLine}
-                            style={{
-                              background: "linear-gradient(90deg, #7c3aed, #a855f7)",
-                              border: "none",
-                              color: "#FFF",
-                              padding: "0.7rem 1.6rem",
-                              borderRadius: "10px",
-                              fontSize: "0.88rem",
-                              fontWeight: "bold",
-                              cursor: isCheckingLine ? "not-allowed" : "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              boxShadow: "0 4px 18px rgba(168, 85, 247, 0.4)",
-                              whiteSpace: "nowrap"
-                            }}
-                          >
-                            {isCheckingLine ? (
-                              <>
-                                <span style={{ width: "14px", height: "14px", border: "2px solid #FFF", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
-                                Measuring Line...
-                              </>
-                            ) : (
-                              <>🔍 Check Line</>
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Options & Notes */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginTop: "0.75rem", padding: "0 0.4rem" }}>
-                          <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", color: "#9ca3af", cursor: "pointer" }}>
-                            <input 
-                              type="checkbox" 
-                              checked={includeDownloadCheck} 
-                              onChange={(e) => setIncludeDownloadCheck(e.target.checked)} 
-                              style={{ accentColor: "#a855f7", width: "15px", height: "15px" }} 
-                            />
-                            Include download speed test <span style={{ opacity: 0.6 }}>· measures active bandwidth</span>
-                          </label>
-
-                          <span style={{ fontSize: "0.76rem", color: "#64748b" }}>
-                            {user?.vpnConfigKey ? "✓ Auto-detects your active Legion config" : "Your config is tested securely in browser memory"}
-                          </span>
-                        </div>
-                      </form>
-
-                      {/* Interactive Route Graph & Diagnostics Results */}
-                      {lineCheckResults && (
-                        <div style={{ animation: "fadeInUp 0.35s ease" }}>
-                          
-                          {/* 🌐 1. INTERACTIVE PIPELINE ROUTE VISUALIZER (SVG GRAPH) */}
-                          <div style={{ 
-                            background: "rgba(10, 8, 20, 0.95)", 
-                            border: "1px solid rgba(168, 85, 247, 0.25)", 
-                            borderRadius: "20px", 
-                            padding: "1.5rem 1.2rem", 
-                            marginBottom: "1.8rem",
-                            boxShadow: "0 14px 40px rgba(0,0,0,0.6)"
-                          }}>
-                            {/* Route Segment Headers */}
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem", padding: "0 10px" }}>
-                              <span style={{ fontSize: "0.72rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>Your Line</span>
-                              <span style={{ fontSize: "0.72rem", color: "#c084fc", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>Colombo → Singapore Cloud</span>
-                              <span style={{ fontSize: "0.72rem", color: "#4ade80", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>Out to Global Internet</span>
-                            </div>
-
-                            {/* Animated SVG Path Wire */}
-                            <div style={{ width: "100%", overflowX: "auto", position: "relative" }}>
-                              <svg viewBox="0 0 1000 110" style={{ width: "100%", height: "auto", display: "block" }}>
-                                <defs>
-                                  <linearGradient id="gradientOk" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="#22c55e" />
-                                    <stop offset="100%" stopColor="#10b981" />
-                                  </linearGradient>
-                                  <linearGradient id="gradientCurve" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="#a855f7" />
-                                    <stop offset="100%" stopColor="#6366f1" />
-                                  </linearGradient>
-                                </defs>
-
-                                {/* Segment 1: Phone to ISP (Waveform with latency) */}
-                                <path 
-                                  d="M 30 55 C 60 40, 100 70, 150 45 C 200 65, 250 45, 330 55" 
-                                  fill="none" 
-                                  stroke={lineCheckResults.packetLoss > 0 ? "#ef4444" : lineCheckResults.jitter > 70 ? "#f59e0b" : "#22c55e"} 
-                                  strokeWidth="2.8" 
-                                  strokeLinecap="round" 
-                                  strokeDasharray="6 8"
-                                />
-
-                                {/* Segment 2: ISP to Singapore (Smooth Transcontinental Arc) */}
-                                <path 
-                                  d="M 330 55 Q 500 100 670 55" 
-                                  fill="none" 
-                                  stroke="url(#gradientCurve)" 
-                                  strokeWidth="2.4" 
-                                  strokeLinecap="round" 
-                                />
-
-                                {/* Animated Packet Pulses Along Curve */}
-                                <circle r="4" fill="#a855f7" opacity="0.95">
-                                  <animateMotion dur="2.4s" repeatCount="indefinite" path="M 330 55 Q 500 100 670 55" />
-                                </circle>
-                                <circle r="3.5" fill="#38bdf8" opacity="0.8">
-                                  <animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="M 330 55 Q 500 100 670 55" />
-                                </circle>
-
-                                {/* Segment 3: Singapore to Global Internet (Direct Line) */}
-                                <path 
-                                  d="M 670 55 L 970 55" 
-                                  fill="none" 
-                                  stroke="#22c55e" 
-                                  strokeWidth="2.8" 
-                                  strokeLinecap="round" 
-                                />
-                                <circle r="3.5" fill="#4ade80" opacity="0.95">
-                                  <animateMotion dur="1.8s" repeatCount="indefinite" path="M 670 55 L 970 55" />
-                                </circle>
-
-                                {/* Node 1: Your Device (cx=30) */}
-                                <circle cx="30" cy="55" r="16" fill="rgba(34, 197, 94, 0.15)" />
-                                <circle cx="30" cy="55" r="8" fill="#22c55e" stroke="#FFF" strokeWidth="2" />
-
-                                {/* Node 2: Local ISP (cx=330) */}
-                                <circle cx="330" cy="55" r="16" fill={lineCheckResults.packetLoss > 0 ? "rgba(239, 68, 68, 0.18)" : "rgba(245, 158, 11, 0.18)"} />
-                                <circle cx="330" cy="55" r="8" fill={lineCheckResults.packetLoss > 0 ? "#ef4444" : "#f59e0b"} stroke="#FFF" strokeWidth="2" />
-
-                                {/* Node 3: Singapore VPN Server (cx=670) */}
-                                <circle cx="670" cy="55" r="18" fill="rgba(168, 85, 247, 0.25)" />
-                                <circle cx="670" cy="55" r="9" fill="#a855f7" stroke="#FFF" strokeWidth="2" />
-
-                                {/* Node 4: Global Internet (cx=970) */}
-                                <circle cx="970" cy="55" r="16" fill="rgba(34, 197, 94, 0.2)" />
-                                <circle cx="970" cy="55" r="8" fill="#22c55e" stroke="#FFF" strokeWidth="2" />
-                              </svg>
-
-                              {/* Node Metadata Labels */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: "4px", padding: "0 5px" }}>
-                                <div style={{ textAlign: "left", maxWidth: "22%" }}>
-                                  <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>This Device</p>
-                                  <p style={{ margin: 0, fontSize: "0.72rem", color: "#9ca3af" }}>{lineCheckResults.clientIp}</p>
-                                </div>
-                                <div style={{ textAlign: "center", maxWidth: "25%" }}>
-                                  <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#fbbf24" }}>{lineCheckResults.detectedIsp}</p>
-                                  <p style={{ margin: 0, fontSize: "0.72rem", color: "#9ca3af" }}>Cellular / Fiber</p>
-                                </div>
-                                <div style={{ textAlign: "center", maxWidth: "25%" }}>
-                                  <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#c084fc" }}>Singapore SG5</p>
-                                  <p style={{ margin: 0, fontSize: "0.72rem", color: "#9ca3af" }}>Legion Cloud 10G</p>
-                                </div>
-                                <div style={{ textAlign: "right", maxWidth: "22%" }}>
-                                  <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#4ade80" }}>Internet</p>
-                                  <p style={{ margin: 0, fontSize: "0.72rem", color: "#9ca3af" }}>{lineCheckResults.serverAnswerMs} ms ping</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <p style={{ margin: "1rem 0 0 0", fontSize: "0.75rem", color: "#64748b", textAlign: "right" }}>
-                              Checked at {lineCheckResults.testedAt} · Live diagnostics
-                            </p>
-                          </div>
-
-                          {/* 🛡️ 2. SMART VERDICT BANNER */}
-                          <div style={{ 
-                            background: lineCheckResults.verdictStatus === "ok" 
-                              ? "linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, rgba(10, 20, 16, 0.8) 100%)" 
-                              : lineCheckResults.verdictStatus === "warn" 
-                              ? "linear-gradient(135deg, rgba(146, 64, 14, 0.4) 0%, rgba(20, 15, 10, 0.8) 100%)" 
-                              : "linear-gradient(135deg, rgba(153, 27, 27, 0.4) 0%, rgba(20, 10, 10, 0.8) 100%)",
-                            border: `1px solid ${lineCheckResults.verdictStatus === "ok" ? "rgba(34, 197, 94, 0.45)" : lineCheckResults.verdictStatus === "warn" ? "rgba(245, 158, 11, 0.45)" : "rgba(239, 68, 68, 0.45)"}`,
-                            borderRadius: "18px", 
-                            padding: "1.4rem", 
-                            marginBottom: "1.8rem",
-                            boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
-                          }}>
-                            <span style={{ 
-                              fontSize: "0.72rem", 
-                              fontWeight: "bold", 
-                              color: lineCheckResults.verdictStatus === "ok" ? "#4ade80" : lineCheckResults.verdictStatus === "warn" ? "#fbbf24" : "#f87171",
-                              textTransform: "uppercase", 
-                              letterSpacing: "1px" 
-                            }}>
-                              {lineCheckResults.verdictCategory}
-                            </span>
-                            <h3 style={{ margin: "0.5rem 0", fontSize: "1.25rem", fontWeight: "bold", color: "#FFF", lineHeight: 1.35 }}>
-                              {lineCheckResults.verdictHeadline}
-                            </h3>
-                            <p style={{ margin: 0, fontSize: "0.88rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                              {lineCheckResults.verdictExplanation}
-                            </p>
-                          </div>
-
-                          {/* 📊 3. DUAL SIDE-BY-SIDE BREAKDOWN CARDS */}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.2rem", marginBottom: "1.8rem" }}>
-                            
-                            {/* Left: Your Side (Device & Line) */}
-                            <div style={{ background: "rgba(12, 10, 24, 0.9)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.4rem" }}>
-                              <p style={{ margin: "0 0 1rem 0", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "bold", color: "#9ca3af" }}>
-                                Your Side (Line Quality)
-                              </p>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Round trip latency</span>
-                                <span style={{ fontSize: "0.95rem", fontWeight: "bold", color: lineCheckResults.roundTrip < 90 ? "#4ade80" : lineCheckResults.roundTrip < 160 ? "#fbbf24" : "#f87171" }}>
-                                  {lineCheckResults.roundTrip} ms
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Jitter variance</span>
-                                <span style={{ fontSize: "0.95rem", fontWeight: "bold", color: lineCheckResults.jitter < 45 ? "#4ade80" : "#fbbf24" }}>
-                                  ±{lineCheckResults.jitter} ms
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Packet loss</span>
-                                <span style={{ fontSize: "0.95rem", fontWeight: "bold", color: lineCheckResults.packetLoss === 0 ? "#4ade80" : "#ef4444" }}>
-                                  {lineCheckResults.packetLoss}%
-                                </span>
-                              </div>
-
-                              {includeDownloadCheck && (
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                  <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Download speed</span>
-                                  <span style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#38bdf8" }}>
-                                    {lineCheckResults.downloadSpeed} Mbps
-                                  </span>
-                                </div>
-                              )}
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Detected network</span>
-                                <span style={{ fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>
-                                  {lineCheckResults.detectedIsp}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Right: Our Side (Server & Config) */}
-                            <div style={{ background: "rgba(12, 10, 24, 0.9)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.4rem" }}>
-                              <p style={{ margin: "0 0 1rem 0", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "bold", color: "#9ca3af" }}>
-                                Our Side (Server & Config)
-                              </p>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Config health</span>
-                                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: lineCheckResults.configValid ? "#4ade80" : "#f87171" }}>
-                                  {lineCheckResults.configValid ? "✓ Active VLESS Key" : "✗ Unknown Format"}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Destination server</span>
-                                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#c084fc", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {lineCheckResults.serverHost}:{lineCheckResults.serverPort}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>SNI / Bug Host</span>
-                                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#38bdf8", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {lineCheckResults.sni || "Direct"}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Server response</span>
-                                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#4ade80" }}>
-                                  Answered in {lineCheckResults.serverAnswerMs} ms
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0" }}>
-                                <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>Cloud status</span>
-                                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#22c55e" }}>
-                                  {lineCheckResults.serverStatus}
-                                </span>
-                              </div>
-                            </div>
-
-                          </div>
-
-                          {/* Quick Bottom Actions */}
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", background: "rgba(255,255,255,0.03)", padding: "1rem 1.4rem", borderRadius: "14px" }}>
-                            <p style={{ margin: 0, fontSize: "0.82rem", color: "#9ca3af" }}>
-                              {lineCheckResults.isVpnActive ? "🛡️ You are currently connected via VPN tunnel." : "💡 Switch your VPN app ON and check again to compare with the encrypted line."}
-                            </p>
-                            <div style={{ display: "flex", gap: "8px" }}>
-                              <button
-                                type="button"
-                                onClick={() => runLineCheck()}
-                                style={{ background: "rgba(168, 85, 247, 0.2)", border: "1px solid rgba(168, 85, 247, 0.4)", color: "#e9d5ff", padding: "0.45rem 1rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer" }}
-                              >
-                                🔄 Test Again
-                              </button>
-                              <a
-                                href="https://wa.me/94770000000?text=Hello%20Legion%20Support,%20I%20have%20an%20issue%20with%20my%20VPN%20Line"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ background: "rgba(37, 211, 102, 0.2)", border: "1px solid rgba(37, 211, 102, 0.4)", color: "#86efac", padding: "0.45rem 1rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: "bold", textDecoration: "none" }}
-                              >
-                                💬 WhatsApp Help
-                              </a>
-                            </div>
-                          </div>
-
-                        </div>
-                      )}
-
-                    </div>
-                  )}
 
                   {activeTool === "speed" && (
                     <div style={{ background: "#08080c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", padding: "2rem 1.5rem", maxWidth: "680px", margin: "0 auto", position: "relative" }}>
@@ -2258,7 +2381,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                          </div>
                       ) : (
                          <div style={{ width: "150px", height: "150px", borderRadius: "50%", border: "4px dashed rgba(99,102,241,0.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", animation: isPinging ? "spin 2s linear infinite" : "none" }}>
-                            <span style={{ fontSize: "3rem", animation: isPinging ? "pulse 1s infinite" : "none" }}>⚡</span>
+                            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" style={{ animation: isPinging ? "pulse 1s infinite" : "none" }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                          </div>
                       )}
                       <button onClick={runLatencyTest} disabled={isPinging} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", padding: "1rem 3rem", borderRadius: "30px", border: "none", color: "#FFF", fontSize: "1.1rem", fontWeight: "bold", cursor: isPinging ? "not-allowed" : "pointer", marginTop: "1rem" }}>
@@ -2278,7 +2401,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             <h3 style={{ textAlign: "center", color: "#818cf8" }}>Scanning network interfaces...</h3>
                          ) : leakIPs.length > 0 ? (
                             <>
-                              <h3 style={{ margin: 0, color: "#ef4444", textAlign: "center" }}>⚠️ IPs Detected via WebRTC:</h3>
+                              <h3 style={{ margin: 0, color: "#ef4444", textAlign: "center" }}>IPs Detected via WebRTC:</h3>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "center" }}>
                                 {leakIPs.map((ip, i) => (
                                   <span key={i} style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "0.5rem 1rem", borderRadius: "8px", fontWeight: "bold" }}>{ip}</span>
@@ -2287,7 +2410,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             </>
                          ) : (
                             <div style={{ textAlign: "center" }}>
-                              <h3 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>✅ No Leaks Detected</h3>
+                              <h3 style={{ margin: 0, color: "#22c55e", fontSize: "1.5rem" }}>No Leaks Detected</h3>
                               <p style={{ color: "#9ca3af", marginTop: "0.5rem" }}>Your identity is completely hidden.</p>
                             </div>
                          )}
@@ -2301,49 +2424,28 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               ) : (
                 /* TOOLS MENU GRID */
                 <div>
-                  <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF" }}>🛠️ Essential VPN Tools</h3>
+                  <h3 style={{ fontSize: "1.3rem", marginBottom: "1.5rem", color: "#FFF", display: "flex", alignItems: "center", gap: "10px" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line>
+                      <line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line>
+                      <line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line>
+                      <line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line>
+                    </svg>
+                    <span>Essential VPN Tools</span>
+                  </h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-                    <div 
-                      className="hover-scale-card" 
-                      style={{ 
-                        padding: "1.5rem", 
-                        background: "linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(14, 14, 23, 0.85) 100%)", 
-                        backdropFilter: "blur(12px)", 
-                        borderRadius: "16px", 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "space-between", 
-                        cursor: "pointer", 
-                        border: "1px solid rgba(168, 85, 247, 0.35)",
-                        boxShadow: "0 8px 24px rgba(168, 85, 247, 0.15)"
-                      }} 
-                      onClick={() => {
-                        setActiveTool("linecheck");
-                        const defaultCfg = (user?.vpnConfigKey || "").trim();
-                        if (defaultCfg) {
-                          setLineCheckConfig(defaultCfg);
-                          runLineCheck(defaultCfg);
-                        }
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", boxShadow: "0 4px 14px rgba(168, 85, 247, 0.4)" }}>
-                          🔍
-                        </div>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF", fontWeight: "bold" }}>V2Ray Line Check</h4>
-                            <span style={{ fontSize: "0.68rem", background: "rgba(168, 85, 247, 0.3)", color: "#f3e8ff", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>DOCTOR</span>
-                          </div>
-                          <p style={{ margin: 0, fontSize: "0.8rem", color: "#d8b4fe" }}>Config vs Connection test</p>
-                        </div>
-                      </div>
-                      <div style={{ color: "#c084fc", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
-                    </div>
-
+                    
+                    {/* Speed Test */}
                     <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("speed")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🚀</div>
+                        <div style={{ width: "48px", height: "48px", background: "rgba(99,102,241,0.15)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(99,102,241,0.25)" }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                          </svg>
+                        </div>
                         <div>
                           <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>Speed Test</h4>
                           <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Check tunnel speed</p>
@@ -2352,9 +2454,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#6366f1", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
+                    {/* IP & Location */}
                     <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ip")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🌍</div>
+                        <div style={{ width: "48px", height: "48px", background: "rgba(34,197,94,0.15)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(34,197,94,0.25)" }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                          </svg>
+                        </div>
                         <div>
                           <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>IP & Location</h4>
                           <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Verify IP is hidden</p>
@@ -2363,9 +2472,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#22c55e", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
+                    {/* Latency Test */}
                     <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => setActiveTool("ping")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>⚡</div>
+                        <div style={{ width: "48px", height: "48px", background: "rgba(245,158,11,0.15)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(245,158,11,0.25)" }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                          </svg>
+                        </div>
                         <div>
                           <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>Latency Test</h4>
                           <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Game stability</p>
@@ -2374,9 +2488,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       <div style={{ color: "#f59e0b", fontSize: "1.2rem", fontWeight: "bold" }}>→</div>
                     </div>
 
+                    {/* WebRTC Leak */}
                     <div className="hover-scale-card" style={{ padding: "1.5rem", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }} onClick={() => { setActiveTool("webrtc"); checkWebRTC(); }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={{ width: "48px", height: "48px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>🛡️</div>
+                        <div style={{ width: "48px", height: "48px", background: "rgba(239,68,68,0.15)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(239,68,68,0.25)" }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <polyline points="9 12 11 14 15 10"></polyline>
+                          </svg>
+                        </div>
                         <div>
                           <h4 style={{ margin: "0 0 0.2rem 0", fontSize: "1.05rem", color: "#FFF" }}>WebRTC Leak</h4>
                           <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af" }}>Advanced privacy scan</p>
@@ -2388,6 +2508,46 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 </div>
               )}
+
+              {/* BOTTOM ROUNDED BANNER: SLOW OR NOT CONNECTING? CHECK IT */}
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "2.8rem", marginBottom: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLineCheckModalOpen(true);
+                    if (!lineCheckConfig) {
+                      const defaultCfg = (activeConfigs[0]?.code || user?.vpnConfigKey || "").trim();
+                      if (defaultCfg) {
+                        setLineCheckConfig(defaultCfg);
+                        runLineCheck(defaultCfg);
+                      }
+                    }
+                  }}
+                  className="linecheck-pill-button"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    background: "rgba(10, 8, 18, 0.92)",
+                    border: "1px solid rgba(168, 85, 247, 0.38)",
+                    borderRadius: "9999px",
+                    padding: "0.85rem 2.4rem",
+                    color: "#FFF",
+                    fontSize: "0.98rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    backdropFilter: "blur(14px)",
+                    boxShadow: "0 10px 28px rgba(0, 0, 0, 0.7), 0 0 18px rgba(168, 85, 247, 0.22)",
+                    letterSpacing: "0.2px"
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                  <span>Slow or not connecting? Check it</span>
+                </button>
+              </div>
+
             </div>
           )}
 
@@ -2757,7 +2917,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                {hasPendingReview && (
                  <div style={{ background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "1.2rem", borderRadius: "14px", color: "#f59e0b", display: "flex", flexDirection: "column", gap: "10px" }}>
                    <div style={{ display: "flex", alignItems: "center", gap: "12px", fontWeight: "bold" }}>
-                     <span style={{ fontSize: "1.4rem" }}>⚠️</span> Your account is currently in REVIEW. The config will be active once payment is verified.
+                     Your account is currently in REVIEW. The config will be active once payment is verified.
                    </div>
                    {receiptLink && (
                       <a href={getCleanReceiptUrl(receiptLink, false)} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline", fontSize: "0.85rem", marginLeft: "2.3rem" }}>
@@ -2827,35 +2987,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                </div>
                              </div>
 
-                             {/* Line Check & Copy Buttons */}
+                             {/* Copy Button */}
                              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                               <button
-                                 type="button"
-                                 onClick={() => {
-                                   setActiveTab("dashboard");
-                                   setActiveTool("linecheck");
-                                   setLineCheckConfig(cfg.code);
-                                   runLineCheck(cfg.code);
-                                 }}
-                                 style={{
-                                   background: "rgba(168, 85, 247, 0.15)",
-                                   border: "1px solid rgba(168, 85, 247, 0.4)",
-                                   color: "#e9d5ff",
-                                   padding: "0.6rem 1rem",
-                                   borderRadius: "10px",
-                                   fontSize: "0.85rem",
-                                   cursor: "pointer",
-                                   fontWeight: "bold",
-                                   display: "inline-flex",
-                                   alignItems: "center",
-                                   gap: "6px",
-                                   transition: "all 0.2s ease"
-                                 }}
-                                 title="Diagnose this config line health"
-                               >
-                                 🔍 Test Line
-                               </button>
-
                                <button 
                                  type="button"
                                  onClick={() => handleCopyConfig(cfg.code, idx)} 
@@ -2875,7 +3008,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                  transition: "all 0.2s ease"
                                }}
                              >
-                               {isCopied ? "✓ Copied!" : "📋 Copy Config"}
+                               isCopied ? (
+                                    <>
+                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                      <span>Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                      <span>Copy Config</span>
+                                    </>
+                                  )
                              </button>
                              </div>
                            </div>
@@ -3012,7 +3155,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               
               {payments.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "3rem 0" }}>
-                  <span style={{ fontSize: "3rem" }}>🧾</span>
+                  <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                   <h3 style={{ color: "#9ca3af", marginTop: "1rem" }}>No payments made yet.</h3>
                 </div>
               ) : (
@@ -3080,7 +3223,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                       <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "bold", color: "#FFF" }}>{safeName}</h2>
-                      <span onClick={() => setActiveTab("profile")} style={{ cursor: "pointer", fontSize: "0.9rem", color: "#9ca3af" }} title="Edit Profile">✏️</span>
+                      <span onClick={() => setActiveTab("profile")} style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }} title="Edit Profile"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
                       
                       <span style={{ 
                         display: "inline-flex", 
@@ -3098,7 +3241,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <span>{currentRank.name}</span>
                       </span>
                     </div>
-                    <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: "0.85rem" }}>✉ {safeEmail}</p>
+                    <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> {safeEmail}</p>
                   </div>
                 </div>
 
@@ -3118,7 +3261,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 boxShadow: "0 25px 50px rgba(0,0,0,0.6)"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1.8rem" }}>
-                  <span style={{ fontSize: "1.4rem" }}>🏆</span>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2.2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path></svg>
                   <h3 style={{ margin: 0, fontSize: "1.3rem", fontWeight: "bold", color: "#FFF" }}>Rank Progress</h3>
                 </div>
 
@@ -3166,7 +3309,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   ) : (
                     <div style={{ textAlign: "right" }}>
                       <span style={{ background: "rgba(168, 85, 247, 0.2)", color: "#a855f7", padding: "6px 14px", borderRadius: "12px", fontWeight: "bold", fontSize: "0.85rem", border: "1px solid rgba(168, 85, 247, 0.4)" }}>
-                        👑 Max Level Reached
+                        Max Level Reached
                       </span>
                     </div>
                   )}
@@ -3334,7 +3477,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           transition: "all 0.2s"
                         }}
                       >
-                        {idCopied ? "✓ Copied!" : "📋 Copy ID"}
+                        idCopied ? "✓ Copied!" : "Copy ID"
                       </button>
                     )}
                   </div>
@@ -3348,7 +3491,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {simWarningModal && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
               <div style={{ width: "100%", maxWidth: "500px", padding: "2rem", background: "#10101a", border: "1px solid rgba(239,68,68,0.5)", borderRadius: "16px", textAlign: "center" }}>
-                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
+                 <div style={{ width: "64px", height: "64px", borderRadius: "18px", background: "rgba(245,158,11,0.2)", border: "1px solid rgba(245,158,11,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem auto" }}>
+             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+           </div>
                  <h2 style={{ color: "#FFF", marginBottom: "1rem" }}>Important Notice</h2>
                  <p style={{ color: "#9ca3af", lineHeight: 1.6, marginBottom: "2rem" }}>
                    SIM Packages වල Speed එක මදි වීමට ප්‍රධාන හේතුව වන්නේ ඔබගේ connection එකට ප්‍රමාණවත් Bandwidth එකක් නොමැති වීමයි. <strong>Signal Strength එක හොඳට තියෙනවා නම් ඉතා හොඳ Internet Speed එකක් ලබාගත හැක.</strong>
@@ -3373,7 +3518,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 {checkoutStep === 1 && (
                   <div>
                     <h2 style={{ fontSize: "1.4rem", margin: "0 0 0.5rem 0" }}>Configure VPN Quota</h2>
-                    <p style={{ color: "#818cf8", marginBottom: "1.5rem", fontWeight: "bold", background: "rgba(99,102,241,0.1)", padding: "0.8rem", borderRadius: "8px" }}>📦 {modalPackage.name}</p>
+                    <p style={{ color: "#818cf8", marginBottom: "1.5rem", fontWeight: "bold", background: "rgba(99,102,241,0.1)", padding: "0.8rem", borderRadius: "8px" }}>{modalPackage.name}</p>
                     
                     <label style={{ display: "block", marginBottom: "0.8rem", fontSize: "0.85rem", color: "#9ca3af" }}>Choose Data Quota & Pricing:</label>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", marginBottom: "2rem" }}>
@@ -3507,7 +3652,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ border: "2px dashed rgba(99,102,241,0.5)", background: "rgba(99,102,241,0.05)", borderRadius: "12px", padding: "3rem 1rem", textAlign: "center", marginBottom: "2rem", cursor: "pointer" }}>
                       <input type="file" accept="image/*" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} style={{ display: "none" }} id="slip-upload" disabled={isUploading} />
                       <label htmlFor="slip-upload" style={{ cursor: "pointer", display: "block" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>📁</div>
+                        <div style={{ width: "54px", height: "54px", borderRadius: "14px", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.8rem auto" }}>
+                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                       </div>
                         <h4 style={{ margin: "0 0 0.3rem 0", color: "#818cf8" }}>{isUploading ? "Uploading..." : slipFile ? slipFile.name : "Click here to upload slip image"}</h4>
                         <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>PNG, JPG or PDF</p>
                       </label>
@@ -3516,7 +3663,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div style={{ display: "flex", gap: "1rem" }}>
                       <button onClick={() => setCheckoutStep(2)} disabled={isUploading} style={{ flex: 1, padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FFF", borderRadius: "8px", cursor: "pointer" }}>← Back</button>
                       <button onClick={() => { handleConfirmOrder(); setTimeout(() => window.open(`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi, I just submitted an order for ${modalPackage?.name}. Please verify.`)}`, "_blank"), 1000); }} disabled={!slipFile || isUploading} style={{ flex: 2, padding: "1rem", background: slipFile ? "linear-gradient(90deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.1)", color: slipFile ? "#FFF" : "#6b7280", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: slipFile && !isUploading ? "pointer" : "not-allowed" }}>
-                        {isUploading ? "Uploading to Cloudinary..." : "🚀 Submit Order"}
+                        {isUploading ? "Uploading to Cloudinary..." : "Submit Order"}
                       </button>
                     </div>
                   </div>
@@ -3530,7 +3677,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
               <div style={{ width: "100%", maxWidth: "480px", padding: "2rem", background: "#10101a", border: `1px solid ${metaData.isRenewUnlocked ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`, borderRadius: "18px", textAlign: "center", boxShadow: "0 20px 45px rgba(0,0,0,0.8)" }}>
                 <div style={{ fontSize: "3rem", marginBottom: "0.8rem" }}>
-                  {metaData.isRenewUnlocked ? "🔓" : "🔒"}
+                  {metaData.isRenewUnlocked ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>}
                 </div>
                 <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 1rem 0" }}>
                   {metaData.isRenewUnlocked ? "VPN Renewal Notice" : "Renewal Not Permitted"}
@@ -3576,7 +3723,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             {/* Popover Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", paddingBottom: "0.5rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "1.1rem" }}>💬</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
                 <span style={{ fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>Legion WhatsApp Hub</span>
               </div>
               <button
@@ -3613,7 +3760,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 transition: "all 0.2s ease"
               }}
             >
-              <span style={{ fontSize: "1.3rem" }}>📢</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
               <div style={{ flex: 1 }}>
                 <div style={{ color: "#c084fc", fontWeight: "bold", fontSize: "0.82rem" }}>Join our Channel to get UPDATES</div>
                 <div style={{ fontSize: "0.7rem", color: "#cbd5e1" }}>New configs, fixes & server notices</div>
@@ -3640,7 +3787,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 transition: "all 0.2s ease"
               }}
             >
-              <span style={{ fontSize: "1.3rem" }}>💬</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
               <div style={{ flex: 1 }}>
                 <div style={{ color: "#4ade80", fontWeight: "bold", fontSize: "0.82rem" }}>Contact Admin</div>
                 <div style={{ fontSize: "0.7rem", color: "#cbd5e1" }}>Direct 1-on-1 support on WhatsApp</div>
