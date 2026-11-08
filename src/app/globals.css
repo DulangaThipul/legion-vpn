@@ -199,4 +199,89 @@ h1, h2, h3 {
   animation: spin 0.8s linear infinite !important;
 }
 
+/* Subsea Cable & Dot Matrix Map Animations */
+@keyframes subseaDataFlow {
+  0% {
+    stroke-dashoffset: 48;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.subsea-pulse-fast {
+  stroke-dasharray: 6 12;
+  animation: subseaDataFlow 1.2s linear infinite;
+}
+
+@keyframes mapBeaconPulse {
+  0% {
+    r: 5;
+    opacity: 0.9;
+  }
+  50% {
+    r: 15;
+    opacity: 0;
+  }
+  100% {
+    r: 5;
+    opacity: 0.9;
+  }
+}
+
+.map-beacon-ring {
+  animation: mapBeaconPulse 2s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+  transform-origin: center;
+}
+
+/* Fluid Responsive Line Check Modal for iPhone SE & Small Screens */
+.linecheck-modal-card {
+  width: 100%;
+  max-width: 880px;
+  max-height: 92vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .linecheck-modal-card {
+    padding: 1.1rem 0.9rem !important;
+    border-radius: 18px !important;
+  }
+  .linecheck-input-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .linecheck-input-buttons {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .linecheck-input-buttons button {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+  .linecheck-hud-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  /* iPhone SE (320px - 375px) optimizations */
+  .linecheck-modal-card {
+    padding: 0.85rem 0.75rem !important;
+  }
+  .linecheck-title {
+    font-size: 1.15rem !important;
+  }
+  .linecheck-desc {
+    font-size: 0.76rem !important;
+  }
+  .linecheck-hud-card {
+    padding: 0.75rem !important;
+  }
+}
+
 
