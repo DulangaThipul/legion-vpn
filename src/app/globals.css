@@ -155,20 +155,18 @@ h1, h2, h3 {
 @keyframes linecheckModalExpand {
   0% {
     opacity: 0;
-    transform: scale(0.88) translateY(24px);
-    filter: blur(10px);
+    transform: scale(0.96) translateY(12px);
   }
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
-    filter: blur(0px);
   }
 }
 
 @keyframes linecheckItemReveal {
   0% {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
@@ -177,13 +175,13 @@ h1, h2, h3 {
 }
 
 .linecheck-item-stagger-1 {
-  animation: linecheckItemReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+  animation: linecheckItemReveal 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both;
 }
 .linecheck-item-stagger-2 {
-  animation: linecheckItemReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+  animation: linecheckItemReveal 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
 .linecheck-item-stagger-3 {
-  animation: linecheckItemReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  animation: linecheckItemReveal 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 
 @keyframes spin {
@@ -211,37 +209,57 @@ h1, h2, h3 {
 
 .subsea-pulse-fast {
   stroke-dasharray: 6 12;
-  animation: subseaDataFlow 1.2s linear infinite;
+  animation: subseaDataFlow 1.6s linear infinite;
+  will-change: stroke-dashoffset;
 }
 
 @keyframes mapBeaconPulse {
-  0% {
-    r: 5;
-    opacity: 0.9;
+  0%, 100% {
+    opacity: 0.85;
+    transform: scale(0.9);
   }
   50% {
-    r: 15;
-    opacity: 0;
-  }
-  100% {
-    r: 5;
-    opacity: 0.9;
+    opacity: 0.15;
+    transform: scale(1.4);
   }
 }
 
 .map-beacon-ring {
-  animation: mapBeaconPulse 2s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+  animation: mapBeaconPulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  transform-box: fill-box;
   transform-origin: center;
+  will-change: transform, opacity;
 }
 
 /* Fluid Responsive Line Check Modal for iPhone SE & Small Screens */
 .linecheck-modal-card {
   width: 100%;
   max-width: 880px;
-  max-height: 92vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  max-height: 90vh;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   box-sizing: border-box;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
+  transform: translateZ(0);
+}
+
+.linecheck-modal-card::-webkit-scrollbar {
+  width: 7px;
+}
+.linecheck-modal-card::-webkit-scrollbar-track {
+  background: rgba(10, 10, 18, 0.6);
+  border-radius: 8px;
+}
+.linecheck-modal-card::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.linecheck-modal-card::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.7);
 }
 
 @media (max-width: 640px) {
