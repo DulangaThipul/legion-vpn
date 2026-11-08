@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const rawHost = (body.host || "").trim();
+    let rawHost = (body.host || "").trim();
     const rawPort = parseInt(body.port, 10) || 443;
 
     if (!rawHost) {
@@ -20,7 +20,38 @@ export async function POST(req: Request) {
     }
 
     // Clean host in case user or config includes protocol or port
-    const cleanHost = rawHost.replace(/^[a-z]+:\/\//i, "").replace(/:[0-9]+$/, "").trim();
+    let cleanHost = rawHost.replace(/^[a-z]+:\/\//i, "").replace(/:[0-9]+$/, "").trim();
+
+    // Auto-map unresolvable legacy subdomain singapore.legiongraphics.site to active root domain legiongraphics.site
+    if (cleanHost.toLowerCase() === "singapore.legiongraphics.site") {
+      cleanHost = "legiongraphics.site";
+    }
+
+    // 🛡️ STRICT LEGION BRAND RESTRICTION:
+    // Only configs with *.legiongraphics.site or legiongraphics.site (or official dedicated server IPs) are permitted.
+    // External / other sellers' domains are blocked.
+    const isLegionDomain = 
+      cleanHost.toLowerCase() === "legiongraphics.site" || 
+      cleanHost.toLowerCase().endsWith(".legiongraphics.site");
+
+    const isLegionDedicatedIp = [
+      "23.94.85.181", 
+      "143.42.79.58", 
+      "103.170.217.251", 
+      "103.179.44.75"
+    ].includes(cleanHost);
+
+    if (!isLegionDomain && !isLegionDedicatedIp) {
+      return NextResponse.json({
+        success: false,
+        host: cleanHost,
+        port: rawPort,
+        dnsOk: false,
+        reachable: false,
+        isLegionAuthorized: false,
+        error: "Access Denied: Only official Legion VPN domains (*.legiongraphics.site) are permitted. Third-party seller configs cannot be checked."
+      }, { status: 403 });
+    }
 
     // 1. Check DNS Resolution
     let resolvedIp = "";
@@ -48,6 +79,9 @@ export async function POST(req: Request) {
         ip: null,
         reachable: false,
         latencyMs: 0,
+        country: null,
+        countryCode: null,
+        city: null,
         error: `DNS resolution failed: ${dnsError}. Domain does not exist or has no active DNS A/AAAA records.`
       });
     }
@@ -81,6 +115,43 @@ export async function POST(req: Request) {
       }
     });
 
+    // 3. GeoIP Lookup for Country & City
+    let country = "";
+    let countryCode = "";
+    let city = "";
+    let org = "";
+
+    const targetIp = resolvedIp || cleanHost;
+    try {
+      const geoRes = await fetch(`http://ip-api.com/json/${targetIp}?fields=status,country,countryCode,city,org`, {
+        signal: AbortSignal.timeout(1800),
+        cache: "no-store"
+      });
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (geoData && geoData.status === "success") {
+          country = geoData.country || "";
+          countryCode = geoData.countryCode || "";
+          city = geoData.city || "";
+          org = geoData.org || "";
+        }
+      }
+    } catch {}
+
+    // Fallback if GeoIP returned empty or was throttled
+    if (!countryCode) {
+      const lower = cleanHost.toLowerCase();
+      if (lower.includes("usa") || lower.includes("bonus-usa") || targetIp === "23.94.85.181" || targetIp === "40.160.38.154") {
+        country = "United States";
+        countryCode = "US";
+        city = "Los Angeles";
+      } else if (lower.includes("sg") || lower.includes("singapore") || targetIp === "143.42.79.58" || targetIp === "103.179.44.75" || targetIp === "103.170.217.251") {
+        country = "Singapore";
+        countryCode = "SG";
+        city = "Singapore";
+      }
+    }
+
     return NextResponse.json({
       success: true,
       host: cleanHost,
@@ -89,6 +160,10 @@ export async function POST(req: Request) {
       ip: resolvedIp,
       reachable: tcpResult.reachable,
       latencyMs: tcpResult.latencyMs,
+      country: country || null,
+      countryCode: countryCode || null,
+      city: city || null,
+      org: org || null,
       error: tcpResult.error || null
     });
   } catch (error: any) {
@@ -100,3 +175,4 @@ export async function POST(req: Request) {
     }, { status: 500 });
   }
 }
+
