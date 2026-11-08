@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
@@ -214,6 +214,282 @@ const WORLD_MAP_DOTS: [number, number][] = [
   [705, 315], [715, 325]
 ];
 
+// Memoized Landmass Dots Component (Computed once in memory for 120Hz smooth scrolling)
+const MapLandmassDots = memo(function MapLandmassDots() {
+  return (
+    <g fill="rgba(147, 197, 253, 0.18)">
+      {WORLD_MAP_DOTS.map(([dx, dy], didx) => (
+        <circle key={didx} cx={dx} cy={dy} r="2.5" />
+      ))}
+    </g>
+  );
+});
+
+// Memoized Submarine World Map (Completely decoupled from Dashboard re-renders)
+const SubmarineWorldMap = memo(function SubmarineWorldMap({
+  lineCheckResults
+}: {
+  lineCheckResults: any;
+}) {
+  const targetRaw = (
+    (lineCheckResults.serverHost || "") + " " + 
+    (lineCheckResults.configName || "") + " " + 
+    (lineCheckResults.sni || "") + " " +
+    (lineCheckResults.targetCountry || "") + " " +
+    (lineCheckResults.targetCity || "")
+  ).toLowerCase();
+
+  const isUsaTarget = Boolean(
+    lineCheckResults.targetCountryCode === "US" ||
+    lineCheckResults.targetCountry?.toLowerCase().includes("united states") ||
+    targetRaw.includes("usa") || 
+    targetRaw.includes("us-") || 
+    targetRaw.includes("united states") || 
+    targetRaw.includes("america") ||
+    targetRaw.includes("us.") ||
+    lineCheckResults.serverHost === "23.94.85.181" ||
+    lineCheckResults.serverHost === "40.160.38.154"
+  );
+
+  const isOffline = lineCheckResults.serverStatus.includes("Offline") || 
+                    lineCheckResults.serverStatus.includes("Unknown") || 
+                    !lineCheckResults.configValid;
+
+  const isBlocked = lineCheckResults.serverStatus.includes("Blocked") || 
+                    lineCheckResults.verdictCategoryEn.includes("UNAUTHORIZED");
+
+  const cableColor = isOffline ? "#ef4444" : (lineCheckResults.jitter > 80 || lineCheckResults.packetLoss > 0) ? "#f59e0b" : "#a855f7";
+  const cableGlow = isOffline ? "rgba(239, 68, 68, 0.45)" : "rgba(168, 85, 247, 0.45)";
+
+  const sgCablePath = "M 515 242 Q 538 252, 565 255";
+  const usaCablePath = "M 515 242 C 450 215, 360 155, 270 135 C 225 125, 195 130, 165 135";
+
+  const activeCablePath = isUsaTarget ? usaCablePath : sgCablePath;
+  const inactiveCablePath = isUsaTarget ? sgCablePath : usaCablePath;
+
+  const isLegionServer = 
+    lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") ||
+    lineCheckResults.serverHost === "23.94.85.181" ||
+    lineCheckResults.serverHost === "143.42.79.58" ||
+    lineCheckResults.serverHost === "103.170.217.251" ||
+    lineCheckResults.serverHost === "103.179.44.75" ||
+    (lineCheckResults.sni && lineCheckResults.sni.toLowerCase().includes("legiongraphics.site"));
+
+  const displayServerHost = isLegionServer 
+    ? "LEGION VPN SERVER 10Gbps" 
+    : lineCheckResults.serverHost;
+
+  return (
+    <div style={{ 
+      background: "radial-gradient(ellipse at 50% 0%, rgba(20, 15, 35, 0.85) 0%, rgba(8, 8, 14, 0.95) 100%)", 
+      border: "1px solid rgba(168, 85, 247, 0.25)", 
+      borderRadius: "20px", 
+      padding: "clamp(0.85rem, 2.5vw, 1.4rem)", 
+      marginBottom: "1.4rem",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+      overflow: "hidden",
+      contain: "paint layout"
+    }}>
+      {/* Map Header & Route Telemetry Badge */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem", flexWrap: "wrap", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ 
+            width: "8px", 
+            height: "8px", 
+            borderRadius: "50%", 
+            background: isOffline || isBlocked ? "#ef4444" : "#22c55e", 
+            display: "inline-block", 
+            boxShadow: isOffline || isBlocked ? "0 0 10px #ef4444" : "0 0 10px #22c55e" 
+          }}></span>
+          <span style={{ fontSize: "clamp(0.72rem, 2.2vw, 0.82rem)", fontWeight: "bold", color: "#e5e7eb", textTransform: "uppercase", letterSpacing: "1px" }}>
+            Subsea Optical Cable Matrix
+          </span>
+        </div>
+
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "3px 10px" }}>
+          <span style={{ fontSize: "0.72rem", color: "#a855f7", fontWeight: "600" }}>Active Route:</span>
+          <span style={{ fontSize: "0.72rem", color: "#FFF", fontWeight: "bold" }}>
+            {isBlocked ? "Access Denied (External Provider)" : isUsaTarget ? "Colombo (LK) ➔ United States (US)" : "Colombo (LK) ➔ Singapore (SG)"}
+          </span>
+        </div>
+      </div>
+
+      {/* 100% Fluid Vector Dot-Matrix World Submarine Map */}
+      <div style={{ width: "100%", position: "relative", overflow: "hidden", borderRadius: "12px", background: "rgba(5, 5, 10, 0.65)", border: "1px solid rgba(255,255,255,0.04)" }}>
+        <svg 
+          viewBox="0 0 800 360" 
+          style={{ width: "100%", height: "auto", display: "block" }}
+        >
+          <defs>
+            <linearGradient id="cableGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#22c55e" />
+              <stop offset="50%" stopColor={isOffline ? "#ef4444" : "#a855f7"} />
+              <stop offset="100%" stopColor={isOffline ? "#ef4444" : "#38bdf8"} />
+            </linearGradient>
+            <radialGradient id="lkGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="targetGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={isOffline ? "#ef4444" : "#a855f7"} stopOpacity="0.8" />
+              <stop offset="100%" stopColor={isOffline ? "#ef4444" : "#a855f7"} stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Subtle Latitude & Longitude grid lines */}
+          <line x1="0" y1="120" x2="800" y2="120" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+          <line x1="0" y1="240" x2="800" y2="240" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+          <line x1="260" y1="0" x2="260" y2="360" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+          <line x1="530" y1="0" x2="530" y2="360" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+
+          {/* Memoized Landmass Continents Cyber Matrix Dots */}
+          <MapLandmassDots />
+
+          {/* Inactive Submarine Cable (Subtle Reference Trunk) */}
+          <path
+            d={inactiveCablePath}
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.1)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeDasharray="4 6"
+          />
+
+          {!isBlocked && (
+            <>
+              {/* Active Submarine Cable - Outer Glow Layer */}
+              <path
+                d={activeCablePath}
+                fill="none"
+                stroke={cableGlow}
+                strokeWidth="5"
+                strokeLinecap="round"
+                opacity="0.75"
+              />
+
+              {/* Active Submarine Cable - Core Optical Fiber */}
+              <path
+                d={activeCablePath}
+                fill="none"
+                stroke="url(#cableGradActive)"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              />
+
+              {/* Active Submarine Cable - Animated Data Stream Pulses */}
+              {!isOffline && (
+                <path
+                  d={activeCablePath}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  className="subsea-pulse-fast"
+                  opacity="0.9"
+                />
+              )}
+            </>
+          )}
+
+          {/* Node 1: Sri Lanka (Colombo Landing Station - cx:515, cy:242) */}
+          <circle cx="515" cy="242" r="14" fill="url(#lkGlow)" className="map-beacon-ring" />
+          <circle cx="515" cy="242" r="6" fill="rgba(34, 197, 94, 0.35)" />
+          <circle cx="515" cy="242" r="4" fill="#22c55e" stroke="#FFF" strokeWidth="1.5" />
+          <rect x="472" y="210" width="86" height="18" rx="9" fill="rgba(6, 78, 59, 0.85)" stroke="rgba(34, 197, 94, 0.5)" strokeWidth="1" />
+          <text x="515" y="222" textAnchor="middle" fill="#86efac" fontSize="8.5" fontWeight="bold" letterSpacing="0.5">COLOMBO (LK)</text>
+
+          {/* Node 2: Singapore Gateway (cx:565, cy:255) */}
+          {isUsaTarget || isBlocked ? (
+            <>
+              <circle cx="565" cy="255" r="3.5" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+              <text x="565" y="274" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8">SINGAPORE</text>
+            </>
+          ) : (
+            <>
+              <circle cx="565" cy="255" r="16" fill="url(#targetGlow)" className="map-beacon-ring" />
+              <circle cx="565" cy="255" r="7" fill={isOffline ? "rgba(239, 68, 68, 0.35)" : "rgba(168, 85, 247, 0.35)"} />
+              <circle cx="565" cy="255" r="4.5" fill={isOffline ? "#ef4444" : "#a855f7"} stroke="#FFF" strokeWidth="1.5" />
+              <rect x="520" y="272" width="90" height="18" rx="9" fill={isOffline ? "rgba(127, 29, 29, 0.9)" : "rgba(88, 28, 135, 0.9)"} stroke={isOffline ? "#ef4444" : "#c084fc"} strokeWidth="1" />
+              <text x="565" y="284" textAnchor="middle" fill={isOffline ? "#fca5a5" : "#e9d5ff"} fontSize="8.5" fontWeight="bold" letterSpacing="0.5">SINGAPORE (SG)</text>
+            </>
+          )}
+
+          {/* Node 3: USA Gateway (cx:165, cy:135) */}
+          {isUsaTarget && !isBlocked ? (
+            <>
+              <circle cx="165" cy="135" r="16" fill="url(#targetGlow)" className="map-beacon-ring" />
+              <circle cx="165" cy="135" r="7" fill={isOffline ? "rgba(239, 68, 68, 0.35)" : "rgba(168, 85, 247, 0.35)"} />
+              <circle cx="165" cy="135" r="4.5" fill={isOffline ? "#ef4444" : "#a855f7"} stroke="#FFF" strokeWidth="1.5" />
+              <rect x="110" y="100" width="110" height="18" rx="9" fill={isOffline ? "rgba(127, 29, 29, 0.9)" : "rgba(88, 28, 135, 0.9)"} stroke={isOffline ? "#ef4444" : "#c084fc"} strokeWidth="1" />
+              <text x="165" y="112" textAnchor="middle" fill={isOffline ? "#fca5a5" : "#e9d5ff"} fontSize="8.5" fontWeight="bold" letterSpacing="0.5">UNITED STATES (US)</text>
+            </>
+          ) : (
+            <>
+              <circle cx="165" cy="135" r="3.5" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+              <text x="165" y="152" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8">USA HUB</text>
+            </>
+          )}
+        </svg>
+      </div>
+
+      {/* Responsive Node Telemetry Cards */}
+      <div className="linecheck-hud-grid" style={{ 
+        display: "grid", 
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
+        gap: "10px", 
+        marginTop: "1rem" 
+      }}>
+        {/* Device / Colombo Card */}
+        <div className="linecheck-hud-card" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: "12px", padding: "0.85rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e" }}></span>
+            <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>Origin (Sri Lanka)</span>
+          </div>
+          <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>This Device</p>
+          <p style={{ margin: 0, fontSize: "0.74rem", color: "#9ca3af" }}>{lineCheckResults.clientIp}</p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: "#22c55e" }}>{lineCheckResults.detectedIsp}</p>
+        </div>
+
+        {/* Subsea Cable Optical Route Card */}
+        <div className="linecheck-hud-card" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: "12px", padding: "0.85rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: cableColor }}></span>
+            <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>Subsea Optical Cable</span>
+          </div>
+          <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>
+            {isBlocked ? "Connection Blocked" : isUsaTarget ? "Transoceanic Subsea Express" : "SMW-5 / BBG Subsea Optic"}
+          </p>
+          <p style={{ margin: 0, fontSize: "0.74rem", color: lineCheckResults.jitter > 70 ? "#f59e0b" : "#9ca3af" }}>
+            Ping ~{lineCheckResults.roundTrip}ms · Jitter ±{lineCheckResults.jitter}ms
+          </p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: lineCheckResults.packetLoss > 0 ? "#ef4444" : "#a855f7" }}>
+            {isBlocked ? "Third-party config" : lineCheckResults.packetLoss > 0 ? `Packet Loss: ${lineCheckResults.packetLoss}%` : "10 Gbps Submarine Optical Core"}
+          </p>
+        </div>
+
+        {/* Destination VPN Server Card */}
+        <div className="linecheck-hud-card" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: "12px", padding: "0.85rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isOffline ? "#ef4444" : "#a855f7" }}></span>
+            <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>
+              {isBlocked ? "Target: Blocked (External Domain)" : isUsaTarget ? "Target: United States (US)" : "Target: Singapore (SG)"}
+            </span>
+          </div>
+          <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {isBlocked ? "External Provider (Blocked)" : displayServerHost}
+          </p>
+          <p style={{ margin: 0, fontSize: "0.74rem", color: isOffline ? "#ef4444" : "#c084fc", fontWeight: isOffline ? "bold" : "normal" }}>
+            {lineCheckResults.serverStatus} {lineCheckResults.targetCity ? `· ${lineCheckResults.targetCity}, ${lineCheckResults.targetCountryCode || (isUsaTarget ? "US" : "SG")}` : ""}
+          </p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: "#9ca3af" }}>
+            SNI: {lineCheckResults.sni}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -249,6 +525,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   useEffect(() => {
     setUser(initialUser);
   }, [initialUser]);
+
+  // Lock background scroll and keep mouse wheel strictly inside Line Check modal
+  useEffect(() => {
+    if (isLineCheckModalOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isLineCheckModalOpen]);
 
   // 🚀 METADATA DECODER
   let metaData = useMemo(() => {
@@ -1573,25 +1860,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         </div>
       )}
 
-      {/* 📈 POPUP MODAL: V2RAY LINE CHECK STUDIO WITH FLUID EXPAND ANIMATION */}
+      {/* 📈 POPUP MODAL: V2RAY LINE CHECK STUDIO (120Hz FLUID & NATIVE MOUSE WHEEL SCROLL) */}
       {isLineCheckModalOpen && (
         <div 
           onClick={() => setIsLineCheckModalOpen(false)}
+          data-lenis-prevent="true"
           style={{ 
             position: "fixed", 
             inset: 0, 
-            background: "rgba(0, 0, 0, 0.82)", 
-            backdropFilter: "blur(16px)", 
-            WebkitBackdropFilter: "blur(16px)",
+            background: "rgba(0, 0, 0, 0.85)", 
+            backdropFilter: "blur(8px)", 
+            WebkitBackdropFilter: "blur(8px)",
             display: "flex", 
             alignItems: "center", 
             justifyContent: "center", 
             zIndex: 99999, 
-            padding: "1rem" 
+            padding: "1rem",
+            overflow: "hidden"
           }}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
+            data-lenis-prevent="true"
             className="linecheck-modal-card"
             style={{ 
               background: "linear-gradient(180deg, rgba(16, 12, 28, 0.98) 0%, rgba(8, 8, 14, 0.99) 100%)", 
@@ -1600,10 +1891,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               padding: "clamp(1rem, 3.5vw, 2rem)", 
               maxWidth: "880px", 
               width: "100%", 
-              maxHeight: "92vh",
+              maxHeight: "88vh",
               overflowY: "auto",
-              boxShadow: "0 30px 80px rgba(0,0,0,0.9), 0 0 40px rgba(168, 85, 247, 0.25)",
-              animation: "linecheckModalExpand 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+              boxShadow: "0 25px 60px rgba(0,0,0,0.85), 0 0 30px rgba(168, 85, 247, 0.2)",
+              animation: "linecheckModalExpand 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards",
               position: "relative"
             }}
           >
