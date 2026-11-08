@@ -867,6 +867,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     protocol: string;
     serverAnswerMs: number;
     serverStatus: string;
+    targetCountry?: string;
+    targetCountryCode?: string;
+    targetCity?: string;
     isVpnActive: boolean;
     verdictStatus: "ok" | "warn" | "bad";
     verdictCategoryEn: string;
@@ -878,7 +881,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   } | null>(null);
 
   const runLineCheck = async (customConfig?: string) => {
-    const rawConfig = (customConfig ?? lineCheckConfig ?? user?.vpnConfigKey ?? "").trim();
+    let rawConfig = (customConfig ?? lineCheckConfig ?? activeConfigs[0]?.code ?? user?.vpnConfigKey ?? "").trim();
+    if (!rawConfig) {
+      rawConfig = "vless://auto-detect@legiongraphics.site:443?security=tls&type=tcp#Legion%20VPN%20Server";
+    }
+    // Auto-map unresolvable legacy subdomain to active domain
+    rawConfig = rawConfig.replace(/singapore\.legiongraphics\.site/gi, "legiongraphics.site");
     setIsCheckingLine(true);
 
     // 1. Parse VLESS config URL
@@ -925,21 +933,85 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     }
 
-    if (!serverHost) {
-      serverHost = "Singapore SG5";
+    if (!serverHost || serverHost === "Singapore SG5") {
+      serverHost = "legiongraphics.site";
+    }
+    if (serverHost.toLowerCase() === "singapore.legiongraphics.site") {
+      serverHost = "legiongraphics.site";
     }
 
-    // 2. Real server host & DNS probe via /api/line-check
+    // 🛡️ STRICT LEGION BRAND RESTRICTION:
+    // Only configs with *.legiongraphics.site or legiongraphics.site (or official dedicated server IPs) are permitted.
+    // External / other sellers' domains are blocked.
+    const cleanHostCheck = serverHost.replace(/^[a-z]+:\/\//i, "").replace(/:[0-9]+$/, "").trim().toLowerCase();
+    const isLegionDomain = 
+      cleanHostCheck === "legiongraphics.site" || 
+      cleanHostCheck.endsWith(".legiongraphics.site");
+
+    const isLegionDedicatedIp = [
+      "23.94.85.181", 
+      "143.42.79.58", 
+      "103.170.217.251", 
+      "103.179.44.75"
+    ].includes(cleanHostCheck);
+
+    const isLegionAuthorized = isLegionDomain || isLegionDedicatedIp;
+
+    if (!isLegionAuthorized) {
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const detectedIsp = (ipData?.org || ipData?.isp || "Dialog / SLT Mobile").replace(/PLC|Lanka|Telecommunications/gi, "").trim();
+      const clientIp = ipData?.ip || "Detected (Hidden)";
+
+      setLineCheckResults({
+        testedAt: timeStr,
+        roundTrip: 0,
+        jitter: 0,
+        packetLoss: 0,
+        downloadSpeed: 0,
+        detectedIsp,
+        clientIp,
+        configValid: false,
+        configName: configName || "Third-Party Provider Config",
+        uuid: "",
+        serverHost,
+        serverPort,
+        sni,
+        protocol,
+        serverAnswerMs: 0,
+        serverStatus: "Blocked (External Domain)",
+        targetCountry: "Blocked",
+        targetCountryCode: "",
+        targetCity: "",
+        isVpnActive: false,
+        verdictStatus: "bad",
+        verdictCategoryEn: "VERDICT · UNAUTHORIZED THIRD-PARTY CONFIG",
+        verdictCategorySi: "VERDICT · LEGION නොවන වෙනත් SELLER කෙනෙකුගේ CONFIG එකකි",
+        verdictHeadlineEn: "Only Legion VPN (*.legiongraphics.site) configs can be tested here.",
+        verdictHeadlineSi: "මෙම Diagnostic Tool එක Legion VPN (*.legiongraphics.site) සඳහා පමණි.",
+        verdictExplanationEn: `The address "${serverHost}" does not belong to Legion VPN. This diagnostic portal is exclusively reserved for official Legion VPN servers (*.legiongraphics.site). Third-party sellers' configs cannot be tested here.`,
+        verdictExplanationSi: `ඔබ ඇතුළත් කළ Server Address එක ("${serverHost}") Legion VPN ජාලයට අයත් නොවේ. වෙනත් Seller කෙනෙකුගේ හෝ බාහිර Domain එකකින් ඇති Configs මෙම පද්ධතිය හරහා පරීක්ෂා කළ නොහැක. කරුණාකර Legion VPN (*.legiongraphics.site) නිල Config එකක් භාවිතා කරන්න.`,
+      });
+
+      setIsCheckingLine(false);
+      return;
+    }
+
+    // 2. Real server host, GeoIP & DNS probe via /api/line-check
     let hostCheckResult: {
       success: boolean;
       dnsOk: boolean;
       reachable: boolean;
       ip?: string | null;
       latencyMs?: number;
+      country?: string | null;
+      countryCode?: string | null;
+      city?: string | null;
+      org?: string | null;
       error?: string | null;
     } | null = null;
 
-    if (serverHost && serverHost !== "Singapore SG5") {
+    if (serverHost) {
       try {
         const res = await fetch("/api/line-check", {
           method: "POST",
@@ -1087,6 +1159,24 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
+    // Extract real Country, CountryCode and City from GeoIP
+    let targetCountry = hostCheckResult?.country || "";
+    let targetCountryCode = hostCheckResult?.countryCode || "";
+    let targetCity = hostCheckResult?.city || "";
+
+    if (!targetCountryCode) {
+      const lower = (serverHost + " " + configName + " " + sni).toLowerCase();
+      if (lower.includes("usa") || lower.includes("bonus-usa") || serverHost === "23.94.85.181" || serverHost === "40.160.38.154") {
+        targetCountry = "United States";
+        targetCountryCode = "US";
+        targetCity = "Los Angeles";
+      } else if (lower.includes("sg") || lower.includes("singapore") || serverHost === "143.42.79.58" || serverHost === "103.179.44.75" || serverHost === "103.170.217.251") {
+        targetCountry = "Singapore";
+        targetCountryCode = "SG";
+        targetCity = "Singapore";
+      }
+    }
+
     setLineCheckResults({
       testedAt: timeStr,
       roundTrip,
@@ -1104,6 +1194,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       protocol,
       serverAnswerMs,
       serverStatus,
+      targetCountry,
+      targetCountryCode,
+      targetCity,
       isVpnActive,
       verdictStatus,
       verdictCategoryEn,
@@ -1656,7 +1749,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.6rem", flexWrap: "wrap", gap: "8px", fontSize: "0.78rem", color: "#6b7280" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  {user?.vpnConfigKey ? "Auto-detects your active Legion config" : "Your config is tested securely in browser memory"}
+                  Supports official *.legiongraphics.site configs only
                 </span>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", color: "#9ca3af" }}>
                   <input 
@@ -1679,14 +1772,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   const targetRaw = (
                     (lineCheckResults.serverHost || "") + " " + 
                     (lineCheckResults.configName || "") + " " + 
-                    (lineCheckResults.sni || "")
+                    (lineCheckResults.sni || "") + " " +
+                    (lineCheckResults.targetCountry || "") + " " +
+                    (lineCheckResults.targetCity || "")
                   ).toLowerCase();
 
-                  const isUsaTarget = targetRaw.includes("usa") || 
-                                      targetRaw.includes("us-") || 
-                                      targetRaw.includes("united states") || 
-                                      targetRaw.includes("america") ||
-                                      targetRaw.includes("us.");
+                  const isUsaTarget = Boolean(
+                    lineCheckResults.targetCountryCode === "US" ||
+                    lineCheckResults.targetCountry?.toLowerCase().includes("united states") ||
+                    targetRaw.includes("usa") || 
+                    targetRaw.includes("us-") || 
+                    targetRaw.includes("united states") || 
+                    targetRaw.includes("america") ||
+                    targetRaw.includes("us.") ||
+                    lineCheckResults.serverHost === "23.94.85.181" ||
+                    lineCheckResults.serverHost === "40.160.38.154"
+                  );
 
                   const isOffline = lineCheckResults.serverStatus.includes("Offline") || 
                                     lineCheckResults.serverStatus.includes("Unknown") || 
@@ -1704,7 +1805,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   const activeCablePath = isUsaTarget ? usaCablePath : sgCablePath;
                   const inactiveCablePath = isUsaTarget ? sgCablePath : usaCablePath;
 
-                  const displayServerHost = lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") 
+                  const isLegionServer = 
+                    lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") ||
+                    lineCheckResults.serverHost === "23.94.85.181" ||
+                    lineCheckResults.serverHost === "143.42.79.58" ||
+                    lineCheckResults.serverHost === "103.170.217.251" ||
+                    lineCheckResults.serverHost === "103.179.44.75" ||
+                    (lineCheckResults.sni && lineCheckResults.sni.toLowerCase().includes("legiongraphics.site"));
+
+                  const displayServerHost = isLegionServer 
                     ? "LEGION VPN SERVER 10Gbps" 
                     : lineCheckResults.serverHost;
 
@@ -1737,7 +1846,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "3px 10px" }}>
                           <span style={{ fontSize: "0.72rem", color: "#a855f7", fontWeight: "600" }}>Active Route:</span>
                           <span style={{ fontSize: "0.72rem", color: "#FFF", fontWeight: "bold" }}>
-                            Colombo (LK) ➔ {isUsaTarget ? "United States (US)" : "Singapore (SG)"}
+                            {lineCheckResults.serverStatus.includes("Blocked") ? "Access Denied (External Provider)" : isUsaTarget ? "Colombo (LK) ➔ United States (US)" : "Colombo (LK) ➔ Singapore (SG)"}
                           </span>
                         </div>
                       </div>
@@ -1811,7 +1920,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           />
 
                           {/* Active Submarine Cable - Animated Data Stream Pulses */}
-                          {!isOffline && (
+                          {!isOffline && !lineCheckResults.serverStatus.includes("Blocked") && (
                             <path
                               d={activeCablePath}
                               fill="none"
@@ -1904,14 +2013,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isOffline ? "#ef4444" : "#a855f7" }}></span>
                             <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>
-                              {isUsaTarget ? "Target: United States" : "Target: Singapore"}
+                              {lineCheckResults.serverStatus.includes("Blocked") ? "Target: Blocked (External Domain)" : isUsaTarget ? "Target: United States (US)" : "Target: Singapore (SG)"}
                             </span>
                           </div>
                           <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {displayServerHost}
                           </p>
                           <p style={{ margin: 0, fontSize: "0.74rem", color: isOffline ? "#ef4444" : "#c084fc", fontWeight: isOffline ? "bold" : "normal" }}>
-                            {lineCheckResults.serverStatus}
+                            {lineCheckResults.serverStatus} {lineCheckResults.targetCity ? `· ${lineCheckResults.targetCity}, ${lineCheckResults.targetCountryCode || (isUsaTarget ? "US" : "SG")}` : ""}
                           </p>
                           <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: "#9ca3af" }}>
                             SNI: {lineCheckResults.sni}
@@ -2824,11 +2933,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   onClick={() => {
                     setIsLineCheckModalOpen(true);
                     if (!lineCheckConfig) {
-                      const defaultCfg = (activeConfigs[0]?.code || user?.vpnConfigKey || "").trim();
-                      if (defaultCfg) {
-                        setLineCheckConfig(defaultCfg);
-                        runLineCheck(defaultCfg);
-                      }
+                      const rawDefault = (activeConfigs[0]?.code || user?.vpnConfigKey || "").trim();
+                      const defaultCfg = (rawDefault || "vless://auto-detect@legiongraphics.site:443?security=tls&type=tcp#Legion%20VPN%20Server")
+                        .replace(/singapore\.legiongraphics\.site/gi, "legiongraphics.site");
+                      setLineCheckConfig(defaultCfg);
+                      runLineCheck(defaultCfg);
                     }
                   }}
                   className="linecheck-pill-button"
