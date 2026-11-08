@@ -154,6 +154,66 @@ const RANKS = [
   { name: "Diamond", min: 15, color: "#a855f7", badgeBg: "rgba(168, 85, 247, 0.15)", border: "#a855f7", icon: getRankSvg("Diamond", "#a855f7") },
 ];
 
+// Dot Matrix coordinates for World Continents (Subsea Cable Matrix)
+const WORLD_MAP_DOTS: [number, number][] = [
+  // North America
+  [90, 80], [105, 80], [120, 75], [135, 75], [150, 70], [165, 70], [180, 75], [195, 75], [210, 80],
+  [95, 95], [110, 95], [125, 90], [140, 90], [155, 85], [170, 85], [185, 90], [200, 95], [215, 95],
+  [105, 110], [120, 110], [135, 105], [150, 105], [165, 105], [180, 105], [195, 110], [210, 110], [225, 110],
+  [120, 125], [135, 125], [150, 125], [165, 125], [180, 125], [195, 125], [210, 125], [225, 125],
+  [130, 140], [145, 140], [160, 140], [175, 140], [190, 140], [205, 140], [220, 140], [230, 140],
+  [135, 155], [150, 155], [165, 155], [180, 155], [195, 155], [210, 155], [225, 155],
+  [145, 170], [160, 170], [175, 170], [190, 170], [205, 170],
+  [155, 185], [170, 185], [185, 185], [195, 195], [205, 205],
+  // South America
+  [195, 220], [205, 220], [215, 220],
+  [200, 235], [210, 235], [220, 235], [230, 235],
+  [205, 250], [215, 250], [225, 250], [235, 250], [245, 250],
+  [210, 265], [220, 265], [230, 265], [240, 265], [250, 265],
+  [215, 280], [225, 280], [235, 280], [245, 280],
+  [220, 295], [230, 295], [240, 295],
+  [225, 310], [235, 310],
+  [230, 325],
+  // Europe
+  [340, 95], [355, 95], [370, 95], [385, 95],
+  [330, 110], [345, 110], [360, 110], [375, 110], [390, 110], [405, 110], [420, 110],
+  [345, 125], [360, 125], [375, 125], [390, 125], [405, 125], [420, 125], [435, 125],
+  [355, 140], [370, 140], [385, 140], [400, 140], [415, 140], [430, 140], [445, 140],
+  // Africa
+  [345, 160], [360, 160], [375, 160], [390, 160], [405, 160], [420, 160], [435, 160], [450, 160],
+  [340, 175], [355, 175], [370, 175], [385, 175], [400, 175], [415, 175], [430, 175], [445, 175], [460, 175],
+  [350, 190], [365, 190], [380, 190], [395, 190], [410, 190], [425, 190], [440, 190], [455, 190],
+  [360, 205], [375, 205], [390, 205], [405, 205], [420, 205], [435, 205], [450, 205],
+  [375, 220], [390, 220], [405, 220], [420, 220], [435, 220], [450, 220],
+  [390, 235], [405, 235], [420, 235], [435, 235], [445, 235],
+  [400, 250], [415, 250], [430, 250], [440, 250],
+  [405, 265], [420, 265], [435, 265],
+  [410, 280], [425, 280], [435, 280],
+  [415, 295], [425, 295],
+  // Asia
+  [455, 75], [475, 75], [495, 75], [515, 75], [535, 75], [555, 75], [575, 75], [595, 75], [615, 75], [635, 75], [655, 75],
+  [450, 90], [470, 90], [490, 90], [510, 90], [530, 90], [550, 90], [570, 90], [590, 90], [610, 90], [630, 90], [650, 90], [670, 90],
+  [450, 105], [470, 105], [490, 105], [510, 105], [530, 105], [550, 105], [570, 105], [590, 105], [610, 105], [630, 105], [650, 105],
+  [460, 120], [480, 120], [500, 120], [520, 120], [540, 120], [560, 120], [580, 120], [600, 120], [620, 120], [640, 120],
+  [465, 135], [485, 135], [505, 135], [525, 135], [545, 135], [565, 135], [585, 135], [605, 135], [625, 135], [645, 135],
+  [470, 150], [490, 150], [510, 150], [530, 150], [550, 150], [570, 150], [590, 150], [610, 150], [630, 150],
+  [475, 165], [495, 165], [515, 165], [535, 165], [555, 165], [575, 165], [595, 165], [615, 165],
+  [485, 180], [500, 180], [515, 180], [530, 180], [550, 180], [570, 180], [590, 180], [610, 180],
+  [490, 195], [505, 195], [520, 195], [535, 195], [555, 195], [575, 195], [595, 195],
+  [495, 210], [510, 210], [525, 210], [540, 210], [560, 210], [580, 210],
+  [500, 225], [515, 225], [530, 225], [550, 225], [565, 225],
+  [515, 242], // Sri Lanka (Colombo Landing Hub)
+  [555, 240], [570, 240],
+  [565, 255], // Singapore Gateway
+  [560, 268], [575, 268], [590, 268], [605, 268], [620, 268],
+  // Australia & Oceania
+  [630, 275], [645, 275], [660, 275], [675, 275],
+  [620, 290], [635, 290], [650, 290], [665, 290], [680, 290],
+  [625, 305], [640, 305], [655, 305], [670, 305],
+  [635, 320], [650, 320], [665, 320],
+  [705, 315], [715, 325]
+];
+
 export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1439,11 +1499,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
+            className="linecheck-modal-card"
             style={{ 
               background: "linear-gradient(180deg, rgba(16, 12, 28, 0.98) 0%, rgba(8, 8, 14, 0.99) 100%)", 
               border: "1px solid rgba(168, 85, 247, 0.4)", 
               borderRadius: "24px", 
-              padding: "2rem", 
+              padding: "clamp(1rem, 3.5vw, 2rem)", 
               maxWidth: "880px", 
               width: "100%", 
               maxHeight: "92vh",
@@ -1484,17 +1545,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   Line check · V2Ray Diagnostics
                 </span>
               </div>
-              <h2 style={{ margin: "0 0 0.5rem 0", color: "#FFF", fontSize: "1.75rem", fontWeight: "bold", lineHeight: 1.2 }}>
+              <h2 className="linecheck-title" style={{ margin: "0 0 0.5rem 0", color: "#FFF", fontSize: "clamp(1.18rem, 4vw, 1.75rem)", fontWeight: "bold", lineHeight: 1.25 }}>
                 Is it <span style={{ color: "#a855f7" }}>the config</span>, or <span style={{ color: "#38bdf8" }}>the connection?</span>
               </h2>
-              <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.9rem", lineHeight: 1.6, maxWidth: "620px" }}>
+              <p className="linecheck-desc" style={{ margin: 0, color: "#9ca3af", fontSize: "clamp(0.76rem, 2.5vw, 0.88rem)", lineHeight: 1.55, maxWidth: "620px" }}>
                 Paste your config. We test it against our server in Singapore, measure your own line latency & jitter from this device, and tell you which of the two is letting you down.
               </p>
             </div>
 
             {/* Input & Action Bar */}
             <form onSubmit={(e) => { e.preventDefault(); runLineCheck(); }} className="linecheck-item-stagger-1" style={{ marginBottom: "1.8rem" }}>
-              <div style={{ 
+              <div className="linecheck-input-row" style={{ 
                 display: "flex", 
                 flexWrap: "wrap",
                 alignItems: "center", 
@@ -1513,80 +1574,82 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   spellCheck={false}
                   style={{ 
                     flex: 1, 
-                    minWidth: "220px", 
+                    minWidth: "200px", 
                     background: "transparent", 
                     border: "none", 
                     color: "#FFF", 
                     padding: "0.75rem 1rem", 
-                    fontSize: "0.88rem", 
+                    fontSize: "clamp(0.75rem, 2.5vw, 0.88rem)", 
                     outline: "none",
                     fontFamily: "ui-monospace, monospace"
                   }} 
                 />
 
-                {/* Quick Paste Button */}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const text = await navigator.clipboard.readText();
-                      if (text) setLineCheckConfig(text.trim());
-                    } catch {
-                      if (user?.vpnConfigKey) {
-                        setLineCheckConfig(user?.vpnConfigKey || "");
+                <div className="linecheck-input-buttons" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {/* Quick Paste Button */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        if (text) setLineCheckConfig(text.trim());
+                      } catch {
+                        if (user?.vpnConfigKey) {
+                          setLineCheckConfig(user?.vpnConfigKey || "");
+                        }
                       }
-                    }
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#d1d5db",
-                    padding: "0.6rem 0.9rem",
-                    borderRadius: "10px",
-                    fontSize: "0.8rem",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                  <span>Paste</span>
-                </button>
+                    }}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#d1d5db",
+                      padding: "0.6rem 0.9rem",
+                      borderRadius: "10px",
+                      fontSize: "clamp(0.72rem, 2.4vw, 0.8rem)",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    <span>Paste</span>
+                  </button>
 
-                {/* Submit / Test Line Button */}
-                <button
-                  type="submit"
-                  disabled={isCheckingLine}
-                  style={{
-                    background: isCheckingLine ? "rgba(168, 85, 247, 0.4)" : "linear-gradient(90deg, #a855f7 0%, #7c3aed 100%)",
-                    color: "#FFF",
-                    border: "none",
-                    padding: "0.75rem 1.6rem",
-                    borderRadius: "12px",
-                    fontSize: "0.92rem",
-                    fontWeight: "bold",
-                    cursor: isCheckingLine ? "not-allowed" : "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    boxShadow: "0 6px 20px rgba(168, 85, 247, 0.4)",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  {isCheckingLine ? (
-                    <>
-                      <svg className="animate-spin" style={{ animation: "spin 0.8s linear infinite", width: "16px", height: "16px" }} viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                      <span>Testing Line...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                      <span>Check Line</span>
-                    </>
-                  )}
-                </button>
+                  {/* Submit / Test Line Button */}
+                  <button
+                    type="submit"
+                    disabled={isCheckingLine}
+                    style={{
+                      background: isCheckingLine ? "rgba(168, 85, 247, 0.4)" : "linear-gradient(90deg, #a855f7 0%, #7c3aed 100%)",
+                      color: "#FFF",
+                      border: "none",
+                      padding: "0.75rem 1.4rem",
+                      borderRadius: "12px",
+                      fontSize: "clamp(0.78rem, 2.5vw, 0.92rem)",
+                      fontWeight: "bold",
+                      cursor: isCheckingLine ? "not-allowed" : "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      boxShadow: "0 6px 20px rgba(168, 85, 247, 0.4)",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    {isCheckingLine ? (
+                      <>
+                        <svg className="animate-spin" style={{ animation: "spin 0.8s linear infinite", width: "16px", height: "16px" }} viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                        <span>Testing Line...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <span>Check Line</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Toggles & Helper hints */}
@@ -1611,80 +1674,253 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             {lineCheckResults && (
               <div className="linecheck-item-stagger-2">
                 
-                {/* 1. INTERACTIVE PIPELINE ROUTE VISUALIZER (SVG GRAPH) */}
-                <div style={{ 
-                  background: "rgba(10, 10, 18, 0.75)", 
-                  border: "1px solid rgba(255, 255, 255, 0.08)", 
-                  borderRadius: "18px", 
-                  padding: "1.4rem", 
-                  marginBottom: "1.4rem",
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "6px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 8px #22c55e" }}></span>
-                      <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: "#e5e7eb", textTransform: "uppercase", letterSpacing: "1px" }}>Live Route Trace</span>
+                {/* 1. INTERACTIVE DOT-MATRIX SUBMARINE OPTICAL CABLE MAP */}
+                {(() => {
+                  const targetRaw = (
+                    (lineCheckResults.serverHost || "") + " " + 
+                    (lineCheckResults.configName || "") + " " + 
+                    (lineCheckResults.sni || "")
+                  ).toLowerCase();
+
+                  const isUsaTarget = targetRaw.includes("usa") || 
+                                      targetRaw.includes("us-") || 
+                                      targetRaw.includes("united states") || 
+                                      targetRaw.includes("america") ||
+                                      targetRaw.includes("us.");
+
+                  const isOffline = lineCheckResults.serverStatus.includes("Offline") || 
+                                    lineCheckResults.serverStatus.includes("Unknown") || 
+                                    !lineCheckResults.configValid;
+
+                  const cableColor = isOffline ? "#ef4444" : (lineCheckResults.jitter > 80 || lineCheckResults.packetLoss > 0) ? "#f59e0b" : "#a855f7";
+                  const cableGlow = isOffline ? "rgba(239, 68, 68, 0.45)" : "rgba(168, 85, 247, 0.45)";
+
+                  // Subsea optic cable curves:
+                  // Colombo (515, 242) -> Singapore (565, 255): SMW-5 / BBG Subsea Optic
+                  const sgCablePath = "M 515 242 Q 538 252, 565 255";
+                  // Colombo (515, 242) -> USA West/Central Gateway (165, 135): Transoceanic Subsea Link
+                  const usaCablePath = "M 515 242 C 450 215, 360 155, 270 135 C 225 125, 195 130, 165 135";
+
+                  const activeCablePath = isUsaTarget ? usaCablePath : sgCablePath;
+                  const inactiveCablePath = isUsaTarget ? sgCablePath : usaCablePath;
+
+                  const displayServerHost = lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") 
+                    ? "LEGION VPN SERVER 10Gbps" 
+                    : lineCheckResults.serverHost;
+
+                  return (
+                    <div style={{ 
+                      background: "radial-gradient(ellipse at 50% 0%, rgba(20, 15, 35, 0.85) 0%, rgba(8, 8, 14, 0.95) 100%)", 
+                      border: "1px solid rgba(168, 85, 247, 0.25)", 
+                      borderRadius: "20px", 
+                      padding: "clamp(0.85rem, 2.5vw, 1.4rem)", 
+                      marginBottom: "1.4rem",
+                      boxShadow: "0 14px 40px rgba(0,0,0,0.65), inset 0 1px 1px rgba(255,255,255,0.06)",
+                      overflow: "hidden"
+                    }}>
+                      {/* Map Header & Route Telemetry Badge */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem", flexWrap: "wrap", gap: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ 
+                            width: "8px", 
+                            height: "8px", 
+                            borderRadius: "50%", 
+                            background: isOffline ? "#ef4444" : "#22c55e", 
+                            display: "inline-block", 
+                            boxShadow: isOffline ? "0 0 10px #ef4444" : "0 0 10px #22c55e" 
+                          }}></span>
+                          <span style={{ fontSize: "clamp(0.72rem, 2.2vw, 0.82rem)", fontWeight: "bold", color: "#e5e7eb", textTransform: "uppercase", letterSpacing: "1px" }}>
+                            Subsea Optical Cable Matrix
+                          </span>
+                        </div>
+
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "3px 10px" }}>
+                          <span style={{ fontSize: "0.72rem", color: "#a855f7", fontWeight: "600" }}>Active Route:</span>
+                          <span style={{ fontSize: "0.72rem", color: "#FFF", fontWeight: "bold" }}>
+                            Colombo (LK) ➔ {isUsaTarget ? "United States (US)" : "Singapore (SG)"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 100% Fluid Vector Dot-Matrix World Submarine Map */}
+                      <div style={{ width: "100%", position: "relative", overflow: "hidden", borderRadius: "12px", background: "rgba(5, 5, 10, 0.65)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                        <svg 
+                          viewBox="0 0 800 360" 
+                          style={{ width: "100%", height: "auto", display: "block" }}
+                        >
+                          <defs>
+                            <linearGradient id="cableGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#22c55e" />
+                              <stop offset="50%" stopColor={isOffline ? "#ef4444" : "#a855f7"} />
+                              <stop offset="100%" stopColor={isOffline ? "#ef4444" : "#38bdf8"} />
+                            </linearGradient>
+                            <radialGradient id="lkGlow" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.8" />
+                              <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                            </radialGradient>
+                            <radialGradient id="targetGlow" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor={isOffline ? "#ef4444" : "#a855f7"} stopOpacity="0.8" />
+                              <stop offset="100%" stopColor={isOffline ? "#ef4444" : "#a855f7"} stopOpacity="0" />
+                            </radialGradient>
+                          </defs>
+
+                          {/* Subtle Latitude & Longitude grid lines */}
+                          <line x1="0" y1="120" x2="800" y2="120" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+                          <line x1="0" y1="240" x2="800" y2="240" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+                          <line x1="260" y1="0" x2="260" y2="360" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+                          <line x1="530" y1="0" x2="530" y2="360" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 6" />
+
+                          {/* All Landmass Continents as Glowing Cyber Matrix Dots */}
+                          {WORLD_MAP_DOTS.map(([dx, dy], didx) => (
+                            <circle
+                              key={didx}
+                              cx={dx}
+                              cy={dy}
+                              r="2.5"
+                              fill="rgba(147, 197, 253, 0.19)"
+                            />
+                          ))}
+
+                          {/* Inactive Submarine Cable (Subtle Reference Trunk) */}
+                          <path
+                            d={inactiveCablePath}
+                            fill="none"
+                            stroke="rgba(255, 255, 255, 0.12)"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeDasharray="4 6"
+                          />
+
+                          {/* Active Submarine Cable - Outer Glow Layer */}
+                          <path
+                            d={activeCablePath}
+                            fill="none"
+                            stroke={cableGlow}
+                            strokeWidth="6"
+                            strokeLinecap="round"
+                            opacity="0.8"
+                          />
+
+                          {/* Active Submarine Cable - Core Optical Fiber */}
+                          <path
+                            d={activeCablePath}
+                            fill="none"
+                            stroke="url(#cableGradActive)"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                          />
+
+                          {/* Active Submarine Cable - Animated Data Stream Pulses */}
+                          {!isOffline && (
+                            <path
+                              d={activeCablePath}
+                              fill="none"
+                              stroke="#ffffff"
+                              strokeWidth="2.8"
+                              strokeLinecap="round"
+                              className="subsea-pulse-fast"
+                              opacity="0.95"
+                            />
+                          )}
+
+                          {/* Node 1: Sri Lanka (Colombo Landing Station - cx:515, cy:242) */}
+                          <circle cx="515" cy="242" r="16" fill="url(#lkGlow)" className="map-beacon-ring" />
+                          <circle cx="515" cy="242" r="7" fill="rgba(34, 197, 94, 0.35)" />
+                          <circle cx="515" cy="242" r="4.5" fill="#22c55e" stroke="#FFF" strokeWidth="1.5" />
+                          <rect x="472" y="210" width="86" height="18" rx="9" fill="rgba(6, 78, 59, 0.85)" stroke="rgba(34, 197, 94, 0.5)" strokeWidth="1" />
+                          <text x="515" y="222" textAnchor="middle" fill="#86efac" fontSize="8.5" fontWeight="bold" letterSpacing="0.5">COLOMBO (LK)</text>
+
+                          {/* Node 2: Singapore Gateway (cx:565, cy:255) */}
+                          {isUsaTarget ? (
+                            <>
+                              <circle cx="565" cy="255" r="3.5" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+                              <text x="565" y="274" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8">SINGAPORE</text>
+                            </>
+                          ) : (
+                            <>
+                              <circle cx="565" cy="255" r="18" fill="url(#targetGlow)" className="map-beacon-ring" />
+                              <circle cx="565" cy="255" r="7.5" fill={isOffline ? "rgba(239, 68, 68, 0.35)" : "rgba(168, 85, 247, 0.35)"} />
+                              <circle cx="565" cy="255" r="5" fill={isOffline ? "#ef4444" : "#a855f7"} stroke="#FFF" strokeWidth="1.5" />
+                              <rect x="520" y="272" width="90" height="18" rx="9" fill={isOffline ? "rgba(127, 29, 29, 0.9)" : "rgba(88, 28, 135, 0.9)"} stroke={isOffline ? "#ef4444" : "#c084fc"} strokeWidth="1" />
+                              <text x="565" y="284" textAnchor="middle" fill={isOffline ? "#fca5a5" : "#e9d5ff"} fontSize="8.5" fontWeight="bold" letterSpacing="0.5">SINGAPORE (SG)</text>
+                            </>
+                          )}
+
+                          {/* Node 3: USA Gateway (cx:165, cy:135) */}
+                          {isUsaTarget ? (
+                            <>
+                              <circle cx="165" cy="135" r="18" fill="url(#targetGlow)" className="map-beacon-ring" />
+                              <circle cx="165" cy="135" r="7.5" fill={isOffline ? "rgba(239, 68, 68, 0.35)" : "rgba(168, 85, 247, 0.35)"} />
+                              <circle cx="165" cy="135" r="5" fill={isOffline ? "#ef4444" : "#a855f7"} stroke="#FFF" strokeWidth="1.5" />
+                              <rect x="110" y="100" width="110" height="18" rx="9" fill={isOffline ? "rgba(127, 29, 29, 0.9)" : "rgba(88, 28, 135, 0.9)"} stroke={isOffline ? "#ef4444" : "#c084fc"} strokeWidth="1" />
+                              <text x="165" y="112" textAnchor="middle" fill={isOffline ? "#fca5a5" : "#e9d5ff"} fontSize="8.5" fontWeight="bold" letterSpacing="0.5">UNITED STATES (US)</text>
+                            </>
+                          ) : (
+                            <>
+                              <circle cx="165" cy="135" r="3.5" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+                              <text x="165" y="152" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8">USA HUB</text>
+                            </>
+                          )}
+                        </svg>
+                      </div>
+
+                      {/* Responsive Node Telemetry Cards (Wrapped cleanly, NO clipping on iPhone SE) */}
+                      <div className="linecheck-hud-grid" style={{ 
+                        display: "grid", 
+                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
+                        gap: "10px", 
+                        marginTop: "1rem" 
+                      }}>
+                        {/* Device / Colombo Card */}
+                        <div className="linecheck-hud-card" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: "12px", padding: "0.85rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e" }}></span>
+                            <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>Origin (Sri Lanka)</span>
+                          </div>
+                          <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>This Device</p>
+                          <p style={{ margin: 0, fontSize: "0.74rem", color: "#9ca3af" }}>{lineCheckResults.clientIp}</p>
+                          <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: "#22c55e" }}>{lineCheckResults.detectedIsp}</p>
+                        </div>
+
+                        {/* Subsea Cable Optical Route Card */}
+                        <div className="linecheck-hud-card" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: "12px", padding: "0.85rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: cableColor }}></span>
+                            <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>Subsea Optical Cable</span>
+                          </div>
+                          <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF" }}>
+                            {isUsaTarget ? "Transoceanic Subsea Express" : "SMW-5 / BBG Subsea Optic"}
+                          </p>
+                          <p style={{ margin: 0, fontSize: "0.74rem", color: lineCheckResults.jitter > 70 ? "#f59e0b" : "#9ca3af" }}>
+                            Ping ~{lineCheckResults.roundTrip}ms · Jitter ±{lineCheckResults.jitter}ms
+                          </p>
+                          <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: lineCheckResults.packetLoss > 0 ? "#ef4444" : "#a855f7" }}>
+                            {lineCheckResults.packetLoss > 0 ? `Packet Loss: ${lineCheckResults.packetLoss}%` : "10 Gbps Submarine Optical Core"}
+                          </p>
+                        </div>
+
+                        {/* Destination VPN Server Card */}
+                        <div className="linecheck-hud-card" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: "12px", padding: "0.85rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isOffline ? "#ef4444" : "#a855f7" }}></span>
+                            <span style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: "bold", textTransform: "uppercase" }}>
+                              {isUsaTarget ? "Target: United States" : "Target: Singapore"}
+                            </span>
+                          </div>
+                          <p style={{ margin: "0 0 2px 0", fontSize: "0.88rem", fontWeight: "bold", color: "#FFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {displayServerHost}
+                          </p>
+                          <p style={{ margin: 0, fontSize: "0.74rem", color: isOffline ? "#ef4444" : "#c084fc", fontWeight: isOffline ? "bold" : "normal" }}>
+                            {lineCheckResults.serverStatus}
+                          </p>
+                          <p style={{ margin: "4px 0 0 0", fontSize: "0.74rem", color: "#9ca3af" }}>
+                            SNI: {lineCheckResults.sni}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <span style={{ fontSize: "0.76rem", color: "#9ca3af" }}>Checked at {lineCheckResults.testedAt}</span>
-                  </div>
-
-                  <div style={{ position: "relative", width: "100%", overflowX: "auto" }}>
-                    <svg viewBox="0 0 700 110" style={{ width: "100%", minWidth: "460px", height: "auto" }}>
-                      
-                      {/* Animated connecting curve: Device -> Local ISP */}
-                      <path 
-                        d="M 30 55 C 60 40, 100 70, 150 45 C 200 65, 250 45, 330 55" 
-                        fill="none" 
-                        stroke={lineCheckResults.packetLoss > 0 ? "#ef4444" : lineCheckResults.jitter > 70 ? "#f59e0b" : "#22c55e"} 
-                        strokeWidth="2.8" 
-                        strokeLinecap="round" 
-                        strokeDasharray="6 4"
-                      />
-                      
-                      {/* Animated connecting curve: Local ISP -> Singapore Server */}
-                      <path 
-                        d="M 330 55 C 410 65, 490 35, 570 65 C 610 50, 640 55, 670 55" 
-                        fill="none" 
-                        stroke={lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7"} 
-                        strokeWidth="2.8" 
-                        strokeLinecap="round" 
-                        strokeDasharray="6 4"
-                      />
-
-                      {/* Node 1: Local Device (cx=30) */}
-                      <circle cx="30" cy="55" r="16" fill="rgba(34, 197, 94, 0.18)" />
-                      <circle cx="30" cy="55" r="8" fill="#22c55e" stroke="#FFF" strokeWidth="2" />
-
-                      {/* Node 2: Local ISP (cx=330) */}
-                      <circle cx="330" cy="55" r="16" fill={lineCheckResults.packetLoss > 0 ? "rgba(239, 68, 68, 0.18)" : "rgba(245, 158, 11, 0.18)"} />
-                      <circle cx="330" cy="55" r="8" fill={lineCheckResults.packetLoss > 0 ? "#ef4444" : "#f59e0b"} stroke="#FFF" strokeWidth="2" />
-
-                      {/* Node 3: Singapore VPN Server (cx=670) */}
-                      <circle cx="670" cy="55" r="16" fill={lineCheckResults.serverStatus.includes("Offline") ? "rgba(239, 68, 68, 0.25)" : "rgba(168, 85, 247, 0.25)"} />
-                      <circle cx="670" cy="55" r="8" fill={lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#a855f7"} stroke="#FFF" strokeWidth="2" />
-                    </svg>
-
-                    {/* Node Labels below SVG */}
-                    <div style={{ display: "flex", justifyContent: "space-between", minWidth: "460px", marginTop: "4px" }}>
-                      <div style={{ textAlign: "left", maxWidth: "22%" }}>
-                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>This Device</p>
-                        <p style={{ margin: 0, fontSize: "0.72rem", color: "#9ca3af" }}>{lineCheckResults.clientIp}</p>
-                      </div>
-                      <div style={{ textAlign: "center", maxWidth: "25%" }}>
-                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>Local ISP ({lineCheckResults.detectedIsp})</p>
-                        <p style={{ margin: 0, fontSize: "0.72rem", color: lineCheckResults.jitter > 70 ? "#f59e0b" : "#9ca3af" }}>
-                          Ping ~{lineCheckResults.roundTrip}ms · Jitter ±{lineCheckResults.jitter}ms
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right", maxWidth: "28%" }}>
-                        <p style={{ margin: 0, fontSize: "0.84rem", fontWeight: "bold", color: "#FFF" }}>{lineCheckResults.serverHost.toLowerCase().includes("legiongraphics.site") ? "LEGION VPN SERVER 10Gbps" : lineCheckResults.serverHost}</p>
-                        <p style={{ margin: 0, fontSize: "0.72rem", color: lineCheckResults.serverStatus.includes("Offline") ? "#ef4444" : "#c084fc", fontWeight: lineCheckResults.serverStatus.includes("Offline") ? "bold" : "normal" }}>
-                          {lineCheckResults.serverStatus}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* 2. SMART VERDICT BANNER (WITH ENG / SIN TOGGLE) */}
                 <div className="linecheck-item-stagger-3" style={{ 
@@ -3583,7 +3819,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           transition: "all 0.2s"
                         }}
                       >
-                        idCopied ? "✓ Copied!" : "Copy ID"
+                        {idCopied ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span>✓ Copied!</span>
+                          </span>
+                        ) : (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                            <span>Copy ID</span>
+                          </span>
+                        )}
                       </button>
                     )}
                   </div>
