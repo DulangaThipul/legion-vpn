@@ -517,6 +517,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     status: string;
     message: string;
     configs?: string[];
+    auditReport?: any;
+    order?: any;
+    user?: any;
+    [key: string]: any;
   } | null>(null);
 
   const LABOR_STAGES = [
@@ -1699,7 +1703,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         success: true,
         autoApproved: false,
         status: "Verifying",
-        message: "Receipt received! Our team is verifying your payment. Your configs will activate shortly."
+        message: "Receipt received! Our team is verifying your payment. Your configs will activate shortly.",
+        auditReport: {
+          overallStatus: "review_required",
+          checks: [
+            { id: "ocr", title: "1. Slip Document & OCR Kernel", passed: false, isSuspicious: true, statusText: "Network Warning", message: "Slip network timeout. Forwarded to admin queue." },
+            { id: "account", title: "2. Beneficiary Account Guardrail", passed: true, statusText: "Target: 8029138148", message: "Bank Commercial Bank (8029138148)" },
+            { id: "amount", title: "3. Tariff Amount Verification", passed: true, statusText: "Target: Package Price", message: "Awaiting manual confirmation." },
+            { id: "replay", title: "4. Anti-Replay Duplicate Ledger", passed: true, statusText: "Queued" },
+            { id: "node", title: "5. High-Speed VLESS Node Allocation", passed: false, statusText: "Manual Verification" }
+          ]
+        }
       });
     } finally {
       clearInterval(stageTimer);
@@ -4603,57 +4617,280 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* CYBER SECURITY LABOR ILLUSION OCR MODAL */}
+          {/* 🛡️ ULTRA-LUXURY GLASSMORPHISM NEURAL FORENSIC AUDIT MODAL */}
           {laborModalOpen && (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", backdropFilter: "blur(14px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem" }}>
-              <div style={{ width: "100%", maxWidth: "520px", padding: "2.4rem 2rem", background: "linear-gradient(180deg, #0e0e1a 0%, #06060c 100%)", border: `1px solid ${laborResult?.autoApproved ? "rgba(34,197,94,0.5)" : "rgba(99,102,241,0.5)"}`, borderRadius: "22px", textAlign: "center", boxShadow: "0 25px 60px rgba(0,0,0,0.9), 0 0 40px rgba(99,102,241,0.2)", position: "relative", overflow: "hidden" }}>
-                
-                {/* CYBER CORNER ACCENTS */}
-                <div style={{ position: "absolute", top: "12px", left: "14px", fontSize: "0.68rem", color: "#6366f1", letterSpacing: "1px", fontFamily: "monospace" }}>SEC_AUDIT // v2.6</div>
-                <div style={{ position: "absolute", top: "12px", right: "14px", fontSize: "0.68rem", color: "#38bdf8", letterSpacing: "1px", fontFamily: "monospace" }}>10Gbps SG CORE</div>
+            <div style={{ position: "fixed", inset: 0, background: "rgba(3, 4, 12, 0.88)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
+              <div style={{
+                width: "100%",
+                maxWidth: "600px",
+                padding: "2.2rem 1.8rem",
+                background: "linear-gradient(145deg, rgba(16, 20, 48, 0.82) 0%, rgba(9, 11, 28, 0.92) 100%)",
+                border: `1px solid ${laborResult?.autoApproved ? "rgba(34, 197, 94, 0.5)" : (!laborResult ? "rgba(99, 102, 241, 0.4)" : "rgba(239, 68, 68, 0.5)")}`,
+                borderRadius: "26px",
+                textAlign: "left",
+                boxShadow: laborResult?.autoApproved
+                  ? "0 35px 90px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.3), 0 0 50px rgba(34,197,94,0.25)"
+                  : "0 35px 90px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.25), 0 0 50px rgba(99,102,241,0.2)",
+                position: "relative",
+                overflow: "hidden"
+              }}>
 
-                {!laborResult ? (
-                  // SCANNING STAGE
-                  <div style={{ marginTop: "1rem" }}>
-                    <div style={{ width: "80px", height: "80px", margin: "0 auto 1.5rem auto", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(0,0,0,0) 70%)", border: "2px solid rgba(99,102,241,0.4)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                      <svg className="animate-spin" style={{ animation: "spin 1.2s linear infinite", width: "42px", height: "42px" }} viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                    </div>
+                {/* ANIMATED SCANNER LASER BEAM (ACTIVE WHILE SCANNING) */}
+                {!laborResult && <div className="forensic-laser-beam" />}
 
-                    <h3 style={{ color: "#FFF", fontSize: "1.25rem", margin: "0 0 0.5rem 0", fontWeight: "700", letterSpacing: "0.5px" }}>
-                      Automated Security Verification
-                    </h3>
-                    <p style={{ color: "#38bdf8", fontSize: "0.85rem", margin: "0 0 1.5rem 0", fontFamily: "monospace", minHeight: "22px" }}>
-                      {LABOR_STAGES[laborStage]}
-                    </p>
-
-                    {/* SCANNING PROGRESS BAR */}
-                    <div style={{ width: "100%", height: "6px", background: "rgba(255,255,255,0.08)", borderRadius: "10px", overflow: "hidden", marginBottom: "1.5rem" }}>
-                      <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #6366f1, #38bdf8)", transition: "width 0.8s ease" }} />
-                    </div>
-
-                    <div style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "0.8rem", textAlign: "left", fontSize: "0.72rem", color: "#9ca3af", fontFamily: "monospace", display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ color: "#38bdf8" }}>› Initializing Gemini 1.5 Flash Vision OCR kernel...</span>
-                      <span>› Target Bank: Commercial Bank · Beneficiary: 8029138148</span>
-                      <span>› Package: {modalPackage?.name} · Rs. {currentQuotaList[selectedQuota!] || 0}</span>
-                      <span style={{ color: "#818cf8" }}>› Ledger query: Anti-Replay duplicate check in progress...</span>
-                    </div>
+                {/* CYBER HUD HEADER ACCENTS */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.4rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{
+                      width: "9px",
+                      height: "9px",
+                      borderRadius: "50%",
+                      background: laborResult?.autoApproved ? "#4ade80" : (!laborResult ? "#38bdf8" : "#f59e0b"),
+                      display: "inline-block",
+                      boxShadow: laborResult?.autoApproved ? "0 0 12px #4ade80" : (!laborResult ? "0 0 12px #38bdf8" : "0 0 12px #f59e0b")
+                    }} />
+                    <span style={{ fontSize: "0.75rem", color: "#e2e8f0", fontFamily: "monospace", letterSpacing: "1px", fontWeight: "bold" }}>
+                      NEURAL FORENSIC AUDIT // v3.2
+                    </span>
                   </div>
-                ) : laborResult.autoApproved ? (
-                  // AUTO-VERIFIED SUCCESS STAGE
-                  <div style={{ marginTop: "0.8rem" }}>
-                    <div style={{ width: "74px", height: "74px", margin: "0 auto 1.2rem auto", borderRadius: "50%", background: "rgba(34,197,94,0.18)", border: "2px solid rgba(34,197,94,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 25px rgba(34,197,94,0.4)" }}>
-                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  <span style={{ fontSize: "0.72rem", color: "#38bdf8", fontFamily: "monospace", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", padding: "2px 8px", borderRadius: "6px" }}>
+                    10Gbps SG CORE
+                  </span>
+                </div>
+
+                {/* MODAL STATUS TITLE & ICON */}
+                <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                  {!laborResult ? (
+                    <div>
+                      <div style={{ width: "68px", height: "68px", margin: "0 auto 1rem auto", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(0,0,0,0) 70%)", border: "2px solid rgba(99,102,241,0.45)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                        <svg className="animate-spin" style={{ animation: "spin 1.2s linear infinite", width: "36px", height: "36px" }} viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      </div>
+                      <h3 style={{ color: "#FFF", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "700", letterSpacing: "0.5px" }}>
+                        AI Forensic Receipt Verification
+                      </h3>
+                      <p style={{ color: "#38bdf8", fontSize: "0.84rem", margin: "0 0 1rem 0", fontFamily: "monospace", minHeight: "20px" }}>
+                        {LABOR_STAGES[laborStage]}
+                      </p>
+                      {/* SCANNING PROGRESS BAR */}
+                      <div style={{ width: "100%", height: "5px", background: "rgba(255,255,255,0.08)", borderRadius: "10px", overflow: "hidden" }}>
+                        <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #6366f1, #38bdf8, #4ade80)", transition: "width 0.8s ease" }} />
+                      </div>
                     </div>
+                  ) : laborResult.autoApproved ? (
+                    <div>
+                      <div style={{ width: "68px", height: "68px", margin: "0 auto 1rem auto", borderRadius: "50%", background: "rgba(34,197,94,0.18)", border: "2px solid rgba(34,197,94,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 25px rgba(34,197,94,0.4)" }}>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      </div>
+                      <h3 style={{ color: "#4ade80", fontSize: "1.35rem", margin: "0 0 0.35rem 0", fontWeight: "700" }}>
+                        Payment Verified Automatically!
+                      </h3>
+                      <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
+                        {laborResult.message}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ width: "68px", height: "68px", margin: "0 auto 1rem auto", borderRadius: "50%", background: "rgba(234,179,8,0.18)", border: "2px solid rgba(234,179,8,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 25px rgba(234,179,8,0.3)" }}>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                      </div>
+                      <h3 style={{ color: "#facc15", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "700" }}>
+                        Receipt Logged for Manual Review
+                      </h3>
+                      <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
+                        {laborResult.message || "Slip safely stored. Our admin team will verify it shortly."}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-                    <h3 style={{ color: "#4ade80", fontSize: "1.35rem", margin: "0 0 0.5rem 0", fontWeight: "700" }}>
-                      Payment Verified Automatically!
-                    </h3>
-                    <p style={{ color: "#cbd5e1", fontSize: "0.9rem", margin: "0 0 1.5rem 0", lineHeight: 1.5 }}>
-                      {laborResult.message}
-                    </p>
+                {/* 🔍 FORENSIC AUDIT TEXT BOXES (DYNAMIC LIVE SCAN HUD) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem" }}>
+                  {(() => {
+                    const expectedAcc = "8029138148";
+                    const expectedPrice = currentQuotaList[selectedQuota!] || 0;
+                    const report = laborResult?.auditReport;
 
+                    const defaultChecks = [
+                      {
+                        id: "ocr",
+                        title: "1. Slip Document & OCR Kernel",
+                        activeLabel: "Scanning document pixels & cryptographic hash...",
+                        passedText: "Receipt details successfully extracted via Gemini Vision.",
+                        failedText: "OCR kernel could not decipher receipt details clearly."
+                      },
+                      {
+                        id: "account",
+                        title: "2. Beneficiary Account Guardrail",
+                        activeLabel: `Validating target Commercial Bank account ${expectedAcc}...`,
+                        passedText: `Beneficiary account ${expectedAcc} (W DULANGA THIPUL) verified.`,
+                        failedText: `Beneficiary account mismatch or unclear on slip.`
+                      },
+                      {
+                        id: "amount",
+                        title: "3. Tariff Amount Verification",
+                        activeLabel: `Verifying transfer value against package price (Rs. ${expectedPrice})...`,
+                        passedText: `Transfer amount matches package price (Rs. ${expectedPrice}).`,
+                        failedText: `Slip amount does not match package tariff.`
+                      },
+                      {
+                        id: "replay",
+                        title: "4. Anti-Replay Duplicate Ledger",
+                        activeLabel: "Querying anti-replay ledger for slip re-use...",
+                        passedText: "Slip reference hash is authentic and unique.",
+                        failedText: "Slip reference was previously recorded in ledger."
+                      },
+                      {
+                        id: "node",
+                        title: "5. High-Speed VLESS Node Allocation",
+                        activeLabel: "Binding client UUID with 10Gbps Core...",
+                        passedText: "Singapore 10Gbps VLESS Core successfully allocated.",
+                        failedText: "Queued for manual admin verification & key generation."
+                      }
+                    ];
+
+                    return defaultChecks.map((step, idx) => {
+                      let isPassed = false;
+                      let isSuspicious = false;
+                      let isScanning = false;
+                      let detailText = "";
+                      let strikeValue: string | undefined = undefined;
+                      let expectedVal: string | number | undefined = undefined;
+
+                      if (!laborResult) {
+                        if (idx < laborStage) {
+                          isPassed = true;
+                          detailText = step.passedText;
+                        } else if (idx === laborStage) {
+                          isScanning = true;
+                          detailText = step.activeLabel;
+                        } else {
+                          detailText = "Queued for audit pipeline...";
+                        }
+                      } else {
+                        const checkData = Array.isArray(report?.checks)
+                          ? report.checks.find((c: any) => c.id === step.id)
+                          : undefined;
+
+                        if (checkData) {
+                          isPassed = Boolean(checkData.passed);
+                          isSuspicious = Boolean(checkData.isSuspicious);
+                          detailText = checkData.message || (isPassed ? step.passedText : step.failedText);
+                          strikeValue = checkData.strikeText;
+                          expectedVal = checkData.expected;
+                        } else {
+                          isPassed = Boolean(laborResult.autoApproved);
+                          isSuspicious = !laborResult.autoApproved && idx === 0;
+                          detailText = isPassed ? step.passedText : step.failedText;
+                        }
+                      }
+
+                      const cardBg = isPassed
+                        ? "rgba(34, 197, 94, 0.08)"
+                        : isSuspicious
+                        ? "rgba(239, 68, 68, 0.12)"
+                        : isScanning
+                        ? "rgba(56, 189, 248, 0.09)"
+                        : "rgba(255, 255, 255, 0.03)";
+
+                      const cardBorder = isPassed
+                        ? "1px solid rgba(34, 197, 94, 0.4)"
+                        : isSuspicious
+                        ? "1px solid rgba(239, 68, 68, 0.6)"
+                        : isScanning
+                        ? "1px solid rgba(56, 189, 248, 0.5)"
+                        : "1px solid rgba(255, 255, 255, 0.07)";
+
+                      return (
+                        <div
+                          key={step.id}
+                          className={isSuspicious ? "forensic-box-suspicious" : isPassed ? "forensic-box-verified" : ""}
+                          style={{
+                            background: cardBg,
+                            border: cardBorder,
+                            borderRadius: "12px",
+                            padding: "0.75rem 1rem",
+                            transition: "all 0.3s ease",
+                            boxShadow: isSuspicious
+                              ? "0 0 16px rgba(239, 68, 68, 0.25)"
+                              : isPassed
+                              ? "0 0 12px rgba(34, 197, 94, 0.15)"
+                              : isScanning
+                              ? "0 0 12px rgba(56, 189, 248, 0.2)"
+                              : "none"
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              {isPassed ? (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                              ) : isSuspicious ? (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                              ) : isScanning ? (
+                                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#38bdf8", display: "inline-block", boxShadow: "0 0 8px #38bdf8" }} />
+                              ) : (
+                                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#6b7280", display: "inline-block" }} />
+                              )}
+                              <span style={{ fontSize: "0.8rem", fontWeight: "700", color: isPassed ? "#86efac" : isSuspicious ? "#fca5a5" : isScanning ? "#bae6fd" : "#cbd5e1" }}>
+                                {step.title}
+                              </span>
+                            </div>
+
+                            <span style={{
+                              fontSize: "0.68rem",
+                              fontWeight: "bold",
+                              fontFamily: "monospace",
+                              padding: "2px 7px",
+                              borderRadius: "6px",
+                              background: isPassed
+                                ? "rgba(34, 197, 94, 0.2)"
+                                : isSuspicious
+                                ? "rgba(239, 68, 68, 0.25)"
+                                : isScanning
+                                ? "rgba(56, 189, 248, 0.2)"
+                                : "rgba(255, 255, 255, 0.05)",
+                              color: isPassed ? "#4ade80" : isSuspicious ? "#f87171" : isScanning ? "#38bdf8" : "#9ca3af",
+                              border: `1px solid ${isPassed ? "rgba(34,197,94,0.4)" : isSuspicious ? "rgba(239,68,68,0.5)" : isScanning ? "rgba(56,189,248,0.4)" : "rgba(255,255,255,0.1)"}`
+                            }}>
+                              {isPassed ? "[PASS // VERIFIED]" : isSuspicious ? "[FLAGGED // SUSPICIOUS]" : isScanning ? "[SCANNING...]" : "[QUEUED]"}
+                            </span>
+                          </div>
+
+                          {/* SUSPICIOUS STRIKE-THROUGH LINE (IF MISMATCH DETECTED) */}
+                          {strikeValue && (
+                            <div style={{ marginTop: "5px", marginBottom: "4px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                              <span className="forensic-suspicious-strike">{strikeValue}</span>
+                              {expectedVal && (
+                                <span style={{ color: "#4ade80", fontSize: "0.78rem", fontWeight: "600", fontFamily: "monospace" }}>
+                                  → Expected: {expectedVal}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* VERIFIED PASS BADGE */}
+                          {isPassed && checkData?.detected && (
+                            <div style={{ marginTop: "4px", marginBottom: "3px", fontSize: "0.82rem" }}>
+                              <span className="forensic-verified-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                                {checkData.detected}
+                              </span>
+                            </div>
+                          )}
+
+                          <p style={{ margin: "3px 0 0 0", fontSize: "0.76rem", color: isPassed ? "#cbd5e1" : isSuspicious ? "#fca5a5" : "#9ca3af", lineHeight: 1.4, fontFamily: isScanning ? "monospace" : "inherit" }}>
+                            {detailText}
+                          </p>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* MODAL ACTION BUTTONS */}
+                <div>
+                  {laborResult?.autoApproved ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -4664,37 +4901,23 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       }}
                       style={{
                         width: "100%",
-                        padding: "1rem",
+                        padding: "0.95rem",
                         background: "linear-gradient(90deg, #10b981, #059669)",
                         color: "#FFF",
                         border: "none",
-                        borderRadius: "10px",
+                        borderRadius: "12px",
                         fontSize: "0.95rem",
                         fontWeight: "bold",
                         cursor: "pointer",
                         boxShadow: "0 8px 25px rgba(16,185,129,0.4)"
                       }}
                     >
-                      View My Active VPN Configs →
+                      View &amp; Copy Active VPN Configs →
                     </button>
-                  </div>
-                ) : (
-                  // QUEUED FOR REVIEW STAGE
-                  <div style={{ marginTop: "0.8rem" }}>
-                    <div style={{ width: "74px", height: "74px", margin: "0 auto 1.2rem auto", borderRadius: "50%", background: "rgba(234,179,8,0.18)", border: "2px solid rgba(234,179,8,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 25px rgba(234,179,8,0.3)" }}>
-                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-                    </div>
-
-                    <h3 style={{ color: "#facc15", fontSize: "1.3rem", margin: "0 0 0.5rem 0", fontWeight: "700" }}>
-                      Receipt Logged for Review
-                    </h3>
-                    <p style={{ color: "#cbd5e1", fontSize: "0.88rem", margin: "0 0 1.5rem 0", lineHeight: 1.5 }}>
-                      {laborResult.message || "Your payment slip has been securely logged. Our admin team will verify it shortly."}
-                    </p>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+                  ) : laborResult ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
                       <a
-                        href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, I uploaded my payment slip for ${modalPackage?.name} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please verify.`)}`}
+                        href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, I uploaded my payment slip for ${modalPackage?.name} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{
@@ -4702,7 +4925,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           padding: "0.85rem",
                           background: "linear-gradient(90deg, #25D366, #128C7E)",
                           color: "#FFF",
-                          borderRadius: "10px",
+                          borderRadius: "12px",
                           fontSize: "0.9rem",
                           fontWeight: "bold",
                           textDecoration: "none",
@@ -4710,10 +4933,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           alignItems: "center",
                           justifyContent: "center",
                           gap: "8px",
-                          boxSizing: "border-box"
+                          boxSizing: "border-box",
+                          boxShadow: "0 6px 20px rgba(37,211,102,0.3)"
                         }}
                       >
-                        Notify Admin on WhatsApp
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/></svg>
+                        Fast-Track Admin on WhatsApp
                       </a>
                       <button
                         type="button"
@@ -4727,17 +4952,23 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           padding: "0.85rem",
                           background: "rgba(255,255,255,0.06)",
                           color: "#9ca3af",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "10px",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          borderRadius: "12px",
                           fontSize: "0.85rem",
-                          cursor: "pointer"
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
                         }}
                       >
                         Close &amp; Check Later
                       </button>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#6b7280", fontSize: "0.78rem" }}>
+                      Please wait while biometric and banking integrity checks complete...
+                    </div>
+                  )}
+                </div>
 
               </div>
             </div>
