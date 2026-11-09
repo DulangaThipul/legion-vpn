@@ -2233,6 +2233,7 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
   const [autoApproval, setAutoApproval] = useState(true);
   const [expectedAccount, setExpectedAccount] = useState("8029138148");
   const [timeWindowMins, setTimeWindowMins] = useState(120);
+  const [geminiKeyInput, setGeminiKeyInput] = useState("");
   const [ledger, setLedger] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -2252,6 +2253,7 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
           setAutoApproval(Boolean(json.config.autoApprovalEnabled));
           if (json.config.expectedBankAccount) setExpectedAccount(json.config.expectedBankAccount);
           if (json.config.allowedTimeWindowMinutes) setTimeWindowMins(Number(json.config.allowedTimeWindowMinutes));
+          if (json.config.geminiApiKey) setGeminiKeyInput(json.config.geminiApiKey);
           if (Array.isArray(json.config.verifiedRefLedger)) setLedger(json.config.verifiedRefLedger);
         }
       } catch (err) {
@@ -2273,7 +2275,8 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
           config: {
             autoApprovalEnabled: autoApproval,
             expectedBankAccount: expectedAccount.trim(),
-            allowedTimeWindowMinutes: Number(timeWindowMins) || 120
+            allowedTimeWindowMinutes: Number(timeWindowMins) || 120,
+            geminiApiKey: geminiKeyInput.trim()
           }
         })
       });
@@ -2462,6 +2465,20 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
               style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
             />
             <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Disallows receipts older than specified window</span>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>
+              Gemini 1.5 Flash Vision API Key (Optional if in .env)
+            </label>
+            <input
+              type="password"
+              value={geminiKeyInput}
+              onChange={(e) => setGeminiKeyInput(e.target.value.trim())}
+              placeholder="AIzaSy..."
+              style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#a78bfa", fontSize: "0.9rem", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+            />
+            <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Saved securely in admin settings without requiring redeploy</span>
           </div>
         </div>
 
