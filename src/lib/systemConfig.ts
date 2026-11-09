@@ -202,107 +202,129 @@ export function mergeCookies(existingCookieStr: string, res: Response): string {
  * 3x-ui Pre-flight CSRF Handshake & Login
  * Handles session cookies and CSRF tokens to avoid 403 Forbidden
  */
-export async function authenticate3xui(
-  baseUrl: string,
-  username: string,
-  password: string
-): Promise<{ cookie: string; error?: string }> {
-  const cleanBase = baseUrl.trim().replace(/\/+$/, "");
-  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+export async function authenticate3xui(nodeConfig: {
+  baseUrl: string;
+  username: string;
+  password: string;
+}): Promise<{
+  success: boolean;
+  cookie?: string;
+  latencyMs?: number;
+  error?: string;
+  details?: any;
+}> {
+  const rawBase = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "");
+  const username = (nodeConfig.username || "").trim();
+  const password = (nodeConfig.password || "").trim();
 
-  let initialCookie = "";
-  let csrfToken = "";
-
-  // Step 1: Pre-flight GET request to extract initial session & CSRF token
-  for (const preflightPath of ["/login", "/"]) {
-    try {
-      const preflightRes = await fetch(`${cleanBase}${preflightPath}`, {
-        method: "GET",
-        headers: {
-          "User-Agent": browserUA,
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-        },
-        signal: AbortSignal.timeout(5000)
-      });
-
-      initialCookie = mergeCookies(initialCookie, preflightRes);
-      const htmlText = await preflightRes.text();
-
-      const metaMatch = htmlText.match(/<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']/i) 
-                     || htmlText.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']csrf-token["']/i);
-      if (metaMatch && metaMatch[1]) {
-        csrfToken = metaMatch[1];
-        break;
-      }
-    } catch {}
+  if (!rawBase) {
+    return { success: false, error: "Base URL is required" };
   }
 
-  // Fallback: If not found in HTML, try /csrf-token endpoint
-  if (!csrfToken) {
-    try {
-      const csrfRes = await fetch(`${cleanBase}/csrf-token`, {
-        method: "GET",
-        headers: {
-          "User-Agent": browserUA,
-          ...(initialCookie ? { "Cookie": initialCookie } : {})
-        },
-        signal: AbortSignal.timeout(3000)
-      });
-      if (csrfRes.ok) {
-        initialCookie = mergeCookies(initialCookie, csrfRes);
-        const csrfData = await csrfRes.text();
-        try {
-          const parsed = JSON.parse(csrfData);
-          csrfToken = parsed.token || parsed.csrfToken || parsed.csrf || "";
-        } catch {
-          csrfToken = csrfData.trim().replace(/^"|"$/g, "");
-        }
-      }
-    } catch {}
-  }
+  const start = performance.now();
+  let originUrl = rawBase;
+  try {
+    originUrl = new URL(rawBase).origin;
+  } catch {}
+  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-  // Step 2: POST /login with initial cookie and CSRF token
-  const loginParams = new URLSearchParams();
-  loginParams.append("username", username.trim());
-  loginParams.append("password", password.trim());
-
-  const loginRes = await fetch(`${cleanBase}/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": browserUA,
-      ...(initialCookie ? { "Cookie": initialCookie } : {}),
-      ...(csrfToken ? { "X-CSRF-Token": csrfToken, "x-csrf-token": csrfToken } : {})
-    },
-    body: loginParams.toString(),
-    signal: AbortSignal.timeout(6000)
-  });
-
-  if (!loginRes.ok && loginRes.status !== 302) {
-    return {
-      cookie: "",
-      error: `Login failed with HTTP status ${loginRes.status}: ${loginRes.statusText}`
-    };
-  }
+  const standardHeaders: Record<string, string> = {
+    "User-Agent": browserUA,
+    "Origin": originUrl,
+    "Referer": `${rawBase}/`,
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "X-Requested-With": "XMLHttpRequest"
+  };
 
   try {
-    const cloned = loginRes.clone();
-    const loginJson = await cloned.json();
-    if (loginJson && loginJson.success === false) {
+    // 1. Pre-flight GET to capture initial session cookie (DO NOT call /csrf-token)
+    let initialCookie = "";
+    try {
+      const preRes = await fetch(`${rawBase}/`, {
+        headers: standardHeaders,
+        signal: AbortSignal.timeout(6000)
+      });
+      const rawCookie = preRes.headers.get("set-cookie");
+      if (rawCookie) {
+        initialCookie = rawCookie;
+      }
+    } catch {}
+
+    const reqHeaders: Record<string, string> = {
+      ...standardHeaders,
+      ...(initialCookie ? { "Cookie": initialCookie } : {})
+    };
+
+    // 2. Attempt Login via JSON payload first (Standard in modern 3x-ui), then fallback to Form-data
+    let loginRes = await fetch(`${rawBase}/login`, {
+      method: "POST",
+      headers: {
+        ...reqHeaders,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password }),
+      signal: AbortSignal.timeout(6000)
+    });
+
+    // Fallback to x-www-form-urlencoded if 404/415 returned on JSON
+    if (loginRes.status === 404 || loginRes.status === 415) {
+      const formParams = new URLSearchParams();
+      formParams.append("username", username);
+      formParams.append("password", password);
+
+      loginRes = await fetch(`${rawBase}/login`, {
+        method: "POST",
+        headers: {
+          ...reqHeaders,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: formParams.toString(),
+        signal: AbortSignal.timeout(6000)
+      });
+    }
+
+    const latencyMs = Math.round(performance.now() - start);
+    const postCookie = loginRes.headers.get("set-cookie") || "";
+    const finalCookie = [initialCookie, postCookie].filter(Boolean).join("; ");
+
+    // Parse response body to display 3x-ui's real error message if any
+    let resJson: any = null;
+    let resText = "";
+    try {
+      resText = await loginRes.text();
+      resJson = JSON.parse(resText);
+    } catch {}
+
+    if (!loginRes.ok) {
+      const errMsg = resJson?.msg || resJson?.message || resText || `HTTP ${loginRes.status}: ${loginRes.statusText}`;
       return {
-        cookie: "",
-        error: loginJson.msg || "Invalid 3x-ui username or password"
+        success: false,
+        latencyMs,
+        error: `3x-ui Login Rejected (${errMsg})`
       };
     }
-  } catch {}
 
-  const finalCookie = mergeCookies(initialCookie, loginRes);
-  if (!finalCookie) {
+    if (resJson && resJson.success === false) {
+      return {
+        success: false,
+        latencyMs,
+        error: resJson.msg || "Invalid 3x-ui Username or Password"
+      };
+    }
+
     return {
-      cookie: "",
-      error: "No session cookie returned by 3x-ui server"
+      success: true,
+      cookie: finalCookie,
+      latencyMs,
+      details: resJson
+    };
+  } catch (err: any) {
+    const latencyMs = Math.round(performance.now() - start);
+    return {
+      success: false,
+      latencyMs,
+      error: `Connection failed: ${err?.message || "Server unreachable"}`
     };
   }
-
-  return { cookie: finalCookie };
 }
