@@ -285,14 +285,14 @@ export async function POST(req: Request) {
       return await fallbackToManualVerification("Unable to download receipt image for OCR scan.");
     }
 
-    // 5. OCR Analysis via Gemini Vision (with Admin Config Key + .env Key fallback)
+    // 5. OCR Analysis via Gemini with Multi-Model / Multi-Version Fallback
     const geminiApiKey = (systemConfig.geminiApiKey || process.env.GEMINI_API_KEY || "").trim();
     if (!geminiApiKey) {
-      return await fallbackToManualVerification("Gemini Vision API key is not configured in Admin Settings. Queued for manual approval.", {
+      return await fallbackToManualVerification("Gemini API key not configured. Queued for manual admin approval.", {
         overallStatus: "review_required",
-        reason: "Gemini Vision API key is missing. Set it in Admin Settings Tab 3.",
+        reason: "Gemini Vision API key is missing. Set it in Admin Settings Tab 3 or environment variables.",
         checks: [
-          { id: "ocr", title: "Receipt OCR Kernel", passed: false, isSuspicious: true, statusText: "Key Missing", message: "Gemini 1.5 Flash API Key not configured in Admin Settings Tab 3." },
+          { id: "ocr", title: "Receipt OCR Kernel", passed: false, isSuspicious: true, statusText: "Key Missing", strikeText: "No Gemini Key Configured", expected: "Google AI Studio API Key", message: "Gemini API Key not configured in Admin Settings Tab 3." },
           { id: "account", title: "Beneficiary Account Audit", passed: true, statusText: "Target: 8029138148", expected: systemConfig.expectedBankAccount || "8029138148" },
           { id: "amount", title: "Payment Amount Match", passed: true, statusText: `Rs. ${parsedAmount}`, expected: parsedAmount },
           { id: "replay", title: "Anti-Replay Ledger", passed: true, statusText: "Queued" },
@@ -311,77 +311,82 @@ export async function POST(req: Request) {
     } | null = null;
     let ocrRawDiagnostic = "";
 
-    const promptText = `You are a forensic bank receipt auditor for Legion VPN Sri Lanka.
-Analyze this payment slip and extract the transaction details in pure JSON.
-Expected Beneficiary Account: ${systemConfig.expectedBankAccount || "8029138148"}.
+    const promptText = `You are a strict bank receipt auditor for Legion VPN Sri Lanka.
+Analyze this payment slip and extract the payment transaction details in pure JSON.
+Expected Bank Account: ${systemConfig.expectedBankAccount || "8029138148"}.
 Expected Amount: Rs. ${parsedAmount}.
 
-Output STRICT pure JSON only without any markdown ticks:
+Output STRICT JSON only with keys:
 {
-  "bankName": string (e.g. Bank of Ceylon, Commercial Bank, Sampath, FriMi, People's Bank, etc.),
+  "bankName": string (e.g. Commercial Bank, BOC, Sampath, FriMi, etc.),
   "destinationAccount": string (the recipient/beneficiary account number found on slip),
   "paidAmount": number (the exact transfer amount in LKR without currency symbol),
   "transactionDate": string (date found on slip),
-  "referenceNumber": string (unique transaction ID / sequence / audit number),
+  "referenceNumber": string (unique transaction sequence/reference/audit number),
   "isLegitimate": boolean (true if genuine bank transfer receipt, false if fake or invalid)
 }`;
 
-    // Try primary gemini-1.5-flash, fallback to gemini-1.5-flash-latest or gemini-2.0-flash
-    const candidateModels = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash"];
+    const requestPayload = {
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: imageBase64
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        response_mime_type: "application/json"
+      }
+    };
 
-    for (const modelName of candidateModels) {
+    // Candidate endpoints to bypass Google's 404 Model/Version NotFound
+    const candidateEndpoints = [
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`
+    ];
+
+    for (const endpoint of candidateEndpoints) {
+      const cleanEndpointName = endpoint.split("?")[0].replace("https://generativelanguage.googleapis.com/", "");
       try {
-        const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
-
-        const geminiRes = await fetch(geminiEndpoint, {
+        const geminiRes = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: promptText },
-                  {
-                    inline_data: {
-                      mime_type: mimeType,
-                      data: imageBase64
-                    }
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              response_mime_type: "application/json"
-            },
-            safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-            ]
-          }),
+          body: JSON.stringify(requestPayload),
           signal: AbortSignal.timeout(12000)
         });
 
         if (geminiRes.ok) {
           const geminiJson = await geminiRes.json();
-          const rawText = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const cleanJsonText = rawText.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
-          if (cleanJsonText) {
-            try {
-              ocrResult = JSON.parse(cleanJsonText);
-              if (ocrResult) break;
-            } catch (pErr: any) {
-              ocrRawDiagnostic = `Parse error on ${modelName}: ${pErr?.message}`;
+          const textContent = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (textContent) {
+            const cleanJsonText = textContent.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+            ocrResult = JSON.parse(cleanJsonText);
+            if (ocrResult) {
+              console.log(`[Gemini OCR] Successfully extracted receipt via ${cleanEndpointName}`);
+              break;
             }
           }
         } else {
           const errBody = await geminiRes.text();
-          ocrRawDiagnostic = `Gemini ${modelName} returned HTTP ${geminiRes.status}: ${errBody.slice(0, 180)}`;
+          ocrRawDiagnostic = `${cleanEndpointName} returned HTTP ${geminiRes.status}: ${errBody.slice(0, 160)}`;
+          console.warn(`[Gemini OCR] ${cleanEndpointName} returned ${geminiRes.status}:`, errBody);
         }
-      } catch (ocrErr: any) {
-        ocrRawDiagnostic = `Gemini call failed on ${modelName}: ${ocrErr?.message}`;
+      } catch (callErr: any) {
+        ocrRawDiagnostic = `${cleanEndpointName} error: ${callErr?.message}`;
+        console.warn(`[Gemini OCR] Call error on ${cleanEndpointName}:`, callErr?.message);
       }
     }
 
