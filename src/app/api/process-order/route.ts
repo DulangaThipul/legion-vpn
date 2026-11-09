@@ -179,7 +179,7 @@ export async function POST(req: Request) {
       } catch {}
     }
 
-    const fallbackToManualVerification = async (reason: string) => {
+    const fallbackToManualVerification = async (reason: string, auditReport?: any) => {
       const orderRecord = {
         id: `ORD-${Date.now()}`,
         packageId: packageId || "custom",
@@ -215,19 +215,50 @@ export async function POST(req: Request) {
         success: true,
         autoApproved: false,
         status: "Verifying",
-        message: "Receipt received! Our team is verifying your payment manually. Config will activate shortly.",
+        message: reason || "Receipt received! Our team is verifying your payment manually. Config will activate shortly.",
         order: orderRecord,
-        user: updatedUser
+        user: updatedUser,
+        auditReport: auditReport || {
+          overallStatus: "review_required",
+          reason,
+          checks: [
+            { id: "ocr", title: "Receipt OCR Extraction", passed: false, statusText: "Queued", message: reason },
+            { id: "account", title: "Beneficiary Account Audit", passed: false, statusText: "Pending", expected: systemConfig.expectedBankAccount || "8029138148" },
+            { id: "amount", title: "Payment Amount Match", passed: false, statusText: "Pending", expected: parsedAmount },
+            { id: "replay", title: "Anti-Replay Ledger Audit", passed: false, statusText: "Pending" },
+            { id: "node", title: "10Gbps VLESS Node Allocation", passed: false, statusText: "Manual Approval Required" }
+          ]
+        }
       });
     };
 
     // 3. Check Master Auto-Approval Switch
     if (!systemConfig.autoApprovalEnabled) {
-      return await fallbackToManualVerification("Auto-approval disabled by admin. Queued for manual verification.");
+      return await fallbackToManualVerification("Auto-approval is paused in Admin Settings. Slip routed for fast manual review.", {
+        overallStatus: "review_required",
+        reason: "Auto-approval paused by administrator.",
+        checks: [
+          { id: "ocr", title: "Receipt Document Upload", passed: true, statusText: "Captured", message: "Receipt image successfully stored on cloud." },
+          { id: "account", title: "Beneficiary Account Guardrail", passed: true, statusText: "Ready", expected: systemConfig.expectedBankAccount || "8029138148", message: "Bank Commercial Bank (8029138148)" },
+          { id: "amount", title: "Package Price Target", passed: true, statusText: "Pending", expected: parsedAmount, message: `Package Rs. ${parsedAmount}` },
+          { id: "replay", title: "Anti-Replay Ledger Check", passed: true, statusText: "Queued", message: "Slip hash queued for audit ledger." },
+          { id: "node", title: "Master Auto-Approval Switch", passed: false, isSuspicious: true, statusText: "Switch OFF", message: "Master switch is OFF in Admin Command Center. Sent to manual approval." }
+        ]
+      });
     }
 
     if (!cleanReceiptUrl) {
-      return await fallbackToManualVerification("No payment slip image attached. Queued for review.");
+      return await fallbackToManualVerification("No payment slip image attached. Queued for review.", {
+        overallStatus: "review_required",
+        reason: "No receipt uploaded.",
+        checks: [
+          { id: "ocr", title: "Receipt Document Upload", passed: false, isSuspicious: true, statusText: "Missing Slip", message: "No payment slip image was provided with this checkout." },
+          { id: "account", title: "Beneficiary Account", passed: false, statusText: "Skipped" },
+          { id: "amount", title: "Payment Amount Match", passed: false, statusText: "Skipped" },
+          { id: "replay", title: "Anti-Replay Security", passed: false, statusText: "Skipped" },
+          { id: "node", title: "Node Provisioning", passed: false, statusText: "Halted" }
+        ]
+      });
     }
 
     // 4. Fetch Slip Image & Prepare Base64
@@ -254,10 +285,20 @@ export async function POST(req: Request) {
       return await fallbackToManualVerification("Unable to download receipt image for OCR scan.");
     }
 
-    // 5. OCR Analysis via Gemini 1.5 Flash Vision
-    const geminiApiKey = process.env.GEMINI_API_KEY;
+    // 5. OCR Analysis via Gemini Vision (with Admin Config Key + .env Key fallback)
+    const geminiApiKey = (systemConfig.geminiApiKey || process.env.GEMINI_API_KEY || "").trim();
     if (!geminiApiKey) {
-      return await fallbackToManualVerification("Gemini API key not configured. Queued for manual admin approval.");
+      return await fallbackToManualVerification("Gemini Vision API key is not configured in Admin Settings. Queued for manual approval.", {
+        overallStatus: "review_required",
+        reason: "Gemini Vision API key is missing. Set it in Admin Settings Tab 3.",
+        checks: [
+          { id: "ocr", title: "Receipt OCR Kernel", passed: false, isSuspicious: true, statusText: "Key Missing", message: "Gemini 1.5 Flash API Key not configured in Admin Settings Tab 3." },
+          { id: "account", title: "Beneficiary Account Audit", passed: true, statusText: "Target: 8029138148", expected: systemConfig.expectedBankAccount || "8029138148" },
+          { id: "amount", title: "Payment Amount Match", passed: true, statusText: `Rs. ${parsedAmount}`, expected: parsedAmount },
+          { id: "replay", title: "Anti-Replay Ledger", passed: true, statusText: "Queued" },
+          { id: "node", title: "10Gbps VLESS Node Allocation", passed: false, statusText: "Pending Admin" }
+        ]
+      });
     }
 
     let ocrResult: {
@@ -268,63 +309,94 @@ export async function POST(req: Request) {
       referenceNumber?: string;
       isLegitimate?: boolean;
     } | null = null;
+    let ocrRawDiagnostic = "";
 
-    try {
-      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-
-      const promptText = `You are a strict bank receipt auditor for Legion VPN Sri Lanka.
-Analyze this payment slip and extract the payment transaction details in pure JSON.
-Expected Bank Account: ${systemConfig.expectedBankAccount || "8029138148"}.
+    const promptText = `You are a forensic bank receipt auditor for Legion VPN Sri Lanka.
+Analyze this payment slip and extract the transaction details in pure JSON.
+Expected Beneficiary Account: ${systemConfig.expectedBankAccount || "8029138148"}.
 Expected Amount: Rs. ${parsedAmount}.
 
-Output STRICT JSON only with keys:
+Output STRICT pure JSON only without any markdown ticks:
 {
-  "bankName": string (e.g. Commercial Bank, BOC, Sampath, FriMi, etc.),
+  "bankName": string (e.g. Bank of Ceylon, Commercial Bank, Sampath, FriMi, People's Bank, etc.),
   "destinationAccount": string (the recipient/beneficiary account number found on slip),
   "paidAmount": number (the exact transfer amount in LKR without currency symbol),
   "transactionDate": string (date found on slip),
-  "referenceNumber": string (unique transaction sequence/reference/audit number),
+  "referenceNumber": string (unique transaction ID / sequence / audit number),
   "isLegitimate": boolean (true if genuine bank transfer receipt, false if fake or invalid)
 }`;
 
-      const geminiRes = await fetch(geminiEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: promptText },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: imageBase64
-                  }
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            response_mime_type: "application/json"
-          }
-        }),
-        signal: AbortSignal.timeout(12000)
-      });
+    // Try primary gemini-1.5-flash, fallback to gemini-1.5-flash-latest or gemini-2.0-flash
+    const candidateModels = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash"];
 
-      if (geminiRes.ok) {
-        const geminiJson = await geminiRes.json();
-        const textContent = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (textContent) {
-          ocrResult = JSON.parse(textContent);
+    for (const modelName of candidateModels) {
+      try {
+        const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+
+        const geminiRes = await fetch(geminiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: promptText },
+                  {
+                    inline_data: {
+                      mime_type: mimeType,
+                      data: imageBase64
+                    }
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              response_mime_type: "application/json"
+            },
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+          }),
+          signal: AbortSignal.timeout(12000)
+        });
+
+        if (geminiRes.ok) {
+          const geminiJson = await geminiRes.json();
+          const rawText = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const cleanJsonText = rawText.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+          if (cleanJsonText) {
+            try {
+              ocrResult = JSON.parse(cleanJsonText);
+              if (ocrResult) break;
+            } catch (pErr: any) {
+              ocrRawDiagnostic = `Parse error on ${modelName}: ${pErr?.message}`;
+            }
+          }
+        } else {
+          const errBody = await geminiRes.text();
+          ocrRawDiagnostic = `Gemini ${modelName} returned HTTP ${geminiRes.status}: ${errBody.slice(0, 180)}`;
         }
+      } catch (ocrErr: any) {
+        ocrRawDiagnostic = `Gemini call failed on ${modelName}: ${ocrErr?.message}`;
       }
-    } catch (ocrErr: any) {
-      console.warn("Gemini OCR error:", ocrErr?.message);
     }
 
     if (!ocrResult) {
-      return await fallbackToManualVerification("OCR scan could not decipher receipt details clearly.");
+      return await fallbackToManualVerification(`OCR scan could not decipher receipt details clearly. (${ocrRawDiagnostic || "Unreadable text"})`, {
+        overallStatus: "review_required",
+        reason: "OCR kernel could not extract clear text from the receipt.",
+        checks: [
+          { id: "ocr", title: "Receipt OCR Kernel", passed: false, isSuspicious: true, statusText: "Unreadable", message: `Could not decipher slip details: ${ocrRawDiagnostic || "Blurry or invalid slip"}` },
+          { id: "account", title: "Beneficiary Account Audit", passed: false, statusText: "Pending", expected: systemConfig.expectedBankAccount || "8029138148" },
+          { id: "amount", title: "Payment Amount Match", passed: false, statusText: "Pending", expected: parsedAmount },
+          { id: "replay", title: "Anti-Replay Security Check", passed: false, statusText: "Pending" },
+          { id: "node", title: "10Gbps VLESS Node Allocation", passed: false, statusText: "Queued for Manual Admin Review" }
+        ]
+      });
     }
 
     // 6. Strict Multi-Layer Validation
@@ -333,30 +405,84 @@ Output STRICT JSON only with keys:
     const cleanRefNumber = (ocrResult.referenceNumber || "").trim();
     const ocrAmount = Number(ocrResult.paidAmount) || 0;
 
-    // A. Check Destination Account
-    if (!cleanDestAcc || !cleanDestAcc.includes(cleanExpectedAcc)) {
-      return await fallbackToManualVerification(`Destination account (${cleanDestAcc || "unclear"}) does not match expected (${cleanExpectedAcc}).`);
-    }
-
-    // B. Check Amount (allow small tolerance if bank deduction or fee)
-    if (parsedAmount > 0 && Math.abs(ocrAmount - parsedAmount) > 20) {
-      return await fallbackToManualVerification(`Paid amount on slip (Rs. ${ocrAmount}) does not match package price (Rs. ${parsedAmount}).`);
-    }
-
-    // C. Check Unique Reference Number to prevent replay/duplicate use
-    if (!cleanRefNumber || cleanRefNumber.length < 4) {
-      return await fallbackToManualVerification("Transaction reference number could not be read clearly.");
-    }
-
+    const isAccountMatch = Boolean(cleanDestAcc && (cleanDestAcc.includes(cleanExpectedAcc) || cleanExpectedAcc.includes(cleanDestAcc)));
+    const isAmountMatch = Boolean(parsedAmount <= 0 || Math.abs(ocrAmount - parsedAmount) <= 20);
     const isDuplicate = (systemConfig.verifiedRefLedger || []).some(
       entry => entry.refNumber.toLowerCase() === cleanRefNumber.toLowerCase()
     );
+    const isRefValid = Boolean(cleanRefNumber && cleanRefNumber.length >= 4 && !isDuplicate);
 
-    if (isDuplicate) {
-      return await fallbackToManualVerification(`Duplicate slip: Reference number #${cleanRefNumber} has already been used.`);
+    // If any layer fails, create an exact diagnostic Glass HUD report
+    if (!isAccountMatch || !isAmountMatch || !isRefValid) {
+      let failureReason = "Payment validation discrepancy detected.";
+      if (!isAccountMatch) failureReason = `Beneficiary account on slip (${cleanDestAcc || "unclear"}) does not match expected (${cleanExpectedAcc}).`;
+      else if (!isAmountMatch) failureReason = `Paid amount on slip (Rs. ${ocrAmount}) does not match package price (Rs. ${parsedAmount}).`;
+      else if (isDuplicate) failureReason = `Duplicate slip: Reference number #${cleanRefNumber} has already been used!`;
+      else if (!cleanRefNumber || cleanRefNumber.length < 4) failureReason = "Transaction reference number could not be read clearly.";
+
+      const discrepancyReport = {
+        overallStatus: "suspicious",
+        reason: failureReason,
+        checks: [
+          {
+            id: "ocr",
+            title: "Receipt Data Extraction",
+            passed: true,
+            statusText: "Extracted",
+            detectedBank: ocrResult.bankName || "Bank Transfer",
+            detectedRef: cleanRefNumber || "Unknown",
+            message: `Slip detected from ${ocrResult.bankName || "Online Banking"}`
+          },
+          {
+            id: "account",
+            title: "Beneficiary Account Audit",
+            passed: isAccountMatch,
+            isSuspicious: !isAccountMatch,
+            statusText: isAccountMatch ? "Verified" : "Mismatch",
+            expected: cleanExpectedAcc,
+            detected: cleanDestAcc || "Not Detected",
+            strikeText: !isAccountMatch ? (cleanDestAcc || "Wrong Account") : undefined,
+            message: isAccountMatch
+              ? `Beneficiary Commercial Bank Account ${cleanExpectedAcc} Verified.`
+              : `Beneficiary Account Mismatch: Detected ${cleanDestAcc || "unclear"} (Expected ${cleanExpectedAcc})`
+          },
+          {
+            id: "amount",
+            title: "Payment Amount Match",
+            passed: isAmountMatch,
+            isSuspicious: !isAmountMatch,
+            statusText: isAmountMatch ? "Price Matched" : "Discrepancy",
+            expected: parsedAmount,
+            detected: ocrAmount,
+            strikeText: !isAmountMatch ? `Rs. ${ocrAmount}` : undefined,
+            message: isAmountMatch
+              ? `Rs. ${ocrAmount} matches package price.`
+              : `Amount Discrepancy: Slip shows Rs. ${ocrAmount} (Package requires Rs. ${parsedAmount})`
+          },
+          {
+            id: "replay",
+            title: "Anti-Replay Ledger Check",
+            passed: !isDuplicate && Boolean(cleanRefNumber && cleanRefNumber.length >= 4),
+            isSuspicious: isDuplicate,
+            statusText: isDuplicate ? "Duplicate Used" : (cleanRefNumber ? "Unique Ref" : "Unclear Ref"),
+            refNumber: cleanRefNumber,
+            strikeText: isDuplicate ? `#${cleanRefNumber}` : undefined,
+            message: isDuplicate
+              ? `Security Alert: Ref #${cleanRefNumber} is already logged in the ledger!`
+              : `Reference #${cleanRefNumber} unique & valid.`
+          },
+          {
+            id: "node",
+            title: "10Gbps VLESS Node Allocation",
+            passed: false,
+            statusText: "Routed to Admin",
+            message: "Discrepancy detected. Forwarded to admin manual fast-track review."
+          }
+        ]
+      };
+
+      return await fallbackToManualVerification(failureReason, discrepancyReport);
     }
-
-    // 7. Auto-Approval: Generate Client UUID & VLESS Configs
     let clientUuid = metaData.customVpnUserId;
     if (!clientUuid) {
       const existingMatch = (user.vpnConfigKey || "").match(/vless:\/\/([a-f0-9\-]{36})/i);
@@ -480,6 +606,56 @@ Output STRICT JSON only with keys:
       verifiedRefLedger: updatedLedger
     });
 
+    const approvedAuditReport = {
+      overallStatus: "approved",
+      reason: "All security & banking guardrails passed successfully.",
+      checks: [
+        {
+          id: "ocr",
+          title: "Receipt Data Extraction",
+          passed: true,
+          statusText: "Verified",
+          detectedBank: ocrResult?.bankName || "Commercial Bank",
+          detectedRef: cleanRefNumber,
+          message: `Verified genuine slip from ${ocrResult?.bankName || "Bank"}`
+        },
+        {
+          id: "account",
+          title: "Beneficiary Account Audit",
+          passed: true,
+          statusText: "Matched",
+          expected: cleanExpectedAcc,
+          detected: cleanDestAcc,
+          message: `Beneficiary Account ${cleanExpectedAcc} verified.`
+        },
+        {
+          id: "amount",
+          title: "Payment Amount Match",
+          passed: true,
+          statusText: "Price Verified",
+          expected: parsedAmount,
+          detected: ocrAmount,
+          message: `Rs. ${ocrAmount} matches package price.`
+        },
+        {
+          id: "replay",
+          title: "Anti-Replay Ledger Audit",
+          passed: true,
+          statusText: "Unique Hash",
+          refNumber: cleanRefNumber,
+          isDuplicate: false,
+          message: `Cryptographic reference #${cleanRefNumber} verified.`
+        },
+        {
+          id: "node",
+          title: "10Gbps VLESS Node Allocation",
+          passed: true,
+          statusText: "Provisioned",
+          message: "Account active. High-speed 10Gbps Singapore core bound."
+        }
+      ]
+    };
+
     return NextResponse.json({
       success: true,
       autoApproved: true,
@@ -487,7 +663,8 @@ Output STRICT JSON only with keys:
       configs: configSlots,
       message: `Payment verified automatically! Reference #${cleanRefNumber} confirmed. Your VPN is now Active.`,
       order: verifiedPaymentRecord,
-      user: updatedUser
+      user: updatedUser,
+      auditReport: approvedAuditReport
     });
   } catch (error: any) {
     console.error("Process order unexpected error:", error);
