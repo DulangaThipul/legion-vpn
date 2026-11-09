@@ -44,11 +44,19 @@ async function provision3xuiClient(
   if (!nodeConfig.baseUrl || !nodeConfig.username) return;
   const cleanBase = nodeConfig.baseUrl.trim().replace(/\/+$/, "");
   const inboundId = nodeConfig.inboundId || 1;
-  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+  let originUrl = cleanBase;
+  try {
+    originUrl = new URL(cleanBase).origin;
+  } catch {}
 
   try {
-    const auth = await authenticate3xui(cleanBase, nodeConfig.username, nodeConfig.password);
-    if (!auth.cookie) {
+    const auth = await authenticate3xui({
+      baseUrl: cleanBase,
+      username: nodeConfig.username,
+      password: nodeConfig.password
+    });
+    if (!auth.success || !auth.cookie) {
       console.warn("3x-ui authentication failed:", auth.error);
       return;
     }
@@ -72,17 +80,23 @@ async function provision3xuiClient(
       })
     };
 
+    const clientHeaders = {
+      "Content-Type": "application/json",
+      "Cookie": auth.cookie,
+      "User-Agent": browserUA,
+      "Origin": originUrl,
+      "Referer": `${cleanBase}/`,
+      "Accept": "application/json, text/plain, */*",
+      "X-Requested-With": "XMLHttpRequest"
+    };
+
     // 1. Try addClient: /panel/api/ path first, then /xui/API/ path fallback
     let added = false;
     for (const addPath of ["/panel/api/inbounds/addClient", "/xui/API/inbounds/addClient"]) {
       try {
         const res = await fetch(`${cleanBase}${addPath}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Cookie": auth.cookie,
-            "User-Agent": browserUA
-          },
+          headers: clientHeaders,
           body: JSON.stringify(clientPayload),
           signal: AbortSignal.timeout(4000)
         });
@@ -102,11 +116,7 @@ async function provision3xuiClient(
         try {
           const res = await fetch(`${cleanBase}${updatePath}`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Cookie": auth.cookie,
-              "User-Agent": browserUA
-            },
+            headers: clientHeaders,
             body: JSON.stringify(clientPayload),
             signal: AbortSignal.timeout(4000)
           });
