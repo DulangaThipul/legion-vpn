@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui, unsafeAgent } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui, httpRequestUnsafe, unsafeAgent } from "@/lib/systemConfig";
 import { generateOrderConfigs, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
@@ -43,12 +43,7 @@ async function provision3xuiClient(
 ) {
   if (!nodeConfig.baseUrl || !nodeConfig.username) return;
   const cleanBase = nodeConfig.baseUrl.trim().replace(/\/+$/, "");
-  const inboundId = nodeConfig.inboundId || 1;
-  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-  let originUrl = cleanBase;
-  try {
-    originUrl = new URL(cleanBase).origin;
-  } catch {}
+  const inboundId = Number(nodeConfig.inboundId) || 1;
 
   try {
     const auth = await authenticate3xui({
@@ -60,6 +55,12 @@ async function provision3xuiClient(
       console.warn("3x-ui authentication failed:", auth.error);
       return;
     }
+
+    const activeBase = auth.effectiveBaseUrl || cleanBase;
+    let originUrl = activeBase;
+    try {
+      originUrl = new URL(activeBase).origin;
+    } catch {}
 
     const clientPayload = {
       id: inboundId,
@@ -80,34 +81,29 @@ async function provision3xuiClient(
       })
     };
 
-    const clientHeaders = {
+    const clientHeaders: Record<string, string> = {
       "Content-Type": "application/json",
       "Cookie": auth.cookie,
-      "User-Agent": browserUA,
       "Origin": originUrl,
-      "Referer": `${cleanBase}/`,
+      "Referer": `${activeBase}/`,
       "Accept": "application/json, text/plain, */*",
-      "X-Requested-With": "XMLHttpRequest"
+      "X-Requested-With": "XMLHttpRequest",
+      ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
     };
 
     // 1. Try addClient: /panel/api/ path first, then /xui/API/ path fallback
     let added = false;
     for (const addPath of ["/panel/api/inbounds/addClient", "/xui/API/inbounds/addClient"]) {
       try {
-        const res = await fetch(`${cleanBase}${addPath}`, {
+        const res = await httpRequestUnsafe(`${activeBase}${addPath}`, {
           method: "POST",
           headers: clientHeaders,
           body: JSON.stringify(clientPayload),
-          //@ts-ignore
-          agent: unsafeAgent,
-          signal: AbortSignal.timeout(4000)
+          timeout: 5000
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            added = true;
-            break;
-          }
+        if (res.statusCode === 200 && res.json?.success) {
+          added = true;
+          break;
         }
       } catch {}
     }
@@ -116,18 +112,13 @@ async function provision3xuiClient(
     if (!added) {
       for (const updatePath of [`/panel/api/inbounds/updateClient/${clientUuid}`, `/xui/API/inbounds/updateClient/${clientUuid}`]) {
         try {
-          const res = await fetch(`${cleanBase}${updatePath}`, {
+          const res = await httpRequestUnsafe(`${activeBase}${updatePath}`, {
             method: "POST",
             headers: clientHeaders,
             body: JSON.stringify(clientPayload),
-            //@ts-ignore
-            agent: unsafeAgent,
-            signal: AbortSignal.timeout(4000)
+            timeout: 5000
           });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success) break;
-          }
+          if (res.statusCode === 200 && res.json?.success) break;
         } catch {}
       }
     }
