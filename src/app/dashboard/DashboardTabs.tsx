@@ -4757,6 +4757,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       let detailText = "";
                       let strikeValue: string | undefined = undefined;
                       let expectedVal: string | number | undefined = undefined;
+                      let checkData: any = undefined;
 
                       if (!laborResult) {
                         if (idx < laborStage) {
@@ -4769,7 +4770,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           detailText = "Queued for audit pipeline...";
                         }
                       } else {
-                        const checkData = Array.isArray(report?.checks)
+                        checkData = Array.isArray(report?.checks)
                           ? report.checks.find((c: any) => c.id === step.id)
                           : undefined;
 
