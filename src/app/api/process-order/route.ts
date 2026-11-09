@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui } from "@/lib/systemConfig";
 import { generateOrderConfigs, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
@@ -44,21 +44,14 @@ async function provision3xuiClient(
   if (!nodeConfig.baseUrl || !nodeConfig.username) return;
   const cleanBase = nodeConfig.baseUrl.trim().replace(/\/+$/, "");
   const inboundId = nodeConfig.inboundId || 1;
+  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
   try {
-    const loginParams = new URLSearchParams();
-    loginParams.append("username", nodeConfig.username.trim());
-    loginParams.append("password", nodeConfig.password.trim());
-
-    const loginRes = await fetch(`${cleanBase}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: loginParams.toString(),
-      signal: AbortSignal.timeout(5000)
-    });
-
-    const cookieHeader = loginRes.headers.get("set-cookie") || "";
-    if (!cookieHeader) return;
+    const auth = await authenticate3xui(cleanBase, nodeConfig.username, nodeConfig.password);
+    if (!auth.cookie) {
+      console.warn("3x-ui authentication failed:", auth.error);
+      return;
+    }
 
     const clientPayload = {
       id: inboundId,
@@ -85,7 +78,11 @@ async function provision3xuiClient(
       try {
         const res = await fetch(`${cleanBase}${addPath}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Cookie: cookieHeader },
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": auth.cookie,
+            "User-Agent": browserUA
+          },
           body: JSON.stringify(clientPayload),
           signal: AbortSignal.timeout(4000)
         });
@@ -105,7 +102,11 @@ async function provision3xuiClient(
         try {
           const res = await fetch(`${cleanBase}${updatePath}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Cookie: cookieHeader },
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": auth.cookie,
+              "User-Agent": browserUA
+            },
             body: JSON.stringify(clientPayload),
             signal: AbortSignal.timeout(4000)
           });
