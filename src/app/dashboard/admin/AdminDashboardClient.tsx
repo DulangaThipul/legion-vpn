@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateUserAdmin } from "@/lib/authActions";
+import { updateUserAdmin, resetUserAccount } from "@/lib/authActions";
 
 const PACKAGE_LIST = [
   "Dialog Zoom Unlimited",
@@ -418,9 +418,20 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
     const usaOffset = parseFloat(String(usaPreviousUsageInput)) || 0;
 
     const offsetVal = parseFloat(String(previousUsageInput)) || 0;
+
+    let finalDataTotal = selectedDataTotal.trim() || "Unlimited";
+    if (finalDataTotal && !isNaN(Number(finalDataTotal))) {
+      finalDataTotal = `${finalDataTotal} GB`;
+    }
+
+    let finalUsaDataTotal = usaSelectedDataTotal.trim() || "Unlimited";
+    if (finalUsaDataTotal && !isNaN(Number(finalUsaDataTotal))) {
+      finalUsaDataTotal = `${finalUsaDataTotal} GB`;
+    }
+
     const updatedMeta = {
       ...metaData,
-      dataTotal: selectedDataTotal,
+      dataTotal: finalDataTotal,
       dataUsed: formattedUsed,
       lastRecordedUsage: formattedUsed,
       subscriptionUrl: subscriptionUrlInput.trim(),
@@ -429,12 +440,15 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
       customVpnUserId: customVpnUserIdInput.trim(),
       showUsaUsage,
       usaSubscriptionUrl: usaSubscriptionUrlInput.trim(),
-      usaDataTotal: usaSelectedDataTotal,
+      usaDataTotal: finalUsaDataTotal,
       usaDataUsed: formattedUsa,
       usaLastRecordedUsage: formattedUsa,
       usaPreviousUsage: usaOffset
     };
-    onUpdate(userId, { subscriptionLink: JSON.stringify(updatedMeta) });
+    onUpdate(userId, { 
+      subscriptionLink: JSON.stringify(updatedMeta),
+      ...(subscriptionUrlInput.trim() ? { vpnStatus: "Active" } : {})
+    });
   };
 
   // 🧭 TOGGLE SWITCH FOR CLIENT USER GUIDE (ON / OFF SWITCH)
@@ -563,6 +577,29 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
   };
   const handleUnbanUser = () => onUpdate(userId, { vpnStatus: "Active" });
 
+  const [isResetting, setIsResetting] = useState(false);
+  const handleResetAccount = async () => {
+    const confirmPrompt = window.confirm(
+      `⚠️ WARNING: Are you sure you want to completely RESET ${user.name || user.email}'s account?\n\nThis will restore the account back to its initial state:\n- Clears all VPN configs\n- Clears Data Usage & 3x-ui links\n- Resets status to Inactive\n- Clears expiry dates\n- Clears custom alert messages\n\nClick OK to confirm reset.`
+    );
+    if (!confirmPrompt) return;
+
+    try {
+      setIsResetting(true);
+      const res = await resetUserAccount(userId);
+      if (res.success) {
+        alert("Account has been reset to its initial state successfully!");
+        window.location.reload();
+      } else {
+        alert(res.error || "Failed to reset account");
+      }
+    } catch (e: any) {
+      alert("Error resetting account: " + (e?.message || e));
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const handleSendMessage = () => {
     if (!msgText.trim()) return;
     saveMeta(`${msgEmoji} ${msgText.trim()}`, metaData.isPremium);
@@ -649,15 +686,39 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             {metaData.isPremium ? "⭐ Premium User (Active)" : "⚪ Set as Premium"}
           </button>
           
-          {user.vpnStatus !== "Banned" ? (
-            <button onClick={handleBanUser} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1.2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}>
-              🚫 Ban Client
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {user.vpnStatus !== "Banned" ? (
+              <button onClick={handleBanUser} style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", padding: "0.5rem 1.2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}>
+                🚫 Ban Client
+              </button>
+            ) : (
+              <button onClick={handleUnbanUser} style={{ background: "#22c55e", color: "#000", border: "none", padding: "0.5rem 1.2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}>
+                ✅ Unban Client
+              </button>
+            )}
+
+            <button 
+              onClick={handleResetAccount} 
+              disabled={isResetting}
+              title="Reset account to initial blank state (clears configs, usage, and dates)"
+              style={{ 
+                background: "rgba(239, 68, 68, 0.18)", 
+                color: "#fca5a5", 
+                border: "1px solid rgba(239, 68, 68, 0.45)", 
+                padding: "0.5rem 1.1rem", 
+                borderRadius: "8px", 
+                fontWeight: "bold", 
+                cursor: isResetting ? "not-allowed" : "pointer", 
+                fontSize: "0.85rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.2s ease"
+              }}
+            >
+              🔄 {isResetting ? "Resetting..." : "Reset Account"}
             </button>
-          ) : (
-            <button onClick={handleUnbanUser} style={{ background: "#22c55e", color: "#000", border: "none", padding: "0.5rem 1.2rem", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}>
-              ✅ Unban Client
-            </button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -765,16 +826,32 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Package Total Data</p>
-            <select 
-              value={selectedDataTotal} 
-              onChange={(e) => setSelectedDataTotal(e.target.value)}
-              style={{ marginTop: "6px", width: "100%", padding: "0.6rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", color: "#3b82f6", fontWeight: "bold", fontSize: "0.95rem", outline: "none" }}
-            >
-              {DATA_PACKAGE_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "#9ca3af" }}>Package Total Data</p>
+              <span style={{ fontSize: "0.68rem", color: "#60a5fa", background: "rgba(59,130,246,0.15)", padding: "1px 6px", borderRadius: "4px" }}>Custom Typeable</span>
+            </div>
+            <div style={{ display: "flex", gap: "6px", marginTop: "6px" }}>
+              <input 
+                type="text" 
+                placeholder="e.g. 20 GB, 50 GB, Unlimited"
+                value={selectedDataTotal} 
+                onChange={(e) => setSelectedDataTotal(e.target.value)}
+                style={{ flex: 1, padding: "0.6rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(59,130,246,0.35)", color: "#3b82f6", fontWeight: "bold", fontSize: "0.95rem", outline: "none" }}
+              />
+              <select 
+                value={DATA_PACKAGE_OPTIONS.includes(selectedDataTotal) ? selectedDataTotal : ""} 
+                onChange={(e) => {
+                  if (e.target.value) setSelectedDataTotal(e.target.value);
+                }}
+                style={{ width: "95px", padding: "0.6rem 0.3rem", borderRadius: "8px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#9ca3af", fontSize: "0.8rem", outline: "none", cursor: "pointer" }}
+                title="Quick preset select"
+              >
+                <option value="">Presets...</option>
+                {DATA_PACKAGE_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.4)", padding: "1rem", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -900,16 +977,32 @@ function UserDetailsPanel({ user, onUpdate }: { user: any, onUpdate: (id: string
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem", borderTop: "1px solid rgba(236, 72, 153, 0.2)", paddingTop: "1rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                 <div style={{ background: "rgba(0,0,0,0.4)", padding: "0.8rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#f472b6" }}>USA VPN Total Quota</p>
-                  <select 
-                    value={usaSelectedDataTotal} 
-                    onChange={(e) => setUsaSelectedDataTotal(e.target.value)}
-                    style={{ marginTop: "6px", width: "100%", padding: "0.55rem", borderRadius: "6px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", color: "#f472b6", fontWeight: "bold", outline: "none" }}
-                  >
-                    {DATA_PACKAGE_OPTIONS.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#f472b6" }}>USA VPN Total Quota</p>
+                    <span style={{ fontSize: "0.68rem", color: "#f472b6", background: "rgba(244,114,182,0.15)", padding: "1px 6px", borderRadius: "4px" }}>Custom Typeable</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", marginTop: "6px" }}>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 200 GB, Unlimited"
+                      value={usaSelectedDataTotal} 
+                      onChange={(e) => setUsaSelectedDataTotal(e.target.value)}
+                      style={{ flex: 1, padding: "0.55rem", borderRadius: "6px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(244,114,182,0.35)", color: "#f472b6", fontWeight: "bold", outline: "none" }}
+                    />
+                    <select 
+                      value={DATA_PACKAGE_OPTIONS.includes(usaSelectedDataTotal) ? usaSelectedDataTotal : ""} 
+                      onChange={(e) => {
+                        if (e.target.value) setUsaSelectedDataTotal(e.target.value);
+                      }}
+                      style={{ width: "90px", padding: "0.55rem 0.2rem", borderRadius: "6px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#9ca3af", fontSize: "0.75rem", outline: "none", cursor: "pointer" }}
+                      title="Quick preset select"
+                    >
+                      <option value="">Presets...</option>
+                      {DATA_PACKAGE_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div style={{ background: "rgba(0,0,0,0.4)", padding: "0.8rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
