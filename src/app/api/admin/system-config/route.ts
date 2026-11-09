@@ -73,13 +73,17 @@ export async function POST(req: Request) {
       const start = performance.now();
 
       try {
-        const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+        let originUrl = baseUrl;
+        try {
+          originUrl = new URL(baseUrl).origin;
+        } catch {}
 
-        // Step A: Pre-flight CSRF Handshake & Login
-        const auth = await authenticate3xui(baseUrl, username, password);
-        const latencyMs = Math.round(performance.now() - start);
+        // Step A: Pre-flight Session & Authenticate (JSON payload with form-data fallback)
+        const auth = await authenticate3xui({ baseUrl, username, password });
+        const latencyMs = auth.latencyMs ?? Math.round(performance.now() - start);
 
-        if (auth.error || !auth.cookie) {
+        if (!auth.success || !auth.cookie) {
           return NextResponse.json({
             success: false,
             latencyMs,
@@ -94,7 +98,11 @@ export async function POST(req: Request) {
             const inbRes = await fetch(`${baseUrl}${inboundPath}`, {
               headers: {
                 "Cookie": auth.cookie,
-                "User-Agent": browserUA
+                "User-Agent": browserUA,
+                "Origin": originUrl,
+                "Referer": `${baseUrl}/`,
+                "Accept": "application/json, text/plain, */*",
+                "X-Requested-With": "XMLHttpRequest"
               },
               signal: AbortSignal.timeout(4000)
             });
