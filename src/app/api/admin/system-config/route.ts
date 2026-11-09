@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, GlobalSystemConfig, authenticate3xui } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, GlobalSystemConfig, authenticate3xui, unsafeAgent } from "@/lib/systemConfig";
 import { buildVlessLink, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 
 export const runtime = "nodejs";
@@ -104,6 +104,8 @@ export async function POST(req: Request) {
                 "Accept": "application/json, text/plain, */*",
                 "X-Requested-With": "XMLHttpRequest"
               },
+              //@ts-ignore
+              agent: unsafeAgent,
               signal: AbortSignal.timeout(4000)
             });
             if (inbRes.ok) {
