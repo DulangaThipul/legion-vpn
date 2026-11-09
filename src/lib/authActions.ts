@@ -52,6 +52,42 @@ export async function updateUserAdmin(userId: string, data: any) {
   }
 }
 
+// 2.1 Admin Account Reset: ඕනෑම Account එකක් කලින් තිබූ initial තත්ත්වයටම පත් කිරීම
+export async function resetUserAccount(userId: string) {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("session");
+    if (!sessionCookie?.value) throw new Error("Unauthorized");
+
+    const payload = await verifyJwt(sessionCookie.value);
+    if (!payload || !payload.id || payload.email !== "dulangathipul@gmail.com") {
+      throw new Error("Unauthorized");
+    }
+
+    // 1. Delete associated VpnConfig records
+    await prisma.vpnConfig.deleteMany({
+      where: { userId },
+    });
+
+    // 2. Reset User to fresh initial defaults
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        vpnStatus: "Inactive",
+        expiryDate: null,
+        vpnConfigKey: null,
+        subscriptionLink: null,
+        alertMessage: null,
+      },
+    });
+
+    return { success: true, user: updatedUser };
+  } catch (error: any) {
+    console.error("Error in resetUserAccount:", error);
+    return { success: false, error: error?.message || "Failed to reset account" };
+  }
+}
+
 // 3. යූසර්ගේ Avatar එක Update කරන Function එක
 export async function updateUserAvatar(imageUrl: string) {
   try {
