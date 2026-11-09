@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, GlobalSystemConfig, authenticate3xui, unsafeAgent } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, GlobalSystemConfig, authenticate3xui, httpRequestUnsafe, unsafeAgent } from "@/lib/systemConfig";
 import { buildVlessLink, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 
 export const runtime = "nodejs";
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       const baseUrl = (node.baseUrl || "").trim().replace(/\/+$/, "");
       const username = (node.username || "").trim();
       const password = (node.password || "").trim();
-      const inboundId = node.inboundId || 1;
+      const inboundId = Number(node.inboundId) || 1;
 
       if (!baseUrl) {
         return NextResponse.json({ success: false, error: "Base URL is required" }, { status: 400 });
@@ -73,13 +73,7 @@ export async function POST(req: Request) {
       const start = performance.now();
 
       try {
-        const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-        let originUrl = baseUrl;
-        try {
-          originUrl = new URL(baseUrl).origin;
-        } catch {}
-
-        // Step A: Pre-flight Session & Authenticate (JSON payload with form-data fallback)
+        // Step A: Pre-flight Session & Authenticate (with CSRF and protocol auto-healing)
         const auth = await authenticate3xui({ baseUrl, username, password });
         const latencyMs = auth.latencyMs ?? Math.round(performance.now() - start);
 
@@ -91,44 +85,72 @@ export async function POST(req: Request) {
           });
         }
 
-        // Step B: Fetch Inbound Info if login succeeded (Try /panel/api/ first, fallback to /xui/API/)
+        const activeBase = auth.effectiveBaseUrl || baseUrl;
+        let originUrl = activeBase;
+        try {
+          originUrl = new URL(activeBase).origin;
+        } catch {}
+
+        // Step B: Fetch Inbound Info if login succeeded using httpRequestUnsafe with CSRF token
         let inboundDetails = null;
+        const inboundHeaders = {
+          "Cookie": auth.cookie,
+          "Origin": originUrl,
+          "Referer": `${activeBase}/`,
+          "Accept": "application/json, text/plain, */*",
+          "X-Requested-With": "XMLHttpRequest",
+          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+        };
+
+        // Try get specified inbound first
         for (const inboundPath of [`/panel/api/inbounds/get/${inboundId}`, `/xui/API/inbounds/get/${inboundId}`]) {
           try {
-            const inbRes = await fetch(`${baseUrl}${inboundPath}`, {
-              headers: {
-                "Cookie": auth.cookie,
-                "User-Agent": browserUA,
-                "Origin": originUrl,
-                "Referer": `${baseUrl}/`,
-                "Accept": "application/json, text/plain, */*",
-                "X-Requested-With": "XMLHttpRequest"
-              },
-              //@ts-ignore
-              agent: unsafeAgent,
-              signal: AbortSignal.timeout(4000)
+            const inbRes = await httpRequestUnsafe(`${activeBase}${inboundPath}`, {
+              method: "GET",
+              headers: inboundHeaders,
+              timeout: 4000
             });
-            if (inbRes.ok) {
-              const inbJson = await inbRes.json();
-              if (inbJson.success && inbJson.obj) {
-                inboundDetails = {
-                  port: inbJson.obj.port,
-                  protocol: inbJson.obj.protocol,
-                  remark: inbJson.obj.remark,
-                  clientCount: Array.isArray(inbJson.obj.clientStats) ? inbJson.obj.clientStats.length : 0
-                };
-                break;
-              }
+            if (inbRes.statusCode === 200 && inbRes.json?.success && inbRes.json.obj) {
+              inboundDetails = {
+                port: inbRes.json.obj.port,
+                protocol: inbRes.json.obj.protocol,
+                remark: inbRes.json.obj.remark,
+                clientCount: Array.isArray(inbRes.json.obj.clientStats) ? inbRes.json.obj.clientStats.length : 0
+              };
+              break;
             }
           } catch {
-            // Try next path
+            // Try next
           }
         }
+
+        // If specific inbound ID was not found, query inbounds list to verify connectivity
+        if (!inboundDetails) {
+          try {
+            const listRes = await httpRequestUnsafe(`${activeBase}/panel/api/inbounds/list`, {
+              method: "GET",
+              headers: inboundHeaders,
+              timeout: 4000
+            });
+            if (listRes.statusCode === 200 && listRes.json?.success && Array.isArray(listRes.json.obj) && listRes.json.obj.length > 0) {
+              const matched = listRes.json.obj.find((i: any) => Number(i.id) === inboundId) || listRes.json.obj[0];
+              inboundDetails = {
+                port: matched.port,
+                protocol: matched.protocol,
+                remark: matched.remark,
+                clientCount: Array.isArray(matched.clientStats) ? matched.clientStats.length : (matched.clientStats ? 1 : 0)
+              };
+            }
+          } catch {}
+        }
+
+        const protocolChanged = auth.effectiveBaseUrl && auth.effectiveBaseUrl !== baseUrl;
 
         return NextResponse.json({
           success: true,
           latencyMs,
-          message: `3x-ui Node responded in ${latencyMs}ms!`,
+          effectiveBaseUrl: auth.effectiveBaseUrl,
+          message: `3x-ui Node responded in ${latencyMs}ms!${protocolChanged ? ` (Auto-upgraded to ${auth.effectiveBaseUrl})` : ""}`,
           inboundDetails
         });
       } catch (err: any) {
