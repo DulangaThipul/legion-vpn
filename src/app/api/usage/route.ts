@@ -14,7 +14,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 function fetchSubscriptionHeaders(
   urlStr: string,
   timeoutMs = 8000
-): Promise<{ headers: Record<string, string | string[] | undefined>; statusCode?: number }> {
+): Promise<{ headers: Record<string, string | string[] | undefined>; statusCode?: number; body?: string }> {
   return new Promise((resolve, reject) => {
     try {
       const parsedUrl = new URL(urlStr);
@@ -44,8 +44,14 @@ function fetchSubscriptionHeaders(
               // Ignore invalid redirect URL
             }
           }
-          resolve({ headers: res.headers, statusCode: res.statusCode });
-          res.resume(); // consume stream to release socket
+          let body = "";
+          res.setEncoding("utf-8");
+          res.on("data", (chunk) => {
+            if (body.length < 65536) body += chunk;
+          });
+          res.on("end", () => {
+            resolve({ headers: res.headers, statusCode: res.statusCode, body });
+          });
         }
       );
 
@@ -62,6 +68,20 @@ function fetchSubscriptionHeaders(
       reject(e);
     }
   });
+}
+
+function extractConfigsFromBody(body?: string): string[] {
+  if (!body) return [];
+  let decoded = body.trim();
+  if (!decoded.startsWith("vless://") && !decoded.startsWith("vmess://") && !decoded.startsWith("trojan://")) {
+    try {
+      decoded = Buffer.from(decoded, "base64").toString("utf-8");
+    } catch {}
+  }
+  return decoded
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("vless://") || line.startsWith("vmess://") || line.startsWith("trojan://") || line.startsWith("ss://"));
 }
 
 function parseUserInfoHeader(headers: Record<string, string | string[] | undefined>) {
@@ -159,8 +179,8 @@ export async function GET(req: NextRequest) {
         }
 
         try {
-          const { headers } = await fetchSubscriptionHeaders(subUrl, 5000);
-          const parsed = parseUserInfoHeader(headers);
+          const subRes = await fetchSubscriptionHeaders(subUrl, 5000);
+          const parsed = parseUserInfoHeader(subRes.headers);
           if (parsed) {
             const current3xuiBytes = parsed.uploadBytes + parsed.downloadBytes;
             const current3xuiGB = current3xuiBytes / (1024 * 1024 * 1024);
@@ -185,11 +205,20 @@ export async function GET(req: NextRequest) {
               }
             }
 
+            let configUpdate: any = {};
+            if (!u.vpnConfigKey || !u.vpnConfigKey.trim()) {
+              const configs = extractConfigsFromBody(subRes.body);
+              if (configs.length > 0) {
+                configUpdate = { vpnConfigKey: configs.join("\n"), vpnStatus: "Active" };
+              }
+            }
+
             await prisma.user.update({
               where: { id: u.id },
               data: { 
                 subscriptionLink: JSON.stringify(meta),
-                ...expireUpdate
+                ...expireUpdate,
+                ...configUpdate
               },
             });
 
@@ -325,6 +354,7 @@ export async function GET(req: NextRequest) {
 
     // Parallel fetch main 3x-ui and USA 3x-ui if enabled
     let parsedHeader: { uploadBytes: number; downloadBytes: number; totalLimitBytes: number; expireTimestamp?: number } | null = null;
+    let mainResponseBody = "";
 
     try {
       const [mainRes] = await Promise.all([
@@ -332,6 +362,7 @@ export async function GET(req: NextRequest) {
         fetchUsaUsageIfEnabled(),
       ]);
       parsedHeader = parseUserInfoHeader(mainRes.headers);
+      mainResponseBody = mainRes.body || "";
     } catch (fetchErr: any) {
       console.warn("3x-ui server unreachable or timeout:", fetchErr?.message || fetchErr);
       return NextResponse.json({
@@ -411,11 +442,23 @@ export async function GET(req: NextRequest) {
           usaDataTotal: calculatedUsaDataTotal,
         } : {})
       };
+      let configUpdate: any = {};
+      if (!user.vpnConfigKey || !user.vpnConfigKey.trim()) {
+        const extracted = extractConfigsFromBody(mainResponseBody);
+        if (extracted.length > 0) {
+          configUpdate = {
+            vpnConfigKey: extracted.join("\n"),
+            vpnStatus: "Active"
+          };
+        }
+      }
+
       await prisma.user.update({
         where: { id: user.id },
         data: { 
           subscriptionLink: JSON.stringify(updatedMeta),
-          ...(liveExpiryDateObj ? { expiryDate: liveExpiryDateObj } : {})
+          ...(liveExpiryDateObj ? { expiryDate: liveExpiryDateObj } : {}),
+          ...configUpdate
         },
       });
     } catch (dbErr) {
