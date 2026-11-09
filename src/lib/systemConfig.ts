@@ -32,6 +32,7 @@ export interface GlobalSystemConfig {
   autoApprovalEnabled: boolean;
   expectedBankAccount: string;
   allowedTimeWindowMinutes: number;
+  geminiApiKey?: string;
   verifiedRefLedger: Array<{
     refNumber: string;
     email: string;
@@ -63,6 +64,7 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
   autoApprovalEnabled: true,
   expectedBankAccount: "8029138148",
   allowedTimeWindowMinutes: 120,
+  geminiApiKey: "",
   verifiedRefLedger: []
 };
 
@@ -98,6 +100,7 @@ export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
       autoApprovalEnabled: saved.autoApprovalEnabled !== undefined ? Boolean(saved.autoApprovalEnabled) : true,
       expectedBankAccount: saved.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
       allowedTimeWindowMinutes: Number(saved.allowedTimeWindowMinutes) || DEFAULT_SYSTEM_CONFIG.allowedTimeWindowMinutes,
+      geminiApiKey: saved.geminiApiKey || process.env.GEMINI_API_KEY || "",
       verifiedRefLedger: Array.isArray(saved.verifiedRefLedger) ? saved.verifiedRefLedger : []
     };
   } catch (error) {
@@ -137,6 +140,7 @@ export async function updateGlobalSystemConfig(updates: Partial<GlobalSystemConf
       autoApprovalEnabled: updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApprovalEnabled ?? true),
       expectedBankAccount: updates.expectedBankAccount || currentGlobal.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
       allowedTimeWindowMinutes: Number(updates.allowedTimeWindowMinutes) || currentGlobal.allowedTimeWindowMinutes || DEFAULT_SYSTEM_CONFIG.allowedTimeWindowMinutes,
+      geminiApiKey: updates.geminiApiKey !== undefined ? updates.geminiApiKey : (currentGlobal.geminiApiKey || ""),
       verifiedRefLedger: updates.verifiedRefLedger || currentGlobal.verifiedRefLedger || []
     };
 
