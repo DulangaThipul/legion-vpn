@@ -425,24 +425,25 @@ export async function GET(req: NextRequest) {
     }
 
     // Auto-save lastRecordedUsage & dataUsed into MongoDB so data is NEVER lost even if VPS terminates
+    let updatedMeta: any = {
+      ...metaData,
+      dataUsed: formattedDataUsed,
+      lastRecordedUsage: formattedDataUsed,
+      current3xuiUsageGB: Number(current3xuiGB.toFixed(2)),
+      previousUsage: previousUsage,
+      previousUsageGB: previousUsage,
+      lastUsageSync: new Date().toISOString(),
+      ...(liveExpiryIso ? { expiryDate: liveExpiryIso } : {}),
+      ...(showUsaUsage ? {
+        usaDataUsed: formattedUsaDataUsed,
+        usaLastRecordedUsage: formattedUsaDataUsed,
+        usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
+        usaDataTotal: calculatedUsaDataTotal,
+      } : {})
+    };
+    let configUpdate: any = {};
+
     try {
-      const updatedMeta = {
-        ...metaData,
-        dataUsed: formattedDataUsed,
-        lastRecordedUsage: formattedDataUsed,
-        current3xuiUsageGB: Number(current3xuiGB.toFixed(2)),
-        previousUsage: previousUsage,
-        previousUsageGB: previousUsage,
-        lastUsageSync: new Date().toISOString(),
-        ...(liveExpiryIso ? { expiryDate: liveExpiryIso } : {}),
-        ...(showUsaUsage ? {
-          usaDataUsed: formattedUsaDataUsed,
-          usaLastRecordedUsage: formattedUsaDataUsed,
-          usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
-          usaDataTotal: calculatedUsaDataTotal,
-        } : {})
-      };
-      let configUpdate: any = {};
       if (!user.vpnConfigKey || !user.vpnConfigKey.trim()) {
         const extracted = extractConfigsFromBody(mainResponseBody);
         if (extracted.length > 0) {
@@ -465,6 +466,10 @@ export async function GET(req: NextRequest) {
       console.error("Failed to update lastRecordedUsage in MongoDB:", dbErr);
     }
 
+    const finalVpnStatus = configUpdate.vpnStatus || user.vpnStatus || (subscriptionUrl ? "Active" : "Inactive");
+    const finalVpnConfigKey = configUpdate.vpnConfigKey || user.vpnConfigKey;
+    const finalExpiryIso = liveExpiryIso || metaData.expiryDate || (user.expiryDate ? user.expiryDate.toISOString() : null);
+
     return NextResponse.json({
       success: true,
       dataUsed: formattedDataUsed,
@@ -475,13 +480,22 @@ export async function GET(req: NextRequest) {
       uploadGB: Number((parsedHeader.uploadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       downloadGB: Number((parsedHeader.downloadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       isLiveSync: true,
-      expiryDate: liveExpiryIso || metaData.expiryDate || (user.expiryDate ? user.expiryDate.toISOString() : null),
+      expiryDate: finalExpiryIso,
       showUsaUsage,
       usaDataUsed: formattedUsaDataUsed,
       usaLastRecordedUsage: formattedUsaDataUsed,
       usaDataTotal: calculatedUsaDataTotal,
       usaPreviousUsage,
       usaCurrent3xuiUsageGB: Number(usaCurrent3xuiUsageGB.toFixed(2)),
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        vpnStatus: finalVpnStatus,
+        vpnConfigKey: finalVpnConfigKey,
+        subscriptionLink: JSON.stringify(updatedMeta),
+        expiryDate: finalExpiryIso
+      }
     });
   } catch (error: any) {
     console.error("Error in /api/usage:", error);
