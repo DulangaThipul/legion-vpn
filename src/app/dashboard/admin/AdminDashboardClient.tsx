@@ -1967,6 +1967,11 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
       });
       const data = await res.json();
       setTestResult(data);
+      if (data.success && data.effectiveBaseUrl) {
+        if (!nodeToTest || !nodeToTest.baseUrl) {
+          setPrimaryNode(prev => ({ ...prev, baseUrl: data.effectiveBaseUrl }));
+        }
+      }
     } catch (err: any) {
       setTestResult({ success: false, error: err?.message || "Connection failed" });
     } finally {
@@ -2073,6 +2078,7 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
               placeholder="https://103.179.44.75:2096"
               style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" }}
             />
+            <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Tip: If SSL is enabled on your panel, use https:// (e.g. https://143.42.79.58:38887/tuycp9km2369ii/)</span>
           </div>
           <div>
             <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>Inbound ID</label>
