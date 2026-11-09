@@ -677,6 +677,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         if (data.usaDataUsed) setLiveUsaDataUsed(data.usaDataUsed);
         if (data.usaDataTotal) setLiveUsaDataTotal(data.usaDataTotal);
         if (data.expiryDate) setLiveExpiryDate(data.expiryDate);
+        if (data.user) {
+          setUser((prev: any) => ({ ...prev, ...data.user }));
+        }
       }
     } catch (err) {
       console.error("Fetch data usage error:", err);
