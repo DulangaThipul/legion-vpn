@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, GlobalSystemConfig } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, GlobalSystemConfig, authenticate3xui } from "@/lib/systemConfig";
 import { buildVlessLink, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 
 export const runtime = "nodejs";
@@ -73,55 +73,45 @@ export async function POST(req: Request) {
       const start = performance.now();
 
       try {
-        // Step A: Attempt Login
-        const loginUrl = `${baseUrl}/login`;
-        const loginParams = new URLSearchParams();
-        loginParams.append("username", username);
-        loginParams.append("password", password);
+        const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-        const loginRes = await fetch(loginUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: loginParams.toString(),
-          signal: AbortSignal.timeout(6000)
-        });
-
+        // Step A: Pre-flight CSRF Handshake & Login
+        const auth = await authenticate3xui(baseUrl, username, password);
         const latencyMs = Math.round(performance.now() - start);
 
-        if (!loginRes.ok && loginRes.status !== 302) {
+        if (auth.error || !auth.cookie) {
           return NextResponse.json({
             success: false,
             latencyMs,
-            error: `Login failed with HTTP status ${loginRes.status}: ${loginRes.statusText}`
+            error: auth.error || "Failed to authenticate with 3x-ui server"
           });
         }
 
-        const setCookieHeader = loginRes.headers.get("set-cookie") || "";
-
         // Step B: Fetch Inbound Info if login succeeded (Try /panel/api/ first, fallback to /xui/API/)
         let inboundDetails = null;
-        if (setCookieHeader) {
-          for (const inboundPath of [`/panel/api/inbounds/get/${inboundId}`, `/xui/API/inbounds/get/${inboundId}`]) {
-            try {
-              const inbRes = await fetch(`${baseUrl}${inboundPath}`, {
-                headers: { Cookie: setCookieHeader },
-                signal: AbortSignal.timeout(4000)
-              });
-              if (inbRes.ok) {
-                const inbJson = await inbRes.json();
-                if (inbJson.success && inbJson.obj) {
-                  inboundDetails = {
-                    port: inbJson.obj.port,
-                    protocol: inbJson.obj.protocol,
-                    remark: inbJson.obj.remark,
-                    clientCount: Array.isArray(inbJson.obj.clientStats) ? inbJson.obj.clientStats.length : 0
-                  };
-                  break;
-                }
+        for (const inboundPath of [`/panel/api/inbounds/get/${inboundId}`, `/xui/API/inbounds/get/${inboundId}`]) {
+          try {
+            const inbRes = await fetch(`${baseUrl}${inboundPath}`, {
+              headers: {
+                "Cookie": auth.cookie,
+                "User-Agent": browserUA
+              },
+              signal: AbortSignal.timeout(4000)
+            });
+            if (inbRes.ok) {
+              const inbJson = await inbRes.json();
+              if (inbJson.success && inbJson.obj) {
+                inboundDetails = {
+                  port: inbJson.obj.port,
+                  protocol: inbJson.obj.protocol,
+                  remark: inbJson.obj.remark,
+                  clientCount: Array.isArray(inbJson.obj.clientStats) ? inbJson.obj.clientStats.length : 0
+                };
+                break;
               }
-            } catch {
-              // Try next path
             }
+          } catch {
+            // Try next path
           }
         }
 
