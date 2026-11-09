@@ -3,8 +3,12 @@
 // Stores global admin configurations in Admin user's subscriptionLink JSON
 // ========================================================================
 
+import https from "https";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS } from "./vlessGenerator";
+
+// Bypass self-signed SSL errors globally for VPS connections
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 export interface GlobalSystemConfig {
   ispDomains: Record<string, string>;
@@ -198,10 +202,11 @@ export function mergeCookies(existingCookieStr: string, res: Response): string {
   return Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
 }
 
-/**
- * 3x-ui Pre-flight CSRF Handshake & Login
- * Handles session cookies and CSRF tokens to avoid 403 Forbidden
- */
+// Create custom HTTPS agent that ignores self-signed certificate errors for serverless runtime
+export const unsafeAgent = new https.Agent({
+  rejectUnauthorized: false
+});
+
 export async function authenticate3xui(nodeConfig: {
   baseUrl: string;
   username: string;
@@ -222,13 +227,10 @@ export async function authenticate3xui(nodeConfig: {
   }
 
   const start = performance.now();
-  let originUrl = rawBase;
-  try {
-    originUrl = new URL(rawBase).origin;
-  } catch {}
+  const originUrl = new URL(rawBase).origin;
   const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-  const standardHeaders: Record<string, string> = {
+  const standardHeaders = {
     "User-Agent": browserUA,
     "Origin": originUrl,
     "Referer": `${rawBase}/`,
@@ -238,11 +240,13 @@ export async function authenticate3xui(nodeConfig: {
   };
 
   try {
-    // 1. Pre-flight GET to capture initial session cookie (DO NOT call /csrf-token)
+    // 1. Pre-flight GET to capture initial session cookie
     let initialCookie = "";
     try {
       const preRes = await fetch(`${rawBase}/`, {
         headers: standardHeaders,
+        //@ts-ignore
+        agent: unsafeAgent,
         signal: AbortSignal.timeout(6000)
       });
       const rawCookie = preRes.headers.get("set-cookie");
@@ -251,12 +255,12 @@ export async function authenticate3xui(nodeConfig: {
       }
     } catch {}
 
-    const reqHeaders: Record<string, string> = {
+    const reqHeaders = {
       ...standardHeaders,
       ...(initialCookie ? { "Cookie": initialCookie } : {})
     };
 
-    // 2. Attempt Login via JSON payload first (Standard in modern 3x-ui), then fallback to Form-data
+    // 2. Attempt Login via JSON payload
     let loginRes = await fetch(`${rawBase}/login`, {
       method: "POST",
       headers: {
@@ -264,6 +268,8 @@ export async function authenticate3xui(nodeConfig: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ username, password }),
+      //@ts-ignore
+      agent: unsafeAgent,
       signal: AbortSignal.timeout(6000)
     });
 
@@ -280,6 +286,8 @@ export async function authenticate3xui(nodeConfig: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: formParams.toString(),
+        //@ts-ignore
+        agent: unsafeAgent,
         signal: AbortSignal.timeout(6000)
       });
     }
@@ -288,7 +296,6 @@ export async function authenticate3xui(nodeConfig: {
     const postCookie = loginRes.headers.get("set-cookie") || "";
     const finalCookie = [initialCookie, postCookie].filter(Boolean).join("; ");
 
-    // Parse response body to display 3x-ui's real error message if any
     let resJson: any = null;
     let resText = "";
     try {
@@ -324,7 +331,7 @@ export async function authenticate3xui(nodeConfig: {
     return {
       success: false,
       latencyMs,
-      error: `Connection failed: ${err?.message || "Server unreachable"}`
+      error: `Connection failed: ${err?.message || "Server unreachable or SSL handshake failed"}`
     };
   }
 }
