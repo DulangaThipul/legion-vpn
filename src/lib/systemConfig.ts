@@ -4,6 +4,7 @@
 // ========================================================================
 
 import https from "https";
+import http from "http";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS } from "./vlessGenerator";
 
@@ -207,6 +208,90 @@ export const unsafeAgent = new https.Agent({
   rejectUnauthorized: false
 });
 
+export interface HttpRequestOptions {
+  method?: string;
+  headers?: Record<string, string | undefined>;
+  body?: string | Buffer;
+  timeout?: number;
+}
+
+export interface HttpResponse {
+  statusCode: number;
+  headers: http.IncomingHttpHeaders;
+  body: string;
+  json: any;
+  cookies: string[];
+}
+
+/**
+ * Robust low-level HTTP/HTTPS client that bypasses TLS self-signed certificate rejections
+ * natively using Node.js https/http module (works 100% reliably in Vercel Serverless & Node runtimes)
+ */
+export function httpRequestUnsafe(urlStr: string, options: HttpRequestOptions = {}): Promise<HttpResponse> {
+  return new Promise((resolve, reject) => {
+    try {
+      const url = new URL(urlStr);
+      const isHttps = url.protocol === "https:";
+      const lib = isHttps ? https : http;
+
+      const method = options.method || "GET";
+      const headers: Record<string, string | number> = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        ...(options.headers as any || {})
+      };
+
+      const bodyData = options.body ? (typeof options.body === "string" ? Buffer.from(options.body) : options.body) : null;
+      if (bodyData && !headers["Content-Length"] && !headers["content-length"]) {
+        headers["Content-Length"] = bodyData.length;
+      }
+
+      const req = lib.request(url, {
+        method,
+        rejectUnauthorized: false, // Critical: allows self-signed SSL certificates on VPS
+        timeout: options.timeout || 8000,
+        headers
+      }, (res) => {
+        let raw = "";
+        res.setEncoding("utf-8");
+        res.on("data", (chunk) => raw += chunk);
+        res.on("end", () => {
+          const rawCookies = res.headers["set-cookie"] || [];
+          let json: any = null;
+          try {
+            json = JSON.parse(raw);
+          } catch {}
+          resolve({
+            statusCode: res.statusCode || 0,
+            headers: res.headers,
+            body: raw,
+            json,
+            cookies: rawCookies
+          });
+        });
+      });
+
+      req.on("timeout", () => {
+        req.destroy(new Error(`Request timed out after ${options.timeout || 8000}ms`));
+      });
+
+      req.on("error", (err) => {
+        reject(err);
+      });
+
+      if (bodyData) {
+        req.write(bodyData);
+      }
+      req.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/**
+ * 3x-ui Authenticator with CSRF Pre-Flight Handshake, Session Cookie Capture,
+ * and Protocol Auto-Healing (automatically retries https:// if user entered http://)
+ */
 export async function authenticate3xui(nodeConfig: {
   baseUrl: string;
   username: string;
@@ -214,124 +299,136 @@ export async function authenticate3xui(nodeConfig: {
 }): Promise<{
   success: boolean;
   cookie?: string;
+  csrfToken?: string;
+  effectiveBaseUrl?: string;
   latencyMs?: number;
   error?: string;
   details?: any;
 }> {
-  const rawBase = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "");
+  let targetUrl = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "");
   const username = (nodeConfig.username || "").trim();
   const password = (nodeConfig.password || "").trim();
 
-  if (!rawBase) {
+  if (!targetUrl) {
     return { success: false, error: "Base URL is required" };
   }
 
+  if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+    targetUrl = "https://" + targetUrl;
+  }
+
   const start = performance.now();
-  const originUrl = new URL(rawBase).origin;
-  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-  const standardHeaders = {
-    "User-Agent": browserUA,
-    "Origin": originUrl,
-    "Referer": `${rawBase}/`,
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-    "X-Requested-With": "XMLHttpRequest"
-  };
+  // Helper function to perform login attempt against a specific base URL
+  async function attemptLogin(baseUrl: string) {
+    const origin = new URL(baseUrl).origin;
 
-  try {
-    // 1. Pre-flight GET to capture initial session cookie
-    let initialCookie = "";
-    try {
-      const preRes = await fetch(`${rawBase}/`, {
-        headers: standardHeaders,
-        //@ts-ignore
-        agent: unsafeAgent,
-        signal: AbortSignal.timeout(6000)
-      });
-      const rawCookie = preRes.headers.get("set-cookie");
-      if (rawCookie) {
-        initialCookie = rawCookie;
-      }
-    } catch {}
-
-    const reqHeaders = {
-      ...standardHeaders,
-      ...(initialCookie ? { "Cookie": initialCookie } : {})
-    };
-
-    // 2. Attempt Login via JSON payload
-    let loginRes = await fetch(`${rawBase}/login`, {
-      method: "POST",
+    // Step 1: Preflight GET to capture initial session cookie and CSRF token from HTML
+    const preRes = await httpRequestUnsafe(`${baseUrl}/`, {
+      method: "GET",
       headers: {
-        ...reqHeaders,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ username, password }),
-      //@ts-ignore
-      agent: unsafeAgent,
-      signal: AbortSignal.timeout(6000)
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Origin": origin,
+        "Referer": `${baseUrl}/`
+      }
     });
 
-    // Fallback to x-www-form-urlencoded if 404/415 returned on JSON
-    if (loginRes.status === 404 || loginRes.status === 415) {
-      const formParams = new URLSearchParams();
-      formParams.append("username", username);
-      formParams.append("password", password);
+    const initialCookie = (preRes.cookies || []).map(c => c.split(";")[0]).join("; ");
+    const csrfMatch = preRes.body.match(/<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']/i) ||
+                      preRes.body.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']csrf-token["']/i);
+    const csrfToken = csrfMatch ? csrfMatch[1] : "";
 
-      loginRes = await fetch(`${rawBase}/login`, {
+    // Step 2: POST /login with credentials, initial session cookie, and CSRF token
+    const loginPayload = JSON.stringify({ username, password });
+    const loginHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Origin": origin,
+      "Referer": `${baseUrl}/`,
+      "X-Requested-With": "XMLHttpRequest",
+      "Accept": "application/json, text/plain, */*",
+      ...(initialCookie ? { "Cookie": initialCookie } : {}),
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+    };
+
+    let loginRes = await httpRequestUnsafe(`${baseUrl}/login`, {
+      method: "POST",
+      headers: loginHeaders,
+      body: loginPayload
+    });
+
+    // Fallback to x-www-form-urlencoded if 404 or 415 returned on JSON
+    if (loginRes.statusCode === 404 || loginRes.statusCode === 415) {
+      const formBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+      loginRes = await httpRequestUnsafe(`${baseUrl}/login`, {
         method: "POST",
         headers: {
-          ...reqHeaders,
+          ...loginHeaders,
           "Content-Type": "application/x-www-form-urlencoded"
         },
-        body: formParams.toString(),
-        //@ts-ignore
-        agent: unsafeAgent,
-        signal: AbortSignal.timeout(6000)
+        body: formBody
       });
     }
 
-    const latencyMs = Math.round(performance.now() - start);
-    const postCookie = loginRes.headers.get("set-cookie") || "";
-    const finalCookie = [initialCookie, postCookie].filter(Boolean).join("; ");
-
-    let resJson: any = null;
-    let resText = "";
-    try {
-      resText = await loginRes.text();
-      resJson = JSON.parse(resText);
-    } catch {}
-
-    if (!loginRes.ok) {
-      const errMsg = resJson?.msg || resJson?.message || resText || `HTTP ${loginRes.status}: ${loginRes.statusText}`;
-      return {
-        success: false,
-        latencyMs,
-        error: `3x-ui Login Rejected (${errMsg})`
-      };
-    }
-
-    if (resJson && resJson.success === false) {
-      return {
-        success: false,
-        latencyMs,
-        error: resJson.msg || "Invalid 3x-ui Username or Password"
-      };
-    }
+    const postCookies = (loginRes.cookies || []).map(c => c.split(";")[0]).join("; ");
+    const finalCookie = postCookies || initialCookie;
 
     return {
-      success: true,
+      statusCode: loginRes.statusCode,
+      json: loginRes.json,
+      body: loginRes.body,
       cookie: finalCookie,
-      latencyMs,
-      details: resJson
+      csrfToken,
+      effectiveBaseUrl: baseUrl
     };
+  }
+
+  let result: any = null;
+  try {
+    result = await attemptLogin(targetUrl);
   } catch (err: any) {
-    const latencyMs = Math.round(performance.now() - start);
+    // Protocol Auto-Healing: If user entered http:// and VPS is running HTTPS (or vice versa), auto-retry!
+    const isHttp = targetUrl.startsWith("http://");
+    const altUrl = isHttp
+      ? targetUrl.replace(/^http:\/\//, "https://")
+      : targetUrl.replace(/^https:\/\//, "http://");
+
+    try {
+      result = await attemptLogin(altUrl);
+    } catch {
+      const latencyMs = Math.round(performance.now() - start);
+      return {
+        success: false,
+        latencyMs,
+        error: `Connection failed: ${err?.message || "Server unreachable or connection reset"}`
+      };
+    }
+  }
+
+  const latencyMs = Math.round(performance.now() - start);
+
+  if (result.statusCode !== 200) {
+    const errMsg = result.json?.msg || result.body || `HTTP ${result.statusCode}`;
     return {
       success: false,
       latencyMs,
-      error: `Connection failed: ${err?.message || "Server unreachable or SSL handshake failed"}`
+      error: `3x-ui Login Rejected (${errMsg})`
     };
   }
+
+  if (result.json && result.json.success === false) {
+    return {
+      success: false,
+      latencyMs,
+      error: result.json.msg || "Invalid 3x-ui Username or Password"
+    };
+  }
+
+  return {
+    success: true,
+    latencyMs,
+    cookie: result.cookie,
+    csrfToken: result.csrfToken,
+    effectiveBaseUrl: result.effectiveBaseUrl,
+    details: result.json
+  };
 }
