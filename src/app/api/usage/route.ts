@@ -84,6 +84,7 @@ function parseUserInfoHeader(headers: Record<string, string | string[] | undefin
   let uploadBytes = 0;
   let downloadBytes = 0;
   let totalLimitBytes = 0;
+  let expireTimestamp = 0;
 
   const parts = userinfoRaw.split(";");
   for (const part of parts) {
@@ -93,9 +94,23 @@ function parseUserInfoHeader(headers: Record<string, string | string[] | undefin
     if (k === "upload") uploadBytes = Number(v) || 0;
     else if (k === "download") downloadBytes = Number(v) || 0;
     else if (k === "total") totalLimitBytes = Number(v) || 0;
+    else if (k === "expire" || k === "expiry") expireTimestamp = Number(v) || 0;
   }
 
-  return { uploadBytes, downloadBytes, totalLimitBytes };
+  if (!expireTimestamp) {
+    for (const [key, val] of Object.entries(headers)) {
+      if (key.toLowerCase().includes("expire")) {
+        const valStr = Array.isArray(val) ? val[0] : (val || "");
+        const num = Number(valStr);
+        if (num > 0) {
+          expireTimestamp = num;
+          break;
+        }
+      }
+    }
+  }
+
+  return { uploadBytes, downloadBytes, totalLimitBytes, expireTimestamp };
 }
 
 export async function GET(req: NextRequest) {
@@ -160,9 +175,22 @@ export async function GET(req: NextRequest) {
             meta.previousUsageGB = previousUsage;
             meta.lastUsageSync = new Date().toISOString();
 
+            let expireUpdate: any = {};
+            if (parsed.expireTimestamp > 0) {
+              const ts = parsed.expireTimestamp < 10000000000 ? parsed.expireTimestamp * 1000 : parsed.expireTimestamp;
+              const expDate = new Date(ts);
+              if (!isNaN(expDate.getTime())) {
+                meta.expiryDate = expDate.toISOString();
+                expireUpdate = { expiryDate: expDate };
+              }
+            }
+
             await prisma.user.update({
               where: { id: u.id },
-              data: { subscriptionLink: JSON.stringify(meta) },
+              data: { 
+                subscriptionLink: JSON.stringify(meta),
+                ...expireUpdate
+              },
             });
 
             updatedCount++;
@@ -296,7 +324,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Parallel fetch main 3x-ui and USA 3x-ui if enabled
-    let parsedHeader: { uploadBytes: number; downloadBytes: number; totalLimitBytes: number } | null = null;
+    let parsedHeader: { uploadBytes: number; downloadBytes: number; totalLimitBytes: number; expireTimestamp?: number } | null = null;
 
     try {
       const [mainRes] = await Promise.all([
@@ -354,6 +382,17 @@ export async function GET(req: NextRequest) {
       calculatedDataTotal = `${(parsedHeader.totalLimitBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
     }
 
+    let liveExpiryIso: string | null = null;
+    let liveExpiryDateObj: Date | null = null;
+    if (parsedHeader.expireTimestamp > 0) {
+      const ts = parsedHeader.expireTimestamp < 10000000000 ? parsedHeader.expireTimestamp * 1000 : parsedHeader.expireTimestamp;
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        liveExpiryIso = d.toISOString();
+        liveExpiryDateObj = d;
+      }
+    }
+
     // Auto-save lastRecordedUsage & dataUsed into MongoDB so data is NEVER lost even if VPS terminates
     try {
       const updatedMeta = {
@@ -364,6 +403,7 @@ export async function GET(req: NextRequest) {
         previousUsage: previousUsage,
         previousUsageGB: previousUsage,
         lastUsageSync: new Date().toISOString(),
+        ...(liveExpiryIso ? { expiryDate: liveExpiryIso } : {}),
         ...(showUsaUsage ? {
           usaDataUsed: formattedUsaDataUsed,
           usaLastRecordedUsage: formattedUsaDataUsed,
@@ -373,7 +413,10 @@ export async function GET(req: NextRequest) {
       };
       await prisma.user.update({
         where: { id: user.id },
-        data: { subscriptionLink: JSON.stringify(updatedMeta) },
+        data: { 
+          subscriptionLink: JSON.stringify(updatedMeta),
+          ...(liveExpiryDateObj ? { expiryDate: liveExpiryDateObj } : {})
+        },
       });
     } catch (dbErr) {
       console.error("Failed to update lastRecordedUsage in MongoDB:", dbErr);
@@ -389,6 +432,7 @@ export async function GET(req: NextRequest) {
       uploadGB: Number((parsedHeader.uploadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       downloadGB: Number((parsedHeader.downloadBytes / (1024 * 1024 * 1024)).toFixed(2)),
       isLiveSync: true,
+      expiryDate: liveExpiryIso || metaData.expiryDate || (user.expiryDate ? user.expiryDate.toISOString() : null),
       showUsaUsage,
       usaDataUsed: formattedUsaDataUsed,
       usaLastRecordedUsage: formattedUsaDataUsed,
