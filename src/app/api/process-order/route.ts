@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui, unsafeAgent } from "@/lib/systemConfig";
 import { generateOrderConfigs, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
@@ -98,6 +98,8 @@ async function provision3xuiClient(
           method: "POST",
           headers: clientHeaders,
           body: JSON.stringify(clientPayload),
+          //@ts-ignore
+          agent: unsafeAgent,
           signal: AbortSignal.timeout(4000)
         });
         if (res.ok) {
@@ -118,6 +120,8 @@ async function provision3xuiClient(
             method: "POST",
             headers: clientHeaders,
             body: JSON.stringify(clientPayload),
+            //@ts-ignore
+            agent: unsafeAgent,
             signal: AbortSignal.timeout(4000)
           });
           if (res.ok) {
