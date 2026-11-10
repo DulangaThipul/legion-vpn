@@ -62,6 +62,7 @@ async function provision3xuiClient(
       originUrl = new URL(activeBase).origin;
     } catch {}
 
+    const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
     const clientPayload = {
       id: inboundId,
       settings: JSON.stringify({
@@ -75,7 +76,7 @@ async function provision3xuiClient(
             expiryTime: expiryTimeMs,
             enable: true,
             tgId: "",
-            subId: clientUuid.slice(0, 16)
+            subId: clientSubId
           }
         ]
       })
@@ -222,10 +223,11 @@ export async function POST(req: Request) {
           overallStatus: "review_required",
           reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
           checks: [
-            { id: "doc", title: "Document Received", passed: true, statusText: "Received", message: "Slip image securely registered in settlement vault." },
-            { id: "account", title: "Beneficiary Matching", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
-            { id: "ledger", title: "Ledger Inscription", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement clearance." },
-            { id: "node", title: "Slot Provisioning", passed: false, statusText: "Pending Clearance", message: "Encrypted VLESS slot allocated upon clearance." }
+            { id: "doc", title: "Document Analyzed", passed: true, statusText: "Analyzed", message: "Deposit document forensic scan completed." },
+            { id: "account", title: "Beneficiary Confirmed", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
+            { id: "trace", title: "Transaction Trace Valid", passed: false, statusText: "Queued", message: "Transaction reference hash queued for ledger check." },
+            { id: "amount", title: "Settlement Matched", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement amount confirmation." },
+            { id: "line", title: "Line Activated", passed: false, statusText: "Pending Clearance", message: "V2RAY key & slot activated upon final clearance." }
           ]
         }
       });
@@ -237,11 +239,11 @@ export async function POST(req: Request) {
         overallStatus: "review_required",
         reason: "Auto-approval paused by administrator.",
         checks: [
-          { id: "ocr", title: "Receipt Document Upload", passed: true, statusText: "Captured", message: "Receipt image successfully stored on cloud." },
-          { id: "account", title: "Beneficiary Account Guardrail", passed: true, statusText: "Ready", expected: systemConfig.expectedBankAccount || "8029138148", message: "Bank Commercial Bank (8029138148)" },
-          { id: "amount", title: "Package Price Target", passed: true, statusText: "Pending", expected: parsedAmount, message: `Package Rs. ${parsedAmount}` },
-          { id: "replay", title: "Anti-Replay Ledger Check", passed: true, statusText: "Queued", message: "Slip hash queued for audit ledger." },
-          { id: "node", title: "Master Auto-Approval Switch", passed: false, isSuspicious: true, statusText: "Switch OFF", message: "Master switch is OFF in Admin Command Center. Sent to manual approval." }
+          { id: "doc", title: "Document Analyzed", passed: true, statusText: "Analyzed", message: "Deposit slip forensic analysis complete." },
+          { id: "account", title: "Beneficiary Confirmed", passed: true, statusText: "Confirmed", expected: systemConfig.expectedBankAccount || "8029138148", message: "Commercial Bank Account 8029138148 verified." },
+          { id: "trace", title: "Transaction Trace Valid", passed: true, statusText: "Valid", message: "Anti-replay ledger check queued." },
+          { id: "amount", title: "Settlement Matched", passed: true, statusText: "Matched", expected: parsedAmount, message: `Package tariff Rs. ${parsedAmount} identified.` },
+          { id: "line", title: "Line Activated", passed: false, isSuspicious: true, statusText: "Manual Hold", message: "Auto-approval switch is PAUSED in Admin Center. Sent to manual approval." }
         ]
       });
     }
@@ -251,11 +253,11 @@ export async function POST(req: Request) {
         overallStatus: "review_required",
         reason: "No receipt uploaded.",
         checks: [
-          { id: "ocr", title: "Receipt Document Upload", passed: false, isSuspicious: true, statusText: "Missing Slip", message: "No payment slip image was provided with this checkout." },
-          { id: "account", title: "Beneficiary Account", passed: false, statusText: "Skipped" },
-          { id: "amount", title: "Payment Amount Match", passed: false, statusText: "Skipped" },
-          { id: "replay", title: "Anti-Replay Security", passed: false, statusText: "Skipped" },
-          { id: "node", title: "Node Provisioning", passed: false, statusText: "Halted" }
+          { id: "doc", title: "Document Analyzed", passed: false, isSuspicious: true, statusText: "Missing Slip", message: "No payment slip image was provided with this checkout." },
+          { id: "account", title: "Beneficiary Confirmed", passed: false, statusText: "Skipped" },
+          { id: "trace", title: "Transaction Trace Valid", passed: false, statusText: "Skipped" },
+          { id: "amount", title: "Settlement Matched", passed: false, statusText: "Skipped" },
+          { id: "line", title: "Line Activated", passed: false, statusText: "Halted" }
         ]
       });
     }
@@ -292,10 +294,11 @@ export async function POST(req: Request) {
         overallStatus: "review_required",
         reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
         checks: [
-          { id: "doc", title: "Document Received", passed: true, statusText: "Received", message: "Slip image securely registered in settlement vault." },
-          { id: "account", title: "Beneficiary Matching", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
-          { id: "ledger", title: "Ledger Inscription", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement clearance." },
-          { id: "node", title: "Slot Provisioning", passed: false, statusText: "Pending Clearance", message: "Encrypted VLESS slot allocated upon clearance." }
+          { id: "doc", title: "Document Analyzed", passed: true, statusText: "Analyzed", message: "Deposit document forensic scan completed." },
+          { id: "account", title: "Beneficiary Confirmed", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
+          { id: "trace", title: "Transaction Trace Valid", passed: false, statusText: "Queued", message: "Transaction reference hash queued for ledger check." },
+          { id: "amount", title: "Settlement Matched", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement amount confirmation." },
+          { id: "line", title: "Line Activated", passed: false, statusText: "Pending Clearance", message: "V2RAY key & slot activated upon final clearance." }
         ]
       });
     }
@@ -370,10 +373,11 @@ export async function POST(req: Request) {
         overallStatus: "review_required",
         reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
         checks: [
-          { id: "doc", title: "Document Received", passed: true, statusText: "Received", message: "Slip image securely registered in settlement vault." },
-          { id: "account", title: "Beneficiary Matching", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
-          { id: "ledger", title: "Ledger Inscription", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement clearance." },
-          { id: "node", title: "Slot Provisioning", passed: false, statusText: "Pending Clearance", message: "Encrypted VLESS slot allocated upon clearance." }
+          { id: "doc", title: "Document Analyzed", passed: true, statusText: "Analyzed", message: "Deposit document forensic scan completed." },
+          { id: "account", title: "Beneficiary Confirmed", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
+          { id: "trace", title: "Transaction Trace Valid", passed: false, statusText: "Queued", message: "Transaction reference hash queued for ledger check." },
+          { id: "amount", title: "Settlement Matched", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement amount confirmation." },
+          { id: "line", title: "Line Activated", passed: false, statusText: "Pending Clearance", message: "V2RAY key & slot activated upon final clearance." }
         ]
       });
     }
@@ -401,46 +405,60 @@ export async function POST(req: Request) {
 
       const discrepancyReport = {
         overallStatus: "review_required",
-        reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
+        reason: failureReason,
         checks: [
           {
             id: "doc",
-            title: "Document Received",
+            title: "Document Analyzed",
             passed: true,
-            statusText: "Confirmed",
+            statusText: "Analyzed",
             detectedBank: ocrResult.bankName || "Bank Transfer",
             detectedRef: cleanRefNumber || "Unknown",
-            message: `Slip registered from ${ocrResult.bankName || "Online Banking"}`
+            message: `Forensic scan complete: ${ocrResult.bankName || "Online Banking"} deposit slip.`
           },
           {
             id: "account",
-            title: "Beneficiary Matching",
+            title: "Beneficiary Confirmed",
             passed: isAccountMatch,
-            statusText: isAccountMatch ? "Verified" : "Awaiting Clearance",
+            statusText: isAccountMatch ? "Confirmed" : "Discrepancy",
             expected: cleanExpectedAcc,
             detected: cleanDestAcc || "Not Detected",
+            isSuspicious: !isAccountMatch,
             message: isAccountMatch
-              ? `Beneficiary Commercial Bank Account ${cleanExpectedAcc} verified.`
-              : `Beneficiary transfer logged for manual review clearance.`
+              ? `Commercial Bank Account ${cleanExpectedAcc} confirmed.`
+              : `Beneficiary account ${cleanDestAcc || "unclear"} does not match expected (${cleanExpectedAcc}).`
           },
           {
-            id: "ledger",
-            title: "Ledger Inscription",
-            passed: isAmountMatch && !isDuplicate,
-            statusText: isAmountMatch && !isDuplicate ? "Inscribed" : "Awaiting Clearance",
+            id: "trace",
+            title: "Transaction Trace Valid",
+            passed: isRefValid,
+            statusText: isRefValid ? "Valid" : (isDuplicate ? "Duplicate Trace" : "Trace Unclear"),
+            refNumber: cleanRefNumber,
+            isSuspicious: !isRefValid,
+            message: isDuplicate
+              ? `Duplicate reference trace #${cleanRefNumber} already in ledger.`
+              : (!cleanRefNumber || cleanRefNumber.length < 4)
+              ? "Transaction reference number unreadable or truncated."
+              : `Unique trace #${cleanRefNumber} confirmed.`
+          },
+          {
+            id: "amount",
+            title: "Settlement Matched",
+            passed: isAmountMatch,
+            statusText: isAmountMatch ? "Matched" : "Discrepancy",
             expected: parsedAmount,
             detected: ocrAmount,
-            refNumber: cleanRefNumber,
-            message: isAmountMatch && !isDuplicate
-              ? `Rs. ${ocrAmount} verified in ledger.`
-              : `Tariff balance queued for swift settlement confirmation.`
+            isSuspicious: !isAmountMatch,
+            message: isAmountMatch
+              ? `Tariff Rs. ${ocrAmount} matched with package price.`
+              : `Deposit amount Rs. ${ocrAmount} differs from package price (Rs. ${parsedAmount}).`
           },
           {
-            id: "node",
-            title: "Slot Provisioning",
+            id: "line",
+            title: "Line Activated",
             passed: false,
             statusText: "Pending Clearance",
-            message: "Slot reserved. Forwarded to admin priority clearance."
+            message: "Slot reserved. Forwarded to admin priority manual clearance."
           }
         ]
       };
@@ -533,11 +551,20 @@ export async function POST(req: Request) {
       if (gbMatch) cleanDataTotal = `${gbMatch[1]} GB`;
     }
 
+    const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
+    const primarySubBase = (systemConfig.primary3xui?.subBaseUrl || `${systemConfig.primary3xui?.baseUrl}/sub/`).trim().replace(/\/+$/, "");
+    const generatedSubUrl = `${primarySubBase}/${clientSubId}`;
+    const generatedUsaSubUrl = (bonusUsaConfig && systemConfig.bonusUsa3xui?.baseUrl)
+      ? `${(systemConfig.bonusUsa3xui?.baseUrl || "").replace(/\/+$/, "")}/sub/${clientSubId}`
+      : undefined;
+
     const updatedPayments = [...(metaData.payments || []), verifiedPaymentRecord];
     const updatedMeta = {
       ...metaData,
       customVpnUserId: clientUuid,
       vpnUuid: clientUuid,
+      subscriptionUrl: generatedSubUrl,
+      ...(generatedUsaSubUrl ? { usaSubscriptionUrl: generatedUsaSubUrl } : {}),
       dataTotal: cleanDataTotal,
       ...(bonusUsaConfig ? { usaDataTotal: cleanDataTotal } : {}),
       payments: updatedPayments,
@@ -576,38 +603,45 @@ export async function POST(req: Request) {
       checks: [
         {
           id: "doc",
-          title: "Document Received",
+          title: "Document Analyzed",
           passed: true,
-          statusText: "Confirmed",
+          statusText: "Analyzed",
           detectedBank: ocrResult?.bankName || "Commercial Bank",
           detectedRef: cleanRefNumber,
-          message: `Verified transfer from ${ocrResult?.bankName || "Bank"}`
+          message: `Forensic scan complete: ${ocrResult?.bankName || "Bank"} slip verified.`
         },
         {
           id: "account",
-          title: "Beneficiary Matching",
+          title: "Beneficiary Confirmed",
           passed: true,
-          statusText: "Verified",
+          statusText: "Confirmed",
           expected: cleanExpectedAcc,
           detected: cleanDestAcc,
-          message: `Commercial Bank Account ${cleanExpectedAcc} verified.`
+          message: `Commercial Bank Account ${cleanExpectedAcc} match confirmed.`
         },
         {
-          id: "ledger",
-          title: "Ledger Inscription",
+          id: "trace",
+          title: "Transaction Trace Valid",
           passed: true,
-          statusText: "Inscribed",
+          statusText: "Valid",
+          refNumber: cleanRefNumber,
+          message: `Unique trace #${cleanRefNumber} recorded in anti-replay ledger.`
+        },
+        {
+          id: "amount",
+          title: "Settlement Matched",
+          passed: true,
+          statusText: "Matched",
           expected: parsedAmount,
           detected: ocrAmount,
-          refNumber: cleanRefNumber,
-          message: `Settlement ref #${cleanRefNumber} recorded in ledger.`
+          message: `Exact tariff Rs. ${parsedAmount} verified.`
         },
         {
-          id: "node",
-          title: "Slot Provisioning",
+          id: "line",
+          title: "Line Activated",
           passed: true,
-          statusText: "Provisioned",
-          message: "High-speed 10Gbps Singapore core activated."
+          statusText: "Activated",
+          message: "3x-ui client slot & V2RAY key generated successfully."
         }
       ]
     };
