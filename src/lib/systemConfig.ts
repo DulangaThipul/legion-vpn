@@ -364,10 +364,10 @@ export async function authenticate3xui(nodeConfig: {
       body: loginPayload
     });
 
-    // Fallback to x-www-form-urlencoded if 404 or 415 returned on JSON
-    if (loginRes.statusCode === 404 || loginRes.statusCode === 415) {
+    // Fallback to x-www-form-urlencoded if JSON failed or rejected
+    if (loginRes.statusCode !== 200 || (loginRes.json && loginRes.json.success === false)) {
       const formBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-      loginRes = await httpRequestUnsafe(`${baseUrl}/login`, {
+      const fallbackRes = await httpRequestUnsafe(`${baseUrl}/login`, {
         method: "POST",
         headers: {
           ...loginHeaders,
@@ -375,6 +375,9 @@ export async function authenticate3xui(nodeConfig: {
         },
         body: formBody
       });
+      if (fallbackRes.statusCode === 200 && (!fallbackRes.json || fallbackRes.json.success !== false)) {
+        loginRes = fallbackRes;
+      }
     }
 
     const postCookies = (loginRes.cookies || []).map(c => c.split(";")[0]).join("; ");
@@ -391,15 +394,23 @@ export async function authenticate3xui(nodeConfig: {
   }
 
   let result: any = null;
+  const isHttp = targetUrl.startsWith("http://");
+  const altUrl = isHttp
+    ? targetUrl.replace(/^http:\/\//, "https://")
+    : targetUrl.replace(/^https:\/\//, "http://");
+
   try {
     result = await attemptLogin(targetUrl);
+    // If targetUrl was http:// and failed (e.g. 400 Bad Request against HTTPS port, or 404), try altUrl!
+    if (result.statusCode !== 200 || (result.json && result.json.success === false)) {
+      try {
+        const altResult = await attemptLogin(altUrl);
+        if (altResult.statusCode === 200 && (!altResult.json || altResult.json.success !== false)) {
+          result = altResult;
+        }
+      } catch {}
+    }
   } catch (err: any) {
-    // Protocol Auto-Healing: If user entered http:// and VPS is running HTTPS (or vice versa), auto-retry!
-    const isHttp = targetUrl.startsWith("http://");
-    const altUrl = isHttp
-      ? targetUrl.replace(/^http:\/\//, "https://")
-      : targetUrl.replace(/^https:\/\//, "http://");
-
     try {
       result = await attemptLogin(altUrl);
     } catch {
