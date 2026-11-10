@@ -859,14 +859,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const parseConfigs = (rawText: string | null) => {
     if (!rawText || typeof rawText !== "string" || !rawText.trim()) return [];
     
+    const trimmed = rawText.trim();
+    // Safety guard: If rawText is JSON metadata or does not contain real VPN protocol URLs, reject it
+    if (trimmed.startsWith("{") && !trimmed.includes("vless://") && !trimmed.includes("vmess://")) {
+      return [];
+    }
+
     let configs: { name: string; code: string }[] = [];
 
     try {
-      if (rawText.trim().startsWith("[") || rawText.trim().startsWith("{")) {
-        const parsed = JSON.parse(rawText);
+      if (trimmed.startsWith("[") && trimmed.endsWith("]") && !trimmed.startsWith("[ [") && (trimmed.includes("vless://") || trimmed.includes("vmess://"))) {
+        const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
           configs = parsed
-            .filter((item: any) => item && typeof item === "object" && typeof item.code === "string" && item.code.trim().length > 0)
+            .filter((item: any) => item && typeof item === "object" && typeof item.code === "string" && (item.code.startsWith("vless://") || item.code.startsWith("vmess://") || item.code.startsWith("trojan://") || item.code.startsWith("ss://")))
             .map((item: any, idx: number) => ({
               name: (typeof item.name === "string" && item.name.trim()) ? item.name.replace(/📦/g, "").replace(/[\[\]]/g, "").trim() : `Server ${idx + 1}`,
               code: item.code.trim()
@@ -878,20 +884,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     if (configs.length === 0) {
       try {
         const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
-        const matches = [...rawText.matchAll(regex)];
+        const matches = [...trimmed.matchAll(regex)];
         if (matches.length > 0) {
           configs = matches
-            .filter(m => m && m[1] !== undefined && m[2] !== undefined && m[2].trim().length > 0)
+            .filter(m => m && m[1] !== undefined && m[2] !== undefined && (m[2].includes("vless://") || m[2].includes("vmess://") || m[2].includes("trojan://") || m[2].includes("ss://")))
             .map(m => ({
               name: (m[1] || "").replace(/📦/g, "").replace(/[\[\]]/g, "").trim(),
               code: (m[2] || "").trim()
             }));
-        } else if (!rawText.includes("Payment Verifying")) {
-          const vlessLinks = rawText.match(/vless:\/\/[^\s]+/g);
+        } else if (!trimmed.includes("Payment Verifying")) {
+          const vlessLinks = trimmed.match(/(?:vless|vmess|trojan|ss):\/\/[^\s]+/g);
           if (vlessLinks) {
             configs = vlessLinks.map((link, i) => ({ name: `Premium Server ${i + 1}`, code: link.trim() }));
-          } else if (rawText.trim().length > 5) {
-            configs = [{ name: "VPN Configuration Details", code: rawText.trim() }];
           }
         }
       } catch {
@@ -899,10 +903,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     }
 
-    // Filter out payment verifying, remove empty codes, and deduplicate strictly by code
+    // Filter out payment verifying, remove empty codes, ensure only real protocol links, and deduplicate strictly by code
     const seenCodes = new Set<string>();
     const deduplicated = configs
       .filter(c => c && c.code && c.code.trim().length > 0 && !c.name.toLowerCase().includes("payment verifying"))
+      .filter(c => c.code.startsWith("vless://") || c.code.startsWith("vmess://") || c.code.startsWith("trojan://") || c.code.startsWith("ss://"))
       .filter(c => {
         const normCode = c.code.trim();
         if (seenCodes.has(normCode)) return false;
@@ -915,16 +920,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   const activeConfigs = useMemo(() => parseConfigs(user?.vpnConfigKey), [user?.vpnConfigKey]);
 
-  const has3xuiSub = useMemo(() => {
-    return Boolean(
-      metaData.subscriptionUrl ||
-      metaData.usaSubscriptionUrl ||
-      (typeof user?.subscriptionLink === "string" && (user.subscriptionLink.includes("http://") || user.subscriptionLink.includes("https://")))
-    );
+  const validSubscriptionUrl = useMemo(() => {
+    if (metaData.subscriptionUrl && typeof metaData.subscriptionUrl === "string" && metaData.subscriptionUrl.startsWith("http")) {
+      return metaData.subscriptionUrl.trim();
+    }
+    if (metaData.usaSubscriptionUrl && typeof metaData.usaSubscriptionUrl === "string" && metaData.usaSubscriptionUrl.startsWith("http")) {
+      return metaData.usaSubscriptionUrl.trim();
+    }
+    if (typeof user?.subscriptionLink === "string") {
+      const clean = user.subscriptionLink.trim();
+      if (!clean.startsWith("{") && !clean.startsWith("[") && (clean.startsWith("http://") || clean.startsWith("https://"))) {
+        return clean;
+      }
+    }
+    return "";
   }, [metaData.subscriptionUrl, metaData.usaSubscriptionUrl, user?.subscriptionLink]);
 
-  // 🛡️ ACTIVE WHEN EITHER ASSIGNED CONFIGS ARE VERIFIED OR 3X-UI SUBSCRIPTION LINK IS PRESENT
-  const isVpnActivated = (activeConfigs.length > 0 && user?.vpnStatus === "Active") || has3xuiSub;
+  const hasSubUrl = Boolean(validSubscriptionUrl);
+  const has3xuiSub = hasSubUrl;
+
+  // 🛡️ ACTIVE WHEN EITHER ASSIGNED CONFIGS ARE VERIFIED OR CLOUD SUBSCRIPTION LINK IS PRESENT
+  const isVpnActivated = (activeConfigs.length > 0 && user?.vpnStatus === "Active") || hasSubUrl;
 
   // 🚀 REAL-TIME VERIFICATION & REVIEW STATUS CHECK
   const pendingOrders = useMemo(() => {
@@ -3920,21 +3936,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       );
                     })}
                   </div>
-               ) : has3xuiSub ? (
+               ) : hasSubUrl ? (
                   <div style={{ background: "linear-gradient(180deg, rgba(16, 12, 34, 0.95) 0%, rgba(10, 8, 22, 0.98) 100%)", border: "1px solid rgba(168, 85, 247, 0.4)", borderRadius: "18px", padding: "1.6rem", boxShadow: "0 12px 35px rgba(0,0,0,0.7), 0 0 25px rgba(168, 85, 247, 0.15)" }}>
                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
                        <div>
                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                            <span style={{ fontSize: "0.72rem", background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", border: "1px solid rgba(34, 197, 94, 0.35)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                             ● 3x-ui Live Auto-Sync Active
+                             ● LEGION High-Speed Core Sync
                            </span>
                            <span style={{ fontSize: "0.72rem", background: "rgba(168, 85, 247, 0.18)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.35)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                             Official Subscription Hub
+                             LEGION Node Hub
                            </span>
                          </div>
                          <h3 style={{ margin: "4px 0 0 0", color: "#FFF", fontSize: "1.25rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                           <span>Your 3x-ui VPN Subscription</span>
+                           <span>Your Cloud Subscription URL</span>
                          </h3>
                          <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: "0.83rem", maxWidth: "600px", lineHeight: 1.5 }}>
                            Import this single subscription URL into your VPN App (v2rayNG, Sing-box, Streisand, Nekobox) to automatically download and sync all your server lines.
@@ -3944,8 +3960,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                        <button
                          type="button"
                          onClick={() => {
-                           const subUrl = metaData.subscriptionUrl || metaData.usaSubscriptionUrl || user?.subscriptionLink || "";
-                           navigator.clipboard.writeText(subUrl);
+                           navigator.clipboard.writeText(validSubscriptionUrl);
                            setCopiedConfigIndex(9999);
                            setTimeout(() => setCopiedConfigIndex(null), 2000);
                          }}
@@ -3979,13 +3994,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                      </div>
 
                      <div style={{ background: "#05050c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem", wordBreak: "break-all", fontFamily: "monospace", color: "#38bdf8", fontSize: "0.82rem" }}>
-                       {metaData.subscriptionUrl || metaData.usaSubscriptionUrl || user?.subscriptionLink || "https://..."}
+                       {validSubscriptionUrl}
                      </div>
                   </div>
                ) : (
-                  <div style={{ padding: "3rem", textAlign: "center", background: "rgba(14, 14, 23, 0.75)", backdropFilter: "blur(12px)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                     <p style={{ color: "#9ca3af", fontSize: "1.05rem", margin: "0 0 1rem 0" }}>No active configurations assigned yet.</p>
-                     <button onClick={() => setActiveTab("buy")} style={{ background: "linear-gradient(90deg, #4f46e5, #7c3aed)", color: "#FFF", border: "none", padding: "0.8rem 2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}>Buy from Store</button>
+                  <div className="rounded-2xl border border-violet-500/20 bg-violet-950/20 p-8 text-center backdrop-blur-md">
+                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10 text-violet-400">
+                       <svg className="h-6 w-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                         <circle cx="12" cy="12" r="10" />
+                         <polyline points="12 6 12 12 16 14" />
+                       </svg>
+                     </div>
+                     <h4 className="text-base font-semibold text-slate-200">Dedicated Node Key Allocation in Progress</h4>
+                     <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
+                       Your cryptographic line and subscription link will appear here immediately upon order clearance.
+                     </p>
+                     <button 
+                       onClick={() => setActiveTab("buy")} 
+                       className="mt-4 px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 transition-all shadow-lg shadow-violet-900/30"
+                     >
+                       Buy from Store
+                     </button>
                   </div>
                )}
 
@@ -4624,38 +4653,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
               <div style={{
                 width: "100%",
                 maxWidth: "540px",
-                background: "linear-gradient(180deg, #0e0f14 0%, #08090c 100%)",
-                border: "1px solid rgba(212, 175, 55, 0.25)",
+                maxHeight: "85vh",
+                overflowY: "auto",
+                background: "linear-gradient(180deg, #0c0a17 0%, #080711 100%)",
+                border: "1px solid rgba(139, 92, 246, 0.25)",
                 borderRadius: "24px",
-                padding: "1.8rem 1.8rem",
+                padding: "1.8rem 1.8rem 9rem 1.8rem",
                 textAlign: "left",
-                boxShadow: "0 35px 80px rgba(0,0,0,0.92), 0 0 30px rgba(212, 175, 55, 0.12), inset 0 1px 1px rgba(255,255,255,0.08)",
-                position: "relative",
-                overflow: "hidden"
+                boxShadow: "0 35px 80px rgba(0,0,0,0.92), 0 0 35px rgba(139, 92, 246, 0.15), inset 0 1px 1px rgba(255,255,255,0.08)",
+                position: "relative"
               }}>
-
-                {/* ⚠️ ANTI-FRAUD WARNING BANNER */}
-                <div style={{
-                  background: "rgba(239, 68, 68, 0.08)",
-                  border: "1px solid rgba(239, 68, 68, 0.28)",
-                  borderRadius: "12px",
-                  padding: "0.65rem 0.9rem",
-                  marginBottom: "1.2rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px"
-                }}>
-                  <div style={{ flexShrink: 0, width: "26px", height: "26px", borderRadius: "50%", background: "rgba(239, 68, 68, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                      <line x1="12" y1="9" x2="12" y2="13" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
-                    </svg>
-                  </div>
-                  <p style={{ margin: 0, fontSize: "0.74rem", color: "#fca5a5", lineHeight: 1.4, fontWeight: "500" }}>
-                    <strong style={{ color: "#ef4444", fontWeight: "700" }}>Notice:</strong> If you use a fake or duplicate payment slip, your account and IP could get permanently banned.
-                  </p>
-                </div>
 
                 {/* INSTITUTIONAL SETTLEMENT HEADER BADGE */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.3rem", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -4664,16 +4671,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       width: "7px",
                       height: "7px",
                       borderRadius: "50%",
-                      background: (laborResult?.autoApproved || laborResult?.verified) ? "#10b981" : "#d4af37",
+                      background: (laborResult?.autoApproved || laborResult?.verified) ? "#10b981" : "#8b5cf6",
                       display: "inline-block",
-                      boxShadow: (laborResult?.autoApproved || laborResult?.verified) ? "0 0 8px rgba(16,185,129,0.6)" : "0 0 8px rgba(212,175,55,0.6)"
+                      boxShadow: (laborResult?.autoApproved || laborResult?.verified) ? "0 0 8px rgba(16,185,129,0.6)" : "0 0 8px rgba(139,92,246,0.6)"
                     }} />
-                    <span style={{ fontSize: "0.7rem", color: "#d4af37", fontFamily: "monospace", letterSpacing: "1.4px", fontWeight: "600", textTransform: "uppercase" }}>
-                      BANK TRANSFER CLEARANCE // AUDIT LEDGER
+                    <span style={{ fontSize: "0.7rem", color: "#c4b5fd", background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.2)", padding: "2px 8px", borderRadius: "12px", letterSpacing: "1.2px", fontWeight: "600", textTransform: "uppercase" }}>
+                      SECURE ORDER SETTLEMENT
                     </span>
                   </div>
-                  <span style={{ fontSize: "0.68rem", color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "monospace" }}>
-                    COMMERCIAL BANK GATEWAY
+                  <span style={{ fontSize: "0.68rem", color: "#94a3b8", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "monospace" }}>
+                    INSTITUTIONAL GATEWAY
                   </span>
                 </div>
 
@@ -4686,28 +4693,28 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         height: "60px",
                         margin: "0 auto 1rem auto",
                         borderRadius: "50%",
-                        border: "2px solid rgba(212, 175, 55, 0.2)",
-                        borderTopColor: "#d4af37",
+                        border: "2px solid rgba(139, 92, 246, 0.25)",
+                        borderTopColor: "#8b5cf6",
                         animation: "spin 1s linear infinite",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 0 25px rgba(212, 175, 55, 0.2)"
+                        boxShadow: "0 0 25px rgba(139, 92, 246, 0.25)"
                       }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="2" y="5" width="20" height="14" rx="2" />
                           <line x1="2" y1="10" x2="22" y2="10" />
                         </svg>
                       </div>
                       <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600", letterSpacing: "0.3px" }}>
-                        Bank Transfer Clearance
+                        Deposit Clearance in Progress
                       </h3>
-                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: "0 0 1rem 0", lineHeight: 1.5, minHeight: "20px" }}>
-                        {LABOR_STAGES[laborStage] || "Performing real-time audit against Commercial Bank payment records..."}
+                      <p style={{ color: "#94a3b8", fontSize: "0.82rem", margin: "0 0 1rem 0", lineHeight: 1.5, minHeight: "20px" }}>
+                        {LABOR_STAGES[laborStage] || "Cross-referencing transaction records with institutional gateway..."}
                       </p>
                       {/* SUBTLE PROGRESS BAR */}
                       <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "4px", overflow: "hidden" }}>
-                        <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #d4af37, #fef08a)", transition: "width 0.8s ease" }} />
+                        <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #8b5cf6, #6366f1)", transition: "width 0.8s ease" }} />
                       </div>
                     </div>
                   ) : (laborResult.autoApproved || laborResult.verified) ? (
@@ -4742,14 +4749,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         height: "60px",
                         margin: "0 auto 1rem auto",
                         borderRadius: "50%",
-                        background: "rgba(212, 175, 55, 0.12)",
-                        border: "2px solid rgba(212, 175, 55, 0.45)",
+                        background: "rgba(139, 92, 246, 0.12)",
+                        border: "2px solid rgba(139, 92, 246, 0.45)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 0 25px rgba(212, 175, 55, 0.2)"
+                        boxShadow: "0 0 25px rgba(139, 92, 246, 0.2)"
                       }}>
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                           <polyline points="9 12 11 14 15 10" />
                         </svg>
@@ -4814,7 +4821,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       {
                         id: "line",
                         title: "Line Activated",
-                        activeLabel: "Creating dedicated V2RAY key & 3x-ui client slot...",
+                        activeLabel: "Creating dedicated V2RAY key & secure node slot...",
                         passedText: "10Gbps Singapore core slot & subscription link generated.",
                         failedText: "Dedicated slot allocated upon final clearance."
                       }
@@ -4833,7 +4840,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           detailNode = <span style={{ color: "#9ca3af" }}>{step.passedText}</span>;
                         } else if (idx === laborStage) {
                           isScanning = true;
-                          detailNode = <span style={{ color: "#d4af37" }}>{step.activeLabel}</span>;
+                          detailNode = <span style={{ color: "#c4b5fd" }}>{step.activeLabel}</span>;
                         } else {
                           detailNode = <span style={{ color: "#6b7280" }}>Queued in settlement pipeline...</span>;
                         }
@@ -4919,21 +4926,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               : isSuspicious
                               ? "rgba(239, 68, 68, 0.18)"
                               : isScanning
-                              ? "rgba(212, 175, 55, 0.18)"
+                              ? "rgba(139, 92, 246, 0.18)"
                               : "rgba(255, 255, 255, 0.05)",
                             border: isPassed
                               ? "2px solid #10b981"
                               : isSuspicious
                               ? "2px solid #ef4444"
                               : isScanning
-                              ? "2px solid #d4af37"
+                              ? "2px solid #8b5cf6"
                               : "2px solid rgba(255, 255, 255, 0.14)",
                             boxShadow: isPassed
                               ? "0 0 10px rgba(16, 185, 129, 0.35)"
                               : isSuspicious
                               ? "0 0 10px rgba(239, 68, 68, 0.4)"
                               : isScanning
-                              ? "0 0 12px rgba(212, 175, 55, 0.4)"
+                              ? "0 0 12px rgba(139, 92, 246, 0.4)"
                               : "none",
                             display: "flex",
                             alignItems: "center",
@@ -4955,9 +4962,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                 width: "8px",
                                 height: "8px",
                                 borderRadius: "50%",
-                                background: "#d4af37",
+                                background: "#8b5cf6",
                                 display: "inline-block",
-                                boxShadow: "0 0 8px #d4af37",
+                                boxShadow: "0 0 8px #8b5cf6",
                                 animation: "pulse 1.2s ease-in-out infinite"
                               }} />
                             ) : (
@@ -4983,7 +4990,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               : isPassed
                               ? "1px solid rgba(16, 185, 129, 0.25)"
                               : isScanning
-                              ? "1px solid rgba(212, 175, 55, 0.32)"
+                              ? "1px solid rgba(139, 92, 246, 0.32)"
                               : "1px solid rgba(255, 255, 255, 0.06)",
                             borderRadius: "12px",
                             padding: "0.65rem 0.95rem",
@@ -4993,7 +5000,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               <span style={{
                                 fontSize: "0.84rem",
                                 fontWeight: "600",
-                                color: isPassed ? "#ecfdf5" : isSuspicious ? "#fef2f2" : isScanning ? "#fef08a" : "#d1d5db"
+                                color: isPassed ? "#ecfdf5" : isSuspicious ? "#fef2f2" : isScanning ? "#e9d5ff" : "#d1d5db"
                               }}>
                                 {step.title}
                               </span>
@@ -5009,14 +5016,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                   : isSuspicious
                                   ? "rgba(239, 68, 68, 0.15)"
                                   : isScanning
-                                  ? "rgba(212, 175, 55, 0.1)"
+                                  ? "rgba(139, 92, 246, 0.12)"
                                   : "rgba(255, 255, 255, 0.04)",
                                 color: isPassed
                                   ? "#34d399"
                                   : isSuspicious
                                   ? "#f87171"
                                   : isScanning
-                                  ? "#d4af37"
+                                  ? "#c4b5fd"
                                   : "#9ca3af",
                                 border: `1px solid ${
                                   isPassed
@@ -5024,7 +5031,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                                     : isSuspicious
                                     ? "rgba(239,68,68,0.35)"
                                     : isScanning
-                                    ? "rgba(212,175,55,0.25)"
+                                    ? "rgba(139,92,246,0.25)"
                                     : "rgba(255,255,255,0.08)"
                                 }`
                               }}>
@@ -5089,22 +5096,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, I uploaded my payment slip for ${modalPackage?.name} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
                         target="_blank"
                         rel="noreferrer"
+                        className="w-full py-3.5 rounded-xl text-center font-semibold text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 active:scale-[0.98] transition-all"
                         style={{
-                          width: "100%",
-                          padding: "0.85rem",
                           background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
-                          color: "#FFF",
-                          borderRadius: "30px",
-                          fontSize: "0.88rem",
-                          fontWeight: "600",
                           textDecoration: "none",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                          boxSizing: "border-box",
-                          boxShadow: "0 6px 18px rgba(5,150,105,0.25)",
-                          transition: "all 0.2s ease"
+                          boxSizing: "border-box"
                         }}
                       >
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
@@ -5119,18 +5115,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           closeCheckout();
                           setActiveTab("configs");
                         }}
-                        style={{
-                          width: "100%",
-                          padding: "0.8rem",
-                          background: "rgba(255, 255, 255, 0.04)",
-                          color: "#9ca3af",
-                          border: "1px solid rgba(255, 255, 255, 0.1)",
-                          borderRadius: "30px",
-                          fontSize: "0.85rem",
-                          fontWeight: "500",
-                          cursor: "pointer",
-                          transition: "all 0.2s ease"
-                        }}
+                        className="w-full py-3.5 rounded-xl border border-white/10 bg-white/5 text-slate-300 font-medium active:scale-[0.98] transition-all hover:bg-white/10 text-center cursor-pointer"
                       >
                         Close &amp; Check Later
                       </button>
