@@ -215,18 +215,17 @@ export async function POST(req: Request) {
         success: true,
         autoApproved: false,
         status: "Verifying",
-        message: reason || "Receipt received! Our team is verifying your payment manually. Config will activate shortly.",
+        message: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
         order: orderRecord,
         user: updatedUser,
         auditReport: auditReport || {
           overallStatus: "review_required",
-          reason,
+          reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
           checks: [
-            { id: "ocr", title: "Receipt OCR Extraction", passed: false, statusText: "Queued", message: reason },
-            { id: "account", title: "Beneficiary Account Audit", passed: false, statusText: "Pending", expected: systemConfig.expectedBankAccount || "8029138148" },
-            { id: "amount", title: "Payment Amount Match", passed: false, statusText: "Pending", expected: parsedAmount },
-            { id: "replay", title: "Anti-Replay Ledger Audit", passed: false, statusText: "Pending" },
-            { id: "node", title: "10Gbps VLESS Node Allocation", passed: false, statusText: "Manual Approval Required" }
+            { id: "doc", title: "Document Received", passed: true, statusText: "Received", message: "Slip image securely registered in settlement vault." },
+            { id: "account", title: "Beneficiary Matching", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
+            { id: "ledger", title: "Ledger Inscription", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement clearance." },
+            { id: "node", title: "Slot Provisioning", passed: false, statusText: "Pending Clearance", message: "Encrypted VLESS slot allocated upon clearance." }
           ]
         }
       });
@@ -285,18 +284,18 @@ export async function POST(req: Request) {
       return await fallbackToManualVerification("Unable to download receipt image for OCR scan.");
     }
 
-    // 5. OCR Analysis via Gemini with Multi-Model / Multi-Version Fallback
-    const geminiApiKey = (systemConfig.geminiApiKey || process.env.GEMINI_API_KEY || "").trim();
-    if (!geminiApiKey) {
-      return await fallbackToManualVerification("Gemini API key not configured. Queued for manual admin approval.", {
+    // 5. OCR Analysis via Groq Vision API (qwen/qwen3.8-27b)
+    const groqApiKey = (process.env.GROQ_API_KEY || systemConfig.groqApiKey || "").trim();
+    if (!groqApiKey) {
+      console.warn("[Groq Vision] GROQ_API_KEY not configured in environment or settings.");
+      return await fallbackToManualVerification("Receipt uploaded successfully. Reference number queued for swift settlement clearance.", {
         overallStatus: "review_required",
-        reason: "Gemini Vision API key is missing. Set it in Admin Settings Tab 3 or environment variables.",
+        reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
         checks: [
-          { id: "ocr", title: "Receipt OCR Kernel", passed: false, isSuspicious: true, statusText: "Key Missing", strikeText: "No Gemini Key Configured", expected: "Google AI Studio API Key", message: "Gemini API Key not configured in Admin Settings Tab 3." },
-          { id: "account", title: "Beneficiary Account Audit", passed: true, statusText: "Target: 8029138148", expected: systemConfig.expectedBankAccount || "8029138148" },
-          { id: "amount", title: "Payment Amount Match", passed: true, statusText: `Rs. ${parsedAmount}`, expected: parsedAmount },
-          { id: "replay", title: "Anti-Replay Ledger", passed: true, statusText: "Queued" },
-          { id: "node", title: "10Gbps VLESS Node Allocation", passed: false, statusText: "Pending Admin" }
+          { id: "doc", title: "Document Received", passed: true, statusText: "Received", message: "Slip image securely registered in settlement vault." },
+          { id: "account", title: "Beneficiary Matching", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
+          { id: "ledger", title: "Ledger Inscription", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement clearance." },
+          { id: "node", title: "Slot Provisioning", passed: false, statusText: "Pending Clearance", message: "Encrypted VLESS slot allocated upon clearance." }
         ]
       });
     }
@@ -311,95 +310,70 @@ export async function POST(req: Request) {
     } | null = null;
     let ocrRawDiagnostic = "";
 
-    const promptText = `You are a strict bank receipt auditor for Legion VPN Sri Lanka.
-Analyze this payment slip and extract the payment transaction details in pure JSON.
-Expected Bank Account: ${systemConfig.expectedBankAccount || "8029138148"}.
-Expected Amount: Rs. ${parsedAmount}.
-
-Output STRICT JSON only with keys:
-{
-  "bankName": string (e.g. Commercial Bank, BOC, Sampath, FriMi, etc.),
-  "destinationAccount": string (the recipient/beneficiary account number found on slip),
-  "paidAmount": number (the exact transfer amount in LKR without currency symbol),
-  "transactionDate": string (date found on slip),
-  "referenceNumber": string (unique transaction sequence/reference/audit number),
-  "isLegitimate": boolean (true if genuine bank transfer receipt, false if fake or invalid)
-}`;
-
-    const requestPayload = {
-      contents: [
-        {
-          parts: [
-            { text: promptText },
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${groqApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen3.8-27b",
+          messages: [
             {
-              inline_data: {
-                mime_type: mimeType,
-                data: imageBase64
-              }
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Extract bank transfer details as JSON: bankName, destinationAccount, paidAmount (number), transactionDate, referenceNumber, isLegitimate (boolean). Expected Account: ${systemConfig.expectedBankAccount || "8029138148"}. Expected Amount: Rs. ${parsedAmount}. Output strictly valid JSON.`
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${mimeType};base64,${imageBase64}`
+                  }
+                }
+              ]
             }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        response_mime_type: "application/json"
-      }
-    };
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1
+        }),
+        signal: AbortSignal.timeout(15000)
+      });
 
-    // Candidate endpoints to bypass Google's 404 Model/Version NotFound
-    const candidateEndpoints = [
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`
-    ];
-
-    for (const endpoint of candidateEndpoints) {
-      const cleanEndpointName = endpoint.split("?")[0].replace("https://generativelanguage.googleapis.com/", "");
-      try {
-        const geminiRes = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestPayload),
-          signal: AbortSignal.timeout(12000)
-        });
-
-        if (geminiRes.ok) {
-          const geminiJson = await geminiRes.json();
-          const textContent = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (textContent) {
-            const cleanJsonText = textContent.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+      if (groqRes.ok) {
+        const groqJson = await groqRes.json();
+        const textContent = groqJson.choices?.[0]?.message?.content || "";
+        const cleanJsonText = textContent.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+        if (cleanJsonText) {
+          try {
             ocrResult = JSON.parse(cleanJsonText);
-            if (ocrResult) {
-              console.log(`[Gemini OCR] Successfully extracted receipt via ${cleanEndpointName}`);
-              break;
-            }
+            console.log("[Groq Vision] Extracted receipt payload successfully:", ocrResult);
+          } catch (e: any) {
+            ocrRawDiagnostic = `JSON parse failed: ${e?.message}`;
+            console.warn("[Groq Vision] Parse error:", e?.message);
           }
-        } else {
-          const errBody = await geminiRes.text();
-          ocrRawDiagnostic = `${cleanEndpointName} returned HTTP ${geminiRes.status}: ${errBody.slice(0, 160)}`;
-          console.warn(`[Gemini OCR] ${cleanEndpointName} returned ${geminiRes.status}:`, errBody);
         }
-      } catch (callErr: any) {
-        ocrRawDiagnostic = `${cleanEndpointName} error: ${callErr?.message}`;
-        console.warn(`[Gemini OCR] Call error on ${cleanEndpointName}:`, callErr?.message);
+      } else {
+        const errBody = await groqRes.text();
+        ocrRawDiagnostic = `Groq HTTP ${groqRes.status}: ${errBody.slice(0, 160)}`;
+        console.warn(`[Groq Vision] Groq returned HTTP ${groqRes.status}:`, errBody);
       }
+    } catch (callErr: any) {
+      ocrRawDiagnostic = `Groq network exception: ${callErr?.message}`;
+      console.warn("[Groq Vision] Call error:", callErr?.message);
     }
 
     if (!ocrResult) {
-      return await fallbackToManualVerification(`OCR scan could not decipher receipt details clearly. (${ocrRawDiagnostic || "Unreadable text"})`, {
+      return await fallbackToManualVerification("Receipt uploaded successfully. Reference number queued for swift settlement clearance.", {
         overallStatus: "review_required",
-        reason: "OCR kernel could not extract clear text from the receipt.",
+        reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
         checks: [
-          { id: "ocr", title: "Receipt OCR Kernel", passed: false, isSuspicious: true, statusText: "Unreadable", message: `Could not decipher slip details: ${ocrRawDiagnostic || "Blurry or invalid slip"}` },
-          { id: "account", title: "Beneficiary Account Audit", passed: false, statusText: "Pending", expected: systemConfig.expectedBankAccount || "8029138148" },
-          { id: "amount", title: "Payment Amount Match", passed: false, statusText: "Pending", expected: parsedAmount },
-          { id: "replay", title: "Anti-Replay Security Check", passed: false, statusText: "Pending" },
-          { id: "node", title: "10Gbps VLESS Node Allocation", passed: false, statusText: "Queued for Manual Admin Review" }
+          { id: "doc", title: "Document Received", passed: true, statusText: "Received", message: "Slip image securely registered in settlement vault." },
+          { id: "account", title: "Beneficiary Matching", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
+          { id: "ledger", title: "Ledger Inscription", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement clearance." },
+          { id: "node", title: "Slot Provisioning", passed: false, statusText: "Pending Clearance", message: "Encrypted VLESS slot allocated upon clearance." }
         ]
       });
     }
@@ -426,62 +400,47 @@ Output STRICT JSON only with keys:
       else if (!cleanRefNumber || cleanRefNumber.length < 4) failureReason = "Transaction reference number could not be read clearly.";
 
       const discrepancyReport = {
-        overallStatus: "suspicious",
-        reason: failureReason,
+        overallStatus: "review_required",
+        reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
         checks: [
           {
-            id: "ocr",
-            title: "Receipt Data Extraction",
+            id: "doc",
+            title: "Document Received",
             passed: true,
-            statusText: "Extracted",
+            statusText: "Confirmed",
             detectedBank: ocrResult.bankName || "Bank Transfer",
             detectedRef: cleanRefNumber || "Unknown",
-            message: `Slip detected from ${ocrResult.bankName || "Online Banking"}`
+            message: `Slip registered from ${ocrResult.bankName || "Online Banking"}`
           },
           {
             id: "account",
-            title: "Beneficiary Account Audit",
+            title: "Beneficiary Matching",
             passed: isAccountMatch,
-            isSuspicious: !isAccountMatch,
-            statusText: isAccountMatch ? "Verified" : "Mismatch",
+            statusText: isAccountMatch ? "Verified" : "Awaiting Clearance",
             expected: cleanExpectedAcc,
             detected: cleanDestAcc || "Not Detected",
-            strikeText: !isAccountMatch ? (cleanDestAcc || "Wrong Account") : undefined,
             message: isAccountMatch
-              ? `Beneficiary Commercial Bank Account ${cleanExpectedAcc} Verified.`
-              : `Beneficiary Account Mismatch: Detected ${cleanDestAcc || "unclear"} (Expected ${cleanExpectedAcc})`
+              ? `Beneficiary Commercial Bank Account ${cleanExpectedAcc} verified.`
+              : `Beneficiary transfer logged for manual review clearance.`
           },
           {
-            id: "amount",
-            title: "Payment Amount Match",
-            passed: isAmountMatch,
-            isSuspicious: !isAmountMatch,
-            statusText: isAmountMatch ? "Price Matched" : "Discrepancy",
+            id: "ledger",
+            title: "Ledger Inscription",
+            passed: isAmountMatch && !isDuplicate,
+            statusText: isAmountMatch && !isDuplicate ? "Inscribed" : "Awaiting Clearance",
             expected: parsedAmount,
             detected: ocrAmount,
-            strikeText: !isAmountMatch ? `Rs. ${ocrAmount}` : undefined,
-            message: isAmountMatch
-              ? `Rs. ${ocrAmount} matches package price.`
-              : `Amount Discrepancy: Slip shows Rs. ${ocrAmount} (Package requires Rs. ${parsedAmount})`
-          },
-          {
-            id: "replay",
-            title: "Anti-Replay Ledger Check",
-            passed: !isDuplicate && Boolean(cleanRefNumber && cleanRefNumber.length >= 4),
-            isSuspicious: isDuplicate,
-            statusText: isDuplicate ? "Duplicate Used" : (cleanRefNumber ? "Unique Ref" : "Unclear Ref"),
             refNumber: cleanRefNumber,
-            strikeText: isDuplicate ? `#${cleanRefNumber}` : undefined,
-            message: isDuplicate
-              ? `Security Alert: Ref #${cleanRefNumber} is already logged in the ledger!`
-              : `Reference #${cleanRefNumber} unique & valid.`
+            message: isAmountMatch && !isDuplicate
+              ? `Rs. ${ocrAmount} verified in ledger.`
+              : `Tariff balance queued for swift settlement confirmation.`
           },
           {
             id: "node",
-            title: "10Gbps VLESS Node Allocation",
+            title: "Slot Provisioning",
             passed: false,
-            statusText: "Routed to Admin",
-            message: "Discrepancy detected. Forwarded to admin manual fast-track review."
+            statusText: "Pending Clearance",
+            message: "Slot reserved. Forwarded to admin priority clearance."
           }
         ]
       };
@@ -613,50 +572,42 @@ Output STRICT JSON only with keys:
 
     const approvedAuditReport = {
       overallStatus: "approved",
-      reason: "All security & banking guardrails passed successfully.",
+      reason: "Institutional settlement verified and cleared.",
       checks: [
         {
-          id: "ocr",
-          title: "Receipt Data Extraction",
+          id: "doc",
+          title: "Document Received",
           passed: true,
-          statusText: "Verified",
+          statusText: "Confirmed",
           detectedBank: ocrResult?.bankName || "Commercial Bank",
           detectedRef: cleanRefNumber,
-          message: `Verified genuine slip from ${ocrResult?.bankName || "Bank"}`
+          message: `Verified transfer from ${ocrResult?.bankName || "Bank"}`
         },
         {
           id: "account",
-          title: "Beneficiary Account Audit",
+          title: "Beneficiary Matching",
           passed: true,
-          statusText: "Matched",
+          statusText: "Verified",
           expected: cleanExpectedAcc,
           detected: cleanDestAcc,
-          message: `Beneficiary Account ${cleanExpectedAcc} verified.`
+          message: `Commercial Bank Account ${cleanExpectedAcc} verified.`
         },
         {
-          id: "amount",
-          title: "Payment Amount Match",
+          id: "ledger",
+          title: "Ledger Inscription",
           passed: true,
-          statusText: "Price Verified",
+          statusText: "Inscribed",
           expected: parsedAmount,
           detected: ocrAmount,
-          message: `Rs. ${ocrAmount} matches package price.`
-        },
-        {
-          id: "replay",
-          title: "Anti-Replay Ledger Audit",
-          passed: true,
-          statusText: "Unique Hash",
           refNumber: cleanRefNumber,
-          isDuplicate: false,
-          message: `Cryptographic reference #${cleanRefNumber} verified.`
+          message: `Settlement ref #${cleanRefNumber} recorded in ledger.`
         },
         {
           id: "node",
-          title: "10Gbps VLESS Node Allocation",
+          title: "Slot Provisioning",
           passed: true,
           statusText: "Provisioned",
-          message: "Account active. High-speed 10Gbps Singapore core bound."
+          message: "High-speed 10Gbps Singapore core activated."
         }
       ]
     };
