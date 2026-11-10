@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui, httpRequestUnsafe, unsafeAgent } from "@/lib/systemConfig";
-import { generateOrderConfigs, PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui, httpRequestUnsafe } from "@/lib/systemConfig";
+import { PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -29,105 +29,262 @@ function getTransformableImageUrl(url: string): string {
 }
 
 /**
- * Helper to provision or update a client on a 3x-ui Node (Dual API Paths: /panel/api/ & /xui/API/)
+ * Real 3x-ui Client Provisioning & Stream Settings Extraction
+ * Adds client to authentic 3x-ui inbound and returns real subscription URL and real VLESS key
  */
 async function provision3xuiClient(
   nodeConfig: {
     baseUrl: string;
     username: string;
     password: string;
-    inboundId: number | string;
+    inboundId?: number | string;
+    port?: number | string;
+    subBaseUrl?: string;
   },
   clientUuid: string,
   clientEmail: string,
-  totalBytes: number,
-  expiryTimeMs: number
-) {
-  if (!nodeConfig.baseUrl || !nodeConfig.username) return;
-  const cleanBase = nodeConfig.baseUrl.trim().replace(/\/+$/, "");
-  const inboundId = Number(nodeConfig.inboundId) || 1;
+  packageData: {
+    name?: string;
+    quotaGb?: number;
+    validityDays?: number;
+    isp?: string;
+    sni?: string;
+  }
+): Promise<{
+  success: boolean;
+  subscriptionUrl: string;
+  vlessKey: string;
+  subId: string;
+}> {
+  const cleanBase = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "");
+  if (!cleanBase) {
+    throw new Error("3x-ui Base URL is not configured");
+  }
 
+  const auth = await authenticate3xui(nodeConfig);
+  if (!auth.success || !auth.cookie) {
+    throw new Error(`3x-ui Auth Failed: ${auth.error || "Cannot authenticate with VPS node"}`);
+  }
+
+  const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
+  const inboundId = Number(nodeConfig.inboundId || 1);
+  const totalBytes = Number(packageData.quotaGb || 100) * 1024 * 1024 * 1024;
+  const expiryMs = Date.now() + (Number(packageData.validityDays || 30) * 86400000);
+
+  // 3x-ui expects `settings` as a stringified JSON containing the clients array
+  const clientSettingsString = JSON.stringify({
+    clients: [
+      {
+        id: clientUuid,
+        flow: "",
+        email: clientEmail,
+        limitIp: 2,
+        totalGB: totalBytes,
+        expiryTime: expiryMs,
+        enable: true,
+        tgId: "",
+        subId: clientSubId,
+        reset: 0
+      }
+    ]
+  });
+
+  const activeBase = auth.effectiveBaseUrl || cleanBase;
+  let originUrl = activeBase;
   try {
-    const auth = await authenticate3xui({
-      baseUrl: cleanBase,
-      username: nodeConfig.username,
-      password: nodeConfig.password
-    });
-    if (!auth.success || !auth.cookie) {
-      console.warn("3x-ui authentication failed:", auth.error);
-      return;
-    }
+    originUrl = new URL(activeBase).origin;
+  } catch {}
 
-    const activeBase = auth.effectiveBaseUrl || cleanBase;
-    let originUrl = activeBase;
+  const addClientEndpoints = [
+    `${activeBase}/panel/api/inbounds/addClient`,
+    `${activeBase}/panel/inbound/addClient`
+  ];
+
+  let addedSuccessfully = false;
+  let lastError = "";
+
+  for (const ep of addClientEndpoints) {
     try {
-      originUrl = new URL(activeBase).origin;
-    } catch {}
+      const addRes = await fetch(ep, {
+        method: "POST",
+        headers: {
+          "Cookie": auth.cookie,
+          "Content-Type": "application/json",
+          "Origin": originUrl,
+          "Referer": `${activeBase}/panel/inbounds`,
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+        },
+        body: JSON.stringify({
+          id: inboundId,
+          settings: clientSettingsString
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
 
-    const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
-    const clientPayload = {
-      id: inboundId,
-      settings: JSON.stringify({
-        clients: [
-          {
-            id: clientUuid,
-            email: clientEmail,
-            flow: "",
-            limitIp: 2,
-            totalGB: totalBytes,
-            expiryTime: expiryTimeMs,
-            enable: true,
-            tgId: "",
-            subId: clientSubId
-          }
-        ]
-      })
-    };
+      const resData = await addRes.json().catch(() => null);
+      if (addRes.ok && (resData?.success === true || resData?.success === undefined)) {
+        addedSuccessfully = true;
+        break;
+      } else {
+        lastError = resData?.msg || `HTTP ${addRes.status}`;
+      }
+    } catch (err: any) {
+      lastError = err?.message || "Fetch failed";
+    }
+  }
 
-    const clientHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-      "Cookie": auth.cookie,
-      "Origin": originUrl,
-      "Referer": `${activeBase}/`,
-      "Accept": "application/json, text/plain, */*",
-      "X-Requested-With": "XMLHttpRequest",
-      ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-    };
-
-    // 1. Try addClient: /panel/api/ path first, then /xui/API/ path fallback
-    let added = false;
-    for (const addPath of ["/panel/api/inbounds/addClient", "/xui/API/inbounds/addClient"]) {
+  // Fallback to httpRequestUnsafe (handles self-signed certificates on VPS seamlessly)
+  if (!addedSuccessfully) {
+    for (const ep of addClientEndpoints) {
       try {
-        const res = await httpRequestUnsafe(`${activeBase}${addPath}`, {
+        const res = await httpRequestUnsafe(ep, {
           method: "POST",
-          headers: clientHeaders,
-          body: JSON.stringify(clientPayload),
-          timeout: 5000
+          headers: {
+            "Cookie": auth.cookie,
+            "Content-Type": "application/json",
+            "Origin": originUrl,
+            "Referer": `${activeBase}/panel/inbounds`,
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+          },
+          body: JSON.stringify({
+            id: inboundId,
+            settings: clientSettingsString
+          }),
+          timeout: 10000
         });
-        if (res.statusCode === 200 && res.json?.success) {
-          added = true;
+
+        if (res.statusCode >= 200 && res.statusCode < 300 && (res.json?.success === true || res.json?.success === undefined)) {
+          addedSuccessfully = true;
+          break;
+        } else {
+          lastError = res.json?.msg || `HTTP ${res.statusCode}`;
+        }
+      } catch (err: any) {
+        lastError = err?.message || lastError;
+      }
+    }
+  }
+
+  // If client already exists (e.g. renewal or re-order), attempt updateClient
+  if (!addedSuccessfully && (lastError.toLowerCase().includes("duplicate") || lastError.toLowerCase().includes("exist") || lastError.toLowerCase().includes("already"))) {
+    for (const updateEp of [
+      `${activeBase}/panel/api/inbounds/updateClient/${clientUuid}`,
+      `${activeBase}/panel/inbound/updateClient/${clientUuid}`
+    ]) {
+      try {
+        const updateRes = await httpRequestUnsafe(updateEp, {
+          method: "POST",
+          headers: {
+            "Cookie": auth.cookie,
+            "Content-Type": "application/json",
+            "Origin": originUrl,
+            "Referer": `${activeBase}/panel/inbounds`,
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+          },
+          body: JSON.stringify({
+            id: inboundId,
+            settings: clientSettingsString
+          }),
+          timeout: 10000
+        });
+
+        if (updateRes.statusCode >= 200 && updateRes.statusCode < 300 && (updateRes.json?.success === true || updateRes.json?.success === undefined)) {
+          addedSuccessfully = true;
           break;
         }
       } catch {}
     }
-
-    // 2. If addClient was rejected (e.g. client UUID or email already exists), update client
-    if (!added) {
-      for (const updatePath of [`/panel/api/inbounds/updateClient/${clientUuid}`, `/xui/API/inbounds/updateClient/${clientUuid}`]) {
-        try {
-          const res = await httpRequestUnsafe(`${activeBase}${updatePath}`, {
-            method: "POST",
-            headers: clientHeaders,
-            body: JSON.stringify(clientPayload),
-            timeout: 5000
-          });
-          if (res.statusCode === 200 && res.json?.success) break;
-        } catch {}
-      }
-    }
-  } catch (err: any) {
-    console.warn("3x-ui provisioning warning:", err?.message || err);
   }
+
+  if (!addedSuccessfully) {
+    throw new Error(`Failed to create client inside 3x-ui inbound ${inboundId}: ${lastError}`);
+  }
+
+  // Construct the authentic 3x-ui subscription URL
+  const subPrefix = (nodeConfig.subBaseUrl || `${activeBase.replace(/:\d+.*$/, "")}:2096/sub/`).trim().replace(/\/+$/, "");
+  const realSubscriptionUrl = `${subPrefix}/${clientSubId}`;
+
+  let nodeDomain = "";
+  let nodePort = Number(nodeConfig.port || 443);
+  try {
+    nodeDomain = new URL(activeBase).hostname;
+  } catch {
+    nodeDomain = activeBase.replace(/^https?:\/\//, "").split(/[:/]/)[0];
+  }
+
+  let realityPublicKey = "";
+  let shortId = "";
+  let sniHost = packageData.sni || "www.speedtest.net";
+
+  // Fetch real inbound stream settings via GET ${activeBase}/panel/api/inbounds/get/${inboundId}
+  for (const getEp of [
+    `${activeBase}/panel/api/inbounds/get/${inboundId}`,
+    `${activeBase}/panel/inbound/get/${inboundId}`
+  ]) {
+    try {
+      const getRes = await httpRequestUnsafe(getEp, {
+        method: "GET",
+        headers: {
+          "Cookie": auth.cookie,
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+        },
+        timeout: 8000
+      });
+
+      if (getRes.statusCode === 200 && getRes.json?.obj) {
+        const inboundObj = getRes.json.obj;
+        if (inboundObj.port) nodePort = Number(inboundObj.port);
+
+        let stream: any = {};
+        if (typeof inboundObj.streamSettings === "string") {
+          try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
+        } else if (typeof inboundObj.streamSettings === "object") {
+          stream = inboundObj.streamSettings;
+        }
+
+        if (stream?.realitySettings) {
+          const rs = stream.realitySettings;
+          realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
+          if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
+            shortId = rs.shortIds[0];
+          }
+          if (Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
+            sniHost = packageData.sni || rs.serverNames[0];
+          }
+        } else if (stream?.tlsSettings) {
+          if (Array.isArray(stream.tlsSettings.serverNames) && stream.tlsSettings.serverNames.length > 0) {
+            sniHost = packageData.sni || stream.tlsSettings.serverNames[0];
+          }
+        }
+        break;
+      }
+    } catch (err: any) {
+      console.warn(`Could not read stream settings from ${getEp}:`, err?.message);
+    }
+  }
+
+  const pkgLabel = packageData.name || "VIP";
+  let realVlessKey = "";
+  if (realityPublicKey) {
+    realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
+  } else {
+    realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
+  }
+
+  return {
+    success: true,
+    subscriptionUrl: realSubscriptionUrl,
+    vlessKey: realVlessKey,
+    subId: clientSubId
+  };
 }
 
 /**
@@ -485,51 +642,113 @@ Output STRICT JSON only:
       else if (cleanPackageName.toLowerCase().includes("hutch")) isp = "Hutch";
     }
 
-    const configSlots = generateOrderConfigs({
-      uuid: clientUuid,
-      clientEmail: user.email,
-      packageId: packageId || "dialog-zoom",
-      packageName: cleanPackageName,
-      quotaLabel: cleanQuotaLabel,
-      isp,
-      ispPrice: ispPrice || pkgMeta?.priceDigits || "",
-      domains: systemConfig.ispDomains,
-      snis: systemConfig.packageSnis
-    });
-
-    const serializedConfigs = configSlots.map(s => `[ ${s.title} ]\n${s.code}`).join("\n\n");
-    const bonusUsaConfig = configSlots.find(s => s.title.toLowerCase().includes("bonus"));
-
-    // 8. Provision to 3x-ui Server Nodes (Dual API Paths & Accurate Bytes)
-    let totalBytes = 0;
+    let quotaGb = 100;
     if (!cleanQuotaLabel.toLowerCase().includes("unlimited")) {
       const gbMatch = cleanQuotaLabel.match(/(\d+)\s*GB/i);
-      if (gbMatch) {
-        totalBytes = parseInt(gbMatch[1], 10) * 1024 * 1024 * 1024;
-      }
+      if (gbMatch) quotaGb = parseInt(gbMatch[1], 10);
     }
-    const expiryTimeMs = Date.now() + 30 * 24 * 3600 * 1000;
 
-    // Primary Node Provisioning
-    if (systemConfig.primary3xui.baseUrl && systemConfig.primary3xui.username) {
-      await provision3xuiClient(
+    const packageData = {
+      name: cleanPackageName,
+      quotaGb,
+      validityDays: 30,
+      isp,
+      sni: systemConfig.packageSnis?.[packageId] || "zoom.us"
+    };
+
+    // 8. Provision Client to Real 3x-ui Inbound (NO FAKE MOCK CONFIG FALLBACKS)
+    let provisionResult: {
+      success: boolean;
+      subscriptionUrl: string;
+      vlessKey: string;
+      subId: string;
+    };
+
+    try {
+      if (!systemConfig.primary3xui.baseUrl || !systemConfig.primary3xui.username) {
+        throw new Error("3x-ui Primary Node credentials missing in System Config");
+      }
+
+      provisionResult = await provision3xuiClient(
         systemConfig.primary3xui,
         clientUuid,
         user.email,
-        totalBytes,
-        expiryTimeMs
+        packageData
+      );
+    } catch (provisionErr: any) {
+      console.error("Real 3x-ui provisioning failed:", provisionErr);
+      return await fallbackToManualVerification(
+        `Document Analyzed [CONFIRMED] - Automatic Node Provisioning Failed: ${provisionErr?.message || "3x-ui API unreachable"}. Forwarded to admin queue for instant line activation.`,
+        {
+          overallStatus: "manual_review",
+          reason: `3x-ui Provisioning Error: ${provisionErr?.message || "Failed to add client to inbound"}`,
+          checks: [
+            {
+              id: "doc",
+              title: "Document Analyzed",
+              passed: true,
+              statusText: "Analyzed",
+              detectedBank: ocrResult?.bankName || "Commercial Bank",
+              detectedRef: cleanRefNumber,
+              message: `Forensic scan complete: ${ocrResult?.bankName || "Bank"} slip verified.`
+            },
+            {
+              id: "account",
+              title: "Beneficiary Confirmed",
+              passed: true,
+              statusText: "Confirmed",
+              expected: cleanExpectedAcc,
+              detected: cleanDestAcc,
+              message: `Commercial Bank Account ${cleanExpectedAcc} match confirmed.`
+            },
+            {
+              id: "trace",
+              title: "Transaction Trace Valid",
+              passed: true,
+              statusText: "Valid",
+              refNumber: cleanRefNumber,
+              message: `Unique trace #${cleanRefNumber} recorded in anti-replay ledger.`
+            },
+            {
+              id: "amount",
+              title: "Settlement Matched",
+              passed: true,
+              statusText: "Matched",
+              expected: parsedAmount,
+              detected: ocrAmount,
+              message: `Exact tariff Rs. ${parsedAmount} verified.`
+            },
+            {
+              id: "line",
+              title: "Line Activated",
+              passed: false,
+              isSuspicious: true,
+              statusText: "Provisioning Error",
+              message: `Node error: ${provisionErr?.message || "3x-ui API unreachable"}. Admin will provision line manually.`
+            }
+          ]
+        }
       );
     }
 
-    // Bonus USA Node Provisioning (if bonus generated & node enabled)
-    if (bonusUsaConfig && systemConfig.bonusUsa3xui?.enabled && systemConfig.bonusUsa3xui.baseUrl) {
-      await provision3xuiClient(
-        systemConfig.bonusUsa3xui,
-        clientUuid,
-        user.email,
-        totalBytes,
-        expiryTimeMs
-      );
+    const realSubscriptionUrl = provisionResult.subscriptionUrl;
+    const realVlessKey = provisionResult.vlessKey;
+    const formattedConfigKey = `[ ${cleanPackageName} 10Gbps Core ]\n${realVlessKey}`;
+
+    // Optional Bonus USA Node Provisioning (if enabled)
+    let generatedUsaSubUrl: string | undefined = undefined;
+    if (systemConfig.bonusUsa3xui?.enabled && systemConfig.bonusUsa3xui.baseUrl && systemConfig.bonusUsa3xui.username) {
+      try {
+        const bonusRes = await provision3xuiClient(
+          systemConfig.bonusUsa3xui,
+          clientUuid,
+          user.email,
+          { ...packageData, name: `${cleanPackageName} (Bonus USA)` }
+        );
+        generatedUsaSubUrl = bonusRes.subscriptionUrl;
+      } catch (bonusErr: any) {
+        console.warn("Bonus USA node provisioning skipped:", bonusErr?.message);
+      }
     }
 
     // 9. Update Database Record
@@ -553,36 +772,29 @@ Output STRICT JSON only:
 
     let cleanDataTotal = "Unlimited";
     if (!cleanQuotaLabel.toLowerCase().includes("unlimited")) {
-      const gbMatch = cleanQuotaLabel.match(/(\d+)\s*GB/i);
-      if (gbMatch) cleanDataTotal = `${gbMatch[1]} GB`;
+      cleanDataTotal = `${quotaGb} GB`;
     }
-
-    const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
-    const primarySubBase = (systemConfig.primary3xui?.subBaseUrl || `${systemConfig.primary3xui?.baseUrl}/sub/`).trim().replace(/\/+$/, "");
-    const generatedSubUrl = `${primarySubBase}/${clientSubId}`;
-    const generatedUsaSubUrl = (bonusUsaConfig && systemConfig.bonusUsa3xui?.baseUrl)
-      ? `${(systemConfig.bonusUsa3xui?.baseUrl || "").replace(/\/+$/, "")}/sub/${clientSubId}`
-      : undefined;
 
     const updatedPayments = [...(metaData.payments || []), verifiedPaymentRecord];
     const updatedMeta = {
       ...metaData,
       customVpnUserId: clientUuid,
       vpnUuid: clientUuid,
-      subscriptionUrl: generatedSubUrl,
+      vlessConfig: realVlessKey,
+      subscriptionUrl: realSubscriptionUrl,
       ...(generatedUsaSubUrl ? { usaSubscriptionUrl: generatedUsaSubUrl } : {}),
       dataTotal: cleanDataTotal,
-      ...(bonusUsaConfig ? { usaDataTotal: cleanDataTotal } : {}),
       payments: updatedPayments,
-      showUsaUsage: Boolean(bonusUsaConfig) || metaData.showUsaUsage
+      pendingOrders: [],
+      showUsaUsage: Boolean(generatedUsaSubUrl) || metaData.showUsaUsage
     };
 
-    // Update User
+    // Update User with REAL configs and REAL subscription link
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         vpnStatus: "Active",
-        vpnConfigKey: serializedConfigs,
+        vpnConfigKey: formattedConfigKey,
         expiryDate: newExpiry,
         subscriptionLink: JSON.stringify(updatedMeta)
       }
@@ -647,12 +859,10 @@ Output STRICT JSON only:
           title: "Line Activated",
           passed: true,
           statusText: "Activated",
-          message: "3x-ui client slot & V2RAY key generated successfully."
+          message: "10Gbps Singapore core line & subscription link activated."
         }
       ]
     };
-
-    const finalVlessKey = configSlots[0]?.code || serializedConfigs;
 
     return NextResponse.json({
       success: true,
@@ -660,9 +870,14 @@ Output STRICT JSON only:
       autoApproved: true,
       status: "Active",
       message: "Payment verified and high-speed line provisioned successfully.",
-      subscriptionUrl: generatedSubUrl,
-      vlessKey: finalVlessKey,
-      configs: configSlots,
+      subscriptionUrl: realSubscriptionUrl,
+      vlessKey: realVlessKey,
+      configs: [
+        {
+          name: `${cleanPackageName} High-Speed Core`,
+          code: realVlessKey
+        }
+      ],
       order: verifiedPaymentRecord,
       user: updatedUser,
       auditReport: approvedAuditReport
