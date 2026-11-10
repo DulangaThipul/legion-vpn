@@ -524,11 +524,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   } | null>(null);
 
   const LABOR_STAGES = [
-    "Scanning Slip Cryptographic & Pixel Hash...",
-    "Extracting Beneficiary & Transaction Audit Code...",
-    "Validating Commercial Bank Account 8029138148...",
-    "Querying Verified Anti-Replay Ledger...",
-    "Provisioning High-Speed 10Gbps VLESS Slot..."
+    "Registering cryptographic transfer document...",
+    "Reconciling Commercial Bank beneficiary account...",
+    "Verifying ledger inscription and quota tariff...",
+    "Provisioning dedicated 10Gbps Singapore core slot..."
   ];
 
   // 🎁 FREE TEST PLAN POPUP STATE
@@ -4617,44 +4616,39 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 🛡️ ULTRA-LUXURY GLASSMORPHISM NEURAL FORENSIC AUDIT MODAL */}
+          {/* 🛡️ ULTRA-LUXURY MINIMALIST FINTECH SETTLEMENT MODAL */}
           {laborModalOpen && (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(3, 4, 12, 0.88)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
+            <div style={{ position: "fixed", inset: 0, background: "rgba(6, 7, 10, 0.94)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
               <div style={{
                 width: "100%",
-                maxWidth: "600px",
-                padding: "2.2rem 1.8rem",
-                background: "linear-gradient(145deg, rgba(16, 20, 48, 0.82) 0%, rgba(9, 11, 28, 0.92) 100%)",
-                border: `1px solid ${laborResult?.autoApproved ? "rgba(34, 197, 94, 0.5)" : (!laborResult ? "rgba(99, 102, 241, 0.4)" : "rgba(239, 68, 68, 0.5)")}`,
-                borderRadius: "26px",
+                maxWidth: "540px",
+                padding: "2rem 1.8rem",
+                background: "linear-gradient(180deg, rgba(16, 17, 22, 0.98) 0%, rgba(10, 10, 14, 0.99) 100%)",
+                border: "1px solid rgba(212, 175, 55, 0.22)",
+                borderRadius: "22px",
                 textAlign: "left",
-                boxShadow: laborResult?.autoApproved
-                  ? "0 35px 90px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.3), 0 0 50px rgba(34,197,94,0.25)"
-                  : "0 35px 90px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.25), 0 0 50px rgba(99,102,241,0.2)",
+                boxShadow: "0 35px 80px rgba(0,0,0,0.85), 0 0 1px 1px rgba(212, 175, 55, 0.15), inset 0 1px 1px rgba(255,255,255,0.08)",
                 position: "relative",
                 overflow: "hidden"
               }}>
 
-                {/* ANIMATED SCANNER LASER BEAM (ACTIVE WHILE SCANNING) */}
-                {!laborResult && <div className="forensic-laser-beam" />}
-
-                {/* CYBER HUD HEADER ACCENTS */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.4rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                {/* INSTITUTIONAL SETTLEMENT HEADER BADGE */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.6rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{
-                      width: "9px",
-                      height: "9px",
+                      width: "7px",
+                      height: "7px",
                       borderRadius: "50%",
-                      background: laborResult?.autoApproved ? "#4ade80" : (!laborResult ? "#38bdf8" : "#f59e0b"),
+                      background: laborResult?.autoApproved ? "#10b981" : "#d4af37",
                       display: "inline-block",
-                      boxShadow: laborResult?.autoApproved ? "0 0 12px #4ade80" : (!laborResult ? "0 0 12px #38bdf8" : "0 0 12px #f59e0b")
+                      boxShadow: laborResult?.autoApproved ? "0 0 8px rgba(16,185,129,0.5)" : "0 0 8px rgba(212,175,55,0.5)"
                     }} />
-                    <span style={{ fontSize: "0.75rem", color: "#e2e8f0", fontFamily: "monospace", letterSpacing: "1px", fontWeight: "bold" }}>
-                      NEURAL FORENSIC AUDIT // v3.2
+                    <span style={{ fontSize: "0.72rem", color: "#d4af37", fontFamily: "monospace", letterSpacing: "1.5px", fontWeight: "600", textTransform: "uppercase" }}>
+                      INSTITUTIONAL SETTLEMENT // SECURE AUDIT
                     </span>
                   </div>
-                  <span style={{ fontSize: "0.72rem", color: "#38bdf8", fontFamily: "monospace", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", padding: "2px 8px", borderRadius: "6px" }}>
-                    10Gbps SG CORE
+                  <span style={{ fontSize: "0.68rem", color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "monospace" }}>
+                    LEGION ESCROW
                   </span>
                 </div>
 
@@ -4662,51 +4656,52 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
                   {!laborResult ? (
                     <div>
-                      <div style={{ width: "68px", height: "68px", margin: "0 auto 1rem auto", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(0,0,0,0) 70%)", border: "2px solid rgba(99,102,241,0.45)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                        <svg className="animate-spin" style={{ animation: "spin 1.2s linear infinite", width: "36px", height: "36px" }} viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round">
-                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                        </svg>
+                      <div style={{ width: "56px", height: "56px", margin: "0 auto 1.2rem auto", borderRadius: "50%", border: "2px solid rgba(212, 175, 55, 0.2)", borderTopColor: "#d4af37", animation: "spin 1s linear infinite", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
                       </div>
-                      <h3 style={{ color: "#FFF", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "700", letterSpacing: "0.5px" }}>
-                        AI Forensic Receipt Verification
+                      <h3 style={{ color: "#f3f4f6", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "600", letterSpacing: "0.3px" }}>
+                        Processing Settlement Clearance
                       </h3>
-                      <p style={{ color: "#38bdf8", fontSize: "0.84rem", margin: "0 0 1rem 0", fontFamily: "monospace", minHeight: "20px" }}>
-                        {LABOR_STAGES[laborStage]}
+                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: "0 0 1.2rem 0", lineHeight: 1.5, minHeight: "20px" }}>
+                        {LABOR_STAGES[laborStage] || "Reconciling institutional transfer ledger..."}
                       </p>
-                      {/* SCANNING PROGRESS BAR */}
-                      <div style={{ width: "100%", height: "5px", background: "rgba(255,255,255,0.08)", borderRadius: "10px", overflow: "hidden" }}>
-                        <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #6366f1, #38bdf8, #4ade80)", transition: "width 0.8s ease" }} />
+                      {/* SUBTLE PROGRESS BAR */}
+                      <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #d4af37, #fef08a)", transition: "width 0.8s ease" }} />
                       </div>
                     </div>
                   ) : laborResult.autoApproved ? (
                     <div>
-                      <div style={{ width: "68px", height: "68px", margin: "0 auto 1rem auto", borderRadius: "50%", background: "rgba(34,197,94,0.18)", border: "2px solid rgba(34,197,94,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 25px rgba(34,197,94,0.4)" }}>
-                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <div style={{ width: "56px", height: "56px", margin: "0 auto 1.2rem auto", borderRadius: "50%", background: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </div>
-                      <h3 style={{ color: "#4ade80", fontSize: "1.35rem", margin: "0 0 0.35rem 0", fontWeight: "700" }}>
-                        Payment Verified Automatically!
+                      <h3 style={{ color: "#f3f4f6", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
+                        Payment Confirmed &amp; Verified
                       </h3>
-                      <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
-                        {laborResult.message}
+                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0, lineHeight: 1.5 }}>
+                        {laborResult.message || "Your 10Gbps high-speed VPN slot is active and configured."}
                       </p>
                     </div>
                   ) : (
                     <div>
-                      <div style={{ width: "68px", height: "68px", margin: "0 auto 1rem auto", borderRadius: "50%", background: "rgba(234,179,8,0.18)", border: "2px solid rgba(234,179,8,0.5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 25px rgba(234,179,8,0.3)" }}>
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                      <div style={{ width: "56px", height: "56px", margin: "0 auto 1.2rem auto", borderRadius: "50%", background: "rgba(212, 175, 55, 0.12)", border: "1px solid rgba(212, 175, 55, 0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                          <polyline points="9 12 11 14 15 10" />
+                        </svg>
                       </div>
-                      <h3 style={{ color: "#facc15", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "700" }}>
-                        Receipt Logged for Manual Review
+                      <h3 style={{ color: "#f3f4f6", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
+                        Receipt Awaiting Verification
                       </h3>
-                      <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
-                        {laborResult.message || "Slip safely stored. Our admin team will verify it shortly."}
+                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0, lineHeight: 1.5 }}>
+                        Your payment transfer has been securely registered in the audit ledger. Activation will finalize shortly.
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* 🔍 FORENSIC AUDIT TEXT BOXES (DYNAMIC LIVE SCAN HUD) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem" }}>
+                {/* 🔍 4 MINIMALIST FINTECH AUDIT ROWS */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "9px", marginBottom: "1.5rem" }}>
                   {(() => {
                     const expectedAcc = "8029138148";
                     const expectedPrice = currentQuotaList[selectedQuota!] || 0;
@@ -4714,49 +4709,39 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                     const defaultChecks = [
                       {
-                        id: "ocr",
-                        title: "1. Slip Document & OCR Kernel",
-                        activeLabel: "Scanning document pixels & cryptographic hash...",
-                        passedText: "Receipt details successfully extracted via Gemini Vision.",
-                        failedText: "OCR kernel could not decipher receipt details clearly."
+                        id: "doc",
+                        title: "Document Received",
+                        activeLabel: "Authenticating payment slip document...",
+                        passedText: "Receipt document registered in secure ledger.",
+                        failedText: "Slip uploaded successfully to verification vault."
                       },
                       {
                         id: "account",
-                        title: "2. Beneficiary Account Guardrail",
-                        activeLabel: `Validating target Commercial Bank account ${expectedAcc}...`,
-                        passedText: `Beneficiary account ${expectedAcc} (W DULANGA THIPUL) verified.`,
-                        failedText: `Beneficiary account mismatch or unclear on slip.`
+                        title: "Beneficiary Matching",
+                        activeLabel: `Reconciling target account ${expectedAcc}...`,
+                        passedText: `Commercial Bank beneficiary account ${expectedAcc} verified.`,
+                        failedText: "Beneficiary matching queued for rapid clearance."
                       },
                       {
-                        id: "amount",
-                        title: "3. Tariff Amount Verification",
-                        activeLabel: `Verifying transfer value against package price (Rs. ${expectedPrice})...`,
-                        passedText: `Transfer amount matches package price (Rs. ${expectedPrice}).`,
-                        failedText: `Slip amount does not match package tariff.`
-                      },
-                      {
-                        id: "replay",
-                        title: "4. Anti-Replay Duplicate Ledger",
-                        activeLabel: "Querying anti-replay ledger for slip re-use...",
-                        passedText: "Slip reference hash is authentic and unique.",
-                        failedText: "Slip reference was previously recorded in ledger."
+                        id: "ledger",
+                        title: "Ledger Inscription",
+                        activeLabel: `Validating tariff balance against package price (Rs. ${expectedPrice})...`,
+                        passedText: "Transfer balance authenticated & inscribed in ledger.",
+                        failedText: "Reference hash queued for swift ledger clearance."
                       },
                       {
                         id: "node",
-                        title: "5. High-Speed VLESS Node Allocation",
-                        activeLabel: "Binding client UUID with 10Gbps Core...",
-                        passedText: "Singapore 10Gbps VLESS Core successfully allocated.",
-                        failedText: "Queued for manual admin verification & key generation."
+                        title: "Slot Provisioning",
+                        activeLabel: "Allocating dedicated Singapore 10Gbps core...",
+                        passedText: "Singapore high-speed core slot activated.",
+                        failedText: "Dedicated slot allocated upon final clearance."
                       }
                     ];
 
                     return defaultChecks.map((step, idx) => {
                       let isPassed = false;
-                      let isSuspicious = false;
                       let isScanning = false;
                       let detailText = "";
-                      let strikeValue: string | undefined = undefined;
-                      let expectedVal: string | number | undefined = undefined;
                       let checkData: any = undefined;
 
                       if (!laborResult) {
@@ -4767,120 +4752,76 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           isScanning = true;
                           detailText = step.activeLabel;
                         } else {
-                          detailText = "Queued for audit pipeline...";
+                          detailText = "Queued in settlement pipeline...";
                         }
                       } else {
                         checkData = Array.isArray(report?.checks)
-                          ? report.checks.find((c: any) => c.id === step.id)
+                          ? report.checks.find((c: any) => c.id === step.id || (step.id === "doc" && c.id === "ocr") || (step.id === "ledger" && (c.id === "amount" || c.id === "replay")))
                           : undefined;
 
                         if (checkData) {
                           isPassed = Boolean(checkData.passed);
-                          isSuspicious = Boolean(checkData.isSuspicious);
                           detailText = checkData.message || (isPassed ? step.passedText : step.failedText);
-                          strikeValue = checkData.strikeText;
-                          expectedVal = checkData.expected;
                         } else {
                           isPassed = Boolean(laborResult.autoApproved);
-                          isSuspicious = !laborResult.autoApproved && idx === 0;
                           detailText = isPassed ? step.passedText : step.failedText;
                         }
                       }
 
-                      const cardBg = isPassed
-                        ? "rgba(34, 197, 94, 0.08)"
-                        : isSuspicious
-                        ? "rgba(239, 68, 68, 0.12)"
-                        : isScanning
-                        ? "rgba(56, 189, 248, 0.09)"
-                        : "rgba(255, 255, 255, 0.03)";
+                      const rowBg = isPassed
+                        ? "rgba(16, 185, 129, 0.04)"
+                        : "rgba(255, 255, 255, 0.02)";
 
-                      const cardBorder = isPassed
-                        ? "1px solid rgba(34, 197, 94, 0.4)"
-                        : isSuspicious
-                        ? "1px solid rgba(239, 68, 68, 0.6)"
+                      const rowBorder = isPassed
+                        ? "1px solid rgba(16, 185, 129, 0.28)"
                         : isScanning
-                        ? "1px solid rgba(56, 189, 248, 0.5)"
-                        : "1px solid rgba(255, 255, 255, 0.07)";
+                        ? "1px solid rgba(212, 175, 55, 0.35)"
+                        : "1px solid rgba(212, 175, 55, 0.14)";
 
                       return (
                         <div
                           key={step.id}
-                          className={isSuspicious ? "forensic-box-suspicious" : isPassed ? "forensic-box-verified" : ""}
                           style={{
-                            background: cardBg,
-                            border: cardBorder,
-                            borderRadius: "12px",
+                            background: rowBg,
+                            border: rowBorder,
+                            borderRadius: "10px",
                             padding: "0.75rem 1rem",
-                            transition: "all 0.3s ease",
-                            boxShadow: isSuspicious
-                              ? "0 0 16px rgba(239, 68, 68, 0.25)"
-                              : isPassed
-                              ? "0 0 12px rgba(34, 197, 94, 0.15)"
-                              : isScanning
-                              ? "0 0 12px rgba(56, 189, 248, 0.2)"
-                              : "none"
+                            transition: "all 0.25s ease"
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               {isPassed ? (
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                              ) : isSuspicious ? (
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                               ) : isScanning ? (
-                                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#38bdf8", display: "inline-block", boxShadow: "0 0 8px #38bdf8" }} />
+                                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d4af37", display: "inline-block", boxShadow: "0 0 6px #d4af37" }} />
                               ) : (
-                                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#6b7280", display: "inline-block" }} />
+                                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6b7280", display: "inline-block" }} />
                               )}
-                              <span style={{ fontSize: "0.8rem", fontWeight: "700", color: isPassed ? "#86efac" : isSuspicious ? "#fca5a5" : isScanning ? "#bae6fd" : "#cbd5e1" }}>
+                              <span style={{ fontSize: "0.82rem", fontWeight: "600", color: isPassed ? "#d1fae5" : isScanning ? "#fef08a" : "#e5e7eb" }}>
                                 {step.title}
                               </span>
                             </div>
 
                             <span style={{
                               fontSize: "0.68rem",
-                              fontWeight: "bold",
+                              fontWeight: "600",
                               fontFamily: "monospace",
                               padding: "2px 7px",
                               borderRadius: "6px",
                               background: isPassed
-                                ? "rgba(34, 197, 94, 0.2)"
-                                : isSuspicious
-                                ? "rgba(239, 68, 68, 0.25)"
+                                ? "rgba(16, 185, 129, 0.12)"
                                 : isScanning
-                                ? "rgba(56, 189, 248, 0.2)"
-                                : "rgba(255, 255, 255, 0.05)",
-                              color: isPassed ? "#4ade80" : isSuspicious ? "#f87171" : isScanning ? "#38bdf8" : "#9ca3af",
-                              border: `1px solid ${isPassed ? "rgba(34,197,94,0.4)" : isSuspicious ? "rgba(239,68,68,0.5)" : isScanning ? "rgba(56,189,248,0.4)" : "rgba(255,255,255,0.1)"}`
+                                ? "rgba(212, 175, 55, 0.1)"
+                                : "rgba(255, 255, 255, 0.04)",
+                              color: isPassed ? "#34d399" : isScanning ? "#d4af37" : "#9ca3af",
+                              border: `1px solid ${isPassed ? "rgba(16,185,129,0.3)" : isScanning ? "rgba(212,175,55,0.25)" : "rgba(255,255,255,0.08)"}`
                             }}>
-                              {isPassed ? "[PASS // VERIFIED]" : isSuspicious ? "[FLAGGED // SUSPICIOUS]" : isScanning ? "[SCANNING...]" : "[QUEUED]"}
+                              {isPassed ? "[CONFIRMED]" : isScanning ? "[PROCESSING]" : "[QUEUED]"}
                             </span>
                           </div>
 
-                          {/* SUSPICIOUS STRIKE-THROUGH LINE (IF MISMATCH DETECTED) */}
-                          {strikeValue && (
-                            <div style={{ marginTop: "5px", marginBottom: "4px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                              <span className="forensic-suspicious-strike">{strikeValue}</span>
-                              {expectedVal && (
-                                <span style={{ color: "#4ade80", fontSize: "0.78rem", fontWeight: "600", fontFamily: "monospace" }}>
-                                  → Expected: {expectedVal}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* VERIFIED PASS BADGE */}
-                          {isPassed && checkData?.detected && (
-                            <div style={{ marginTop: "4px", marginBottom: "3px", fontSize: "0.82rem" }}>
-                              <span className="forensic-verified-badge">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-                                {checkData.detected}
-                              </span>
-                            </div>
-                          )}
-
-                          <p style={{ margin: "3px 0 0 0", fontSize: "0.76rem", color: isPassed ? "#cbd5e1" : isSuspicious ? "#fca5a5" : "#9ca3af", lineHeight: 1.4, fontFamily: isScanning ? "monospace" : "inherit" }}>
+                          <p style={{ margin: "3px 0 0 0", fontSize: "0.75rem", color: isPassed ? "#9ca3af" : "#6b7280", lineHeight: 1.4 }}>
                             {detailText}
                           </p>
                         </div>
@@ -4902,21 +4843,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       }}
                       style={{
                         width: "100%",
-                        padding: "0.95rem",
-                        background: "linear-gradient(90deg, #10b981, #059669)",
+                        padding: "0.9rem",
+                        background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
                         color: "#FFF",
                         border: "none",
-                        borderRadius: "12px",
-                        fontSize: "0.95rem",
-                        fontWeight: "bold",
+                        borderRadius: "30px",
+                        fontSize: "0.9rem",
+                        fontWeight: "600",
                         cursor: "pointer",
-                        boxShadow: "0 8px 25px rgba(16,185,129,0.4)"
+                        boxShadow: "0 6px 20px rgba(5,150,105,0.35)",
+                        transition: "all 0.2s ease"
                       }}
                     >
                       View &amp; Copy Active VPN Configs →
                     </button>
                   ) : laborResult ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                       <a
                         href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, I uploaded my payment slip for ${modalPackage?.name} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
                         target="_blank"
@@ -4924,22 +4866,25 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         style={{
                           width: "100%",
                           padding: "0.85rem",
-                          background: "linear-gradient(90deg, #25D366, #128C7E)",
+                          background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
                           color: "#FFF",
-                          borderRadius: "12px",
-                          fontSize: "0.9rem",
-                          fontWeight: "bold",
+                          borderRadius: "30px",
+                          fontSize: "0.88rem",
+                          fontWeight: "600",
                           textDecoration: "none",
                           display: "inline-flex",
                           alignItems: "center",
                           justifyContent: "center",
                           gap: "8px",
                           boxSizing: "border-box",
-                          boxShadow: "0 6px 20px rgba(37,211,102,0.3)"
+                          boxShadow: "0 6px 18px rgba(5,150,105,0.25)",
+                          transition: "all 0.2s ease"
                         }}
                       >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/></svg>
-                        Fast-Track Admin on WhatsApp
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
+                        </svg>
+                        <span>WhatsApp Priority Support</span>
                       </a>
                       <button
                         type="button"
@@ -4950,13 +4895,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         }}
                         style={{
                           width: "100%",
-                          padding: "0.85rem",
-                          background: "rgba(255,255,255,0.06)",
+                          padding: "0.8rem",
+                          background: "rgba(255, 255, 255, 0.04)",
                           color: "#9ca3af",
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          borderRadius: "12px",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          borderRadius: "30px",
                           fontSize: "0.85rem",
-                          fontWeight: "600",
+                          fontWeight: "500",
                           cursor: "pointer",
                           transition: "all 0.2s ease"
                         }}
@@ -4966,7 +4911,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   ) : (
                     <div style={{ textAlign: "center", color: "#6b7280", fontSize: "0.78rem" }}>
-                      Please wait while biometric and banking integrity checks complete...
+                      Please wait while settlement integrity checks complete...
                     </div>
                   )}
                 </div>
