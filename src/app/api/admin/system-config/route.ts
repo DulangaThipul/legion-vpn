@@ -58,7 +58,53 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // 1. Action: Test 3x-ui Server Node Connection (Dual Paths)
+    // 0. Action: Test AI Model (Groq Qwen 3.8 Vision LPU)
+    if (body.action === "test-ai") {
+      const globalConfig = await getGlobalSystemConfig();
+      const groqKey = (process.env.GROQ_API_KEY || globalConfig.groqApiKey || "").trim();
+      if (!groqKey) {
+        return NextResponse.json({
+          success: false,
+          error: "GROQ_API_KEY is not defined in environment variables or Admin Settings"
+        });
+      }
+      const start = performance.now();
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${groqKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "qwen/qwen3.8-27b",
+            messages: [{ role: "user", content: 'Ping. Respond with { "status": "ready" } in JSON.' }],
+            response_format: { type: "json_object" },
+            max_tokens: 30
+          }),
+          signal: AbortSignal.timeout(7000)
+        });
+        const latencyMs = Math.round(performance.now() - start);
+        if (!res.ok) {
+          const errText = await res.text();
+          return NextResponse.json({
+            success: false,
+            latencyMs,
+            error: `Groq rejected with HTTP ${res.status}: ${errText}`
+          });
+        }
+        return NextResponse.json({
+          success: true,
+          latencyMs,
+          message: `Groq Qwen 3.8 Vision LPU Operational (${latencyMs}ms)`
+        });
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: err?.message || "Failed to reach Groq API"
+        });
+      }
+    }
     if (body.action === "test-3xui") {
       const node = body.node || {};
       const baseUrl = (node.baseUrl || "").trim().replace(/\/+$/, "");
