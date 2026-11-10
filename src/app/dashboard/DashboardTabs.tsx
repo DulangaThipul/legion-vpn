@@ -4650,19 +4650,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           {/* 🛡️ ULTRA-LUXURY REALISTIC BANK TRANSFER CLEARANCE MODAL */}
           {laborModalOpen && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(5, 6, 9, 0.96)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
-              <div style={{
-                width: "100%",
-                maxWidth: "540px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-                background: "linear-gradient(180deg, #0c0a17 0%, #080711 100%)",
-                border: "1px solid rgba(139, 92, 246, 0.25)",
-                borderRadius: "24px",
-                padding: "1.8rem 1.8rem 9rem 1.8rem",
-                textAlign: "left",
-                boxShadow: "0 35px 80px rgba(0,0,0,0.92), 0 0 35px rgba(139, 92, 246, 0.15), inset 0 1px 1px rgba(255,255,255,0.08)",
-                position: "relative"
-              }}>
+              <div 
+                className="max-h-[85vh] overflow-y-auto pb-36"
+                style={{
+                  width: "100%",
+                  maxWidth: "540px",
+                  maxHeight: "85vh",
+                  overflowY: "auto",
+                  background: "linear-gradient(180deg, #0c0a17 0%, #080711 100%)",
+                  border: "1px solid rgba(139, 92, 246, 0.25)",
+                  borderRadius: "24px",
+                  padding: "1.8rem 1.8rem 9rem 1.8rem",
+                  textAlign: "left",
+                  boxShadow: "0 35px 80px rgba(0,0,0,0.92), 0 0 35px rgba(139, 92, 246, 0.15), inset 0 1px 1px rgba(255,255,255,0.08)",
+                  position: "relative"
+                }}
+              >
 
                 {/* INSTITUTIONAL SETTLEMENT HEADER BADGE */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.3rem", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -5066,47 +5069,28 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         setActiveTab("configs");
                         window.location.reload();
                       }}
-                      style={{
-                        width: "100%",
-                        padding: "0.95rem",
-                        background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
-                        color: "#FFF",
-                        border: "none",
-                        borderRadius: "30px",
-                        fontSize: "0.92rem",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                        boxShadow: "0 6px 20px rgba(5,150,105,0.35)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        transition: "all 0.2s ease"
-                      }}
+                      className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] cursor-pointer"
                     >
-                      <span>View &amp; Copy Active VPN Configs</span>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                      <span className="relative z-10">View &amp; Copy Active VPN Configs</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10">
                         <line x1="5" y1="12" x2="19" y2="12" />
                         <polyline points="12 5 19 12 12 19" />
                       </svg>
                     </button>
                   ) : laborResult ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                       <a
-                        href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, I uploaded my payment slip for ${modalPackage?.name} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
+                        href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, checking status for payment slip: ${modalPackage?.name || "Order"} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
                         target="_blank"
-                        rel="noreferrer"
-                        className="w-full py-3.5 rounded-xl text-center font-semibold text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 active:scale-[0.98] transition-all"
-                        style={{
-                          background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
-                          textDecoration: "none",
-                          boxSizing: "border-box"
-                        }}
+                        rel="noopener noreferrer"
+                        className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
                       >
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="relative z-10 flex-shrink-0">
                           <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
                         </svg>
-                        <span>WhatsApp Priority Support</span>
+                        <span className="relative z-10">WhatsApp Priority Concierge</span>
                       </a>
                       <button
                         type="button"
@@ -5115,7 +5099,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           closeCheckout();
                           setActiveTab("configs");
                         }}
-                        className="w-full py-3.5 rounded-xl border border-white/10 bg-white/5 text-slate-300 font-medium active:scale-[0.98] transition-all hover:bg-white/10 text-center cursor-pointer"
+                        className="w-full rounded-2xl border border-white/10 bg-white/[0.05] py-3.5 px-5 text-sm font-medium text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition-all duration-200 hover:bg-white/[0.09] hover:text-white hover:border-violet-500/30 active:scale-[0.98] cursor-pointer text-center"
                       >
                         Close &amp; Check Later
                       </button>
