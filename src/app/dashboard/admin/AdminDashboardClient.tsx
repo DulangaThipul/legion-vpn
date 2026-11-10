@@ -2234,8 +2234,16 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
   const [expectedAccount, setExpectedAccount] = useState("8029138148");
   const [timeWindowMins, setTimeWindowMins] = useState(120);
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [groqKeyInput, setGroqKeyInput] = useState("");
   const [ledger, setLedger] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTestingAi, setIsTestingAi] = useState(false);
+  const [aiTestResult, setAiTestResult] = useState<{
+    success: boolean;
+    latencyMs?: number;
+    message?: string;
+    error?: string;
+  } | null>(null);
 
   // Manual Ref Ledger Management (FIX 7)
   const [newRefNum, setNewRefNum] = useState("");
@@ -2254,6 +2262,7 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
           if (json.config.expectedBankAccount) setExpectedAccount(json.config.expectedBankAccount);
           if (json.config.allowedTimeWindowMinutes) setTimeWindowMins(Number(json.config.allowedTimeWindowMinutes));
           if (json.config.geminiApiKey) setGeminiKeyInput(json.config.geminiApiKey);
+          if (json.config.groqApiKey) setGroqKeyInput(json.config.groqApiKey);
           if (Array.isArray(json.config.verifiedRefLedger)) setLedger(json.config.verifiedRefLedger);
         }
       } catch (err) {
@@ -2264,6 +2273,30 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
     };
     fetchConfig();
   }, []);
+
+  const handleTestAi = async () => {
+    setIsTestingAi(true);
+    setAiTestResult(null);
+    try {
+      const res = await fetch("/api/admin/system-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test-ai" })
+      });
+      const data = await res.json();
+      setAiTestResult(data);
+      if (data.success) {
+        showToast(data.message || "Groq Qwen 3.8 Vision LPU Operational");
+      }
+    } catch (err: any) {
+      setAiTestResult({
+        success: false,
+        error: err?.message || "Failed to contact AI testing endpoint"
+      });
+    } finally {
+      setIsTestingAi(false);
+    }
+  };
 
   const handleSaveAutomation = async () => {
     setIsSaving(true);
@@ -2276,7 +2309,8 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
             autoApprovalEnabled: autoApproval,
             expectedBankAccount: expectedAccount.trim(),
             allowedTimeWindowMinutes: Number(timeWindowMins) || 120,
-            geminiApiKey: geminiKeyInput.trim()
+            geminiApiKey: geminiKeyInput.trim(),
+            groqApiKey: groqKeyInput.trim()
           }
         })
       });
@@ -2382,19 +2416,70 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
               <span>Automation &amp; Security Control</span>
             </h2>
             <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af" }}>
-              Configure Gemini 1.5 Flash Vision OCR auto-verification, duplicate slip protection, and bank rules.
+              Configure Groq Qwen 3.8 Vision LPU auto-verification, duplicate slip protection, and bank settlement rules.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleSaveAutomation}
-            disabled={isSaving}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "linear-gradient(90deg, #6366f1, #818cf8)", color: "#FFF", border: "none", padding: "0.65rem 1.4rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: "bold", cursor: isSaving ? "not-allowed" : "pointer" }}
-          >
-            <SvgCheck size={16} color="#FFF" />
-            <span>{isSaving ? "Saving..." : "Save Automation Settings"}</span>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={handleTestAi}
+              disabled={isTestingAi}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
+                color: "#f3f4f6",
+                padding: "0.65rem 1.2rem",
+                borderRadius: "8px",
+                fontSize: "0.82rem",
+                fontWeight: "600",
+                cursor: isTestingAi ? "not-allowed" : "pointer",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <SvgZap size={15} color="#eab308" />
+              <span>{isTestingAi ? "Testing Model..." : "Test AI Vision Model"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveAutomation}
+              disabled={isSaving}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "linear-gradient(90deg, #6366f1, #818cf8)", color: "#FFF", border: "none", padding: "0.65rem 1.4rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: "bold", cursor: isSaving ? "not-allowed" : "pointer" }}
+            >
+              <SvgCheck size={16} color="#FFF" />
+              <span>{isSaving ? "Saving..." : "Save Automation Settings"}</span>
+            </button>
+          </div>
         </div>
+
+        {/* AI TEST STATUS BADGE */}
+        {aiTestResult && (
+          <div style={{
+            marginTop: "1.2rem",
+            padding: "0.75rem 1rem",
+            borderRadius: "10px",
+            background: aiTestResult.success ? "rgba(34, 197, 94, 0.08)" : "rgba(245, 158, 11, 0.1)",
+            border: `1px solid ${aiTestResult.success ? "rgba(34, 197, 94, 0.35)" : "rgba(245, 158, 11, 0.4)"}`,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "0.85rem"
+          }}>
+            {aiTestResult.success ? (
+              <SvgCheck size={18} color="#22c55e" />
+            ) : (
+              <SvgAlertTriangle size={18} color="#f59e0b" />
+            )}
+            <span style={{ color: aiTestResult.success ? "#86efac" : "#fcd34d", fontWeight: "600" }}>
+              {aiTestResult.success
+                ? (aiTestResult.message || `Groq Qwen 3.8 Vision LPU Operational (${aiTestResult.latencyMs}ms)`)
+                : `AI Model Test Failed: ${aiTestResult.error || "Could not reach Groq API"}`}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* MASTER TOGGLE & RULES */}
@@ -2469,7 +2554,21 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
 
           <div>
             <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>
-              Gemini 1.5 Flash Vision API Key (Optional if in .env)
+              Groq API Key (qwen/qwen3.8-27b Vision LPU)
+            </label>
+            <input
+              type="password"
+              value={groqKeyInput}
+              onChange={(e) => setGroqKeyInput(e.target.value.trim())}
+              placeholder="gsk_..."
+              style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#38bdf8", fontSize: "0.9rem", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+            />
+            <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Powers instant Vision OCR via Groq. Or specify GROQ_API_KEY in .env / Vercel.</span>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>
+              Gemini Vision API Key (Secondary Fallback)
             </label>
             <input
               type="password"
