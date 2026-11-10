@@ -51,7 +51,7 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
     baseUrl: "https://103.179.44.75:2096",
     username: "",
     password: "",
-    inboundId: 1,
+    inboundId: 3,
     port: 443,
     subBaseUrl: "https://103.179.44.75:2096/sub/"
   },
