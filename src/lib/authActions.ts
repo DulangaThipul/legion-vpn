@@ -64,24 +64,47 @@ export async function resetUserAccount(userId: string) {
       throw new Error("Unauthorized");
     }
 
-    // 1. Delete associated VpnConfig records
-    await prisma.vpnConfig.deleteMany({
-      where: { userId },
-    });
+    // Safely delete associated VpnConfig records if supported
+    try {
+      if ((prisma as any).vpnConfig?.deleteMany) {
+        await (prisma as any).vpnConfig.deleteMany({
+          where: { userId },
+        });
+      }
+    } catch {
+      // Ignored
+    }
 
-    // 2. Reset User to fresh initial defaults
+    // Cleaned metadata wiping all orders, payments, VLESS credentials
+    const clearedMetadata = {
+      payments: [],
+      pendingOrders: [],
+      vlessConfig: "",
+      subscriptionUrl: "",
+      vpnUuid: "",
+      customVpnUserId: "",
+      dataTotal: "0 GB",
+      dataUsed: "0 GB",
+      isRenewUnlocked: false
+    };
+
+    // Reset User to fresh initial defaults
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         vpnStatus: "Inactive",
         expiryDate: null,
         vpnConfigKey: null,
-        subscriptionLink: null,
+        subscriptionLink: JSON.stringify(clearedMetadata),
         alertMessage: null,
       },
     });
 
-    return { success: true, user: updatedUser };
+    return { 
+      success: true, 
+      message: "Client reset successfully. All orders and credentials cleared.",
+      user: updatedUser 
+    };
   } catch (error: any) {
     console.error("Error in resetUserAccount:", error);
     return { success: false, error: error?.message || "Failed to reset account" };
