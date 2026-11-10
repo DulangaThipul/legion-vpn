@@ -33,6 +33,7 @@ export interface GlobalSystemConfig {
   expectedBankAccount: string;
   allowedTimeWindowMinutes: number;
   geminiApiKey?: string;
+  groqApiKey?: string;
   verifiedRefLedger: Array<{
     refNumber: string;
     email: string;
@@ -65,6 +66,7 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
   expectedBankAccount: "8029138148",
   allowedTimeWindowMinutes: 120,
   geminiApiKey: "",
+  groqApiKey: "",
   verifiedRefLedger: []
 };
 
@@ -101,6 +103,7 @@ export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
       expectedBankAccount: saved.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
       allowedTimeWindowMinutes: Number(saved.allowedTimeWindowMinutes) || DEFAULT_SYSTEM_CONFIG.allowedTimeWindowMinutes,
       geminiApiKey: saved.geminiApiKey || process.env.GEMINI_API_KEY || "",
+      groqApiKey: saved.groqApiKey || process.env.GROQ_API_KEY || "",
       verifiedRefLedger: Array.isArray(saved.verifiedRefLedger) ? saved.verifiedRefLedger : []
     };
   } catch (error) {
@@ -141,6 +144,7 @@ export async function updateGlobalSystemConfig(updates: Partial<GlobalSystemConf
       expectedBankAccount: updates.expectedBankAccount || currentGlobal.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
       allowedTimeWindowMinutes: Number(updates.allowedTimeWindowMinutes) || currentGlobal.allowedTimeWindowMinutes || DEFAULT_SYSTEM_CONFIG.allowedTimeWindowMinutes,
       geminiApiKey: updates.geminiApiKey !== undefined ? updates.geminiApiKey : (currentGlobal.geminiApiKey || ""),
+      groqApiKey: updates.groqApiKey !== undefined ? updates.groqApiKey : (currentGlobal.groqApiKey || ""),
       verifiedRefLedger: updates.verifiedRefLedger || currentGlobal.verifiedRefLedger || []
     };
 
