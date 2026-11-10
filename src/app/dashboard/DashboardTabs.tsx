@@ -524,10 +524,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   } | null>(null);
 
   const LABOR_STAGES = [
-    "Registering cryptographic transfer document...",
-    "Reconciling Commercial Bank beneficiary account...",
-    "Verifying ledger inscription and quota tariff...",
-    "Provisioning dedicated 10Gbps Singapore core slot..."
+    "Scanning Deposit Document & OCR Forensic Analysis...",
+    "Validating Beneficiary Account...",
+    "Checking Transaction Trace, Timestamp & Duplicate Ledger...",
+    "Authenticating Deposit Amount against Selected Package...",
+    "Creating V2RAY Key..."
   ];
 
   // 🎁 FREE TEST PLAN POPUP STATE
@@ -1639,7 +1640,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       if (stageIdx < LABOR_STAGES.length) {
         setLaborStage(stageIdx);
       }
-    }, 1300);
+    }, 2000);
 
     const startTime = Date.now();
 
@@ -1660,7 +1661,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       const amount = currentQuotaList[selectedQuota!] || 0;
 
-      // Call /api/process-order for Gemini OCR & auto provisioning
+      // Call /api/process-order for Groq Vision OCR & auto provisioning
       const processRes = await fetch("/api/process-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1676,9 +1677,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       const processJson = await processRes.json();
 
-      // Ensure minimum 6.5s animation duration for authentic labor illusion
+      // Ensure realistic banking cadence (~10s minimum duration)
       const elapsed = Date.now() - startTime;
-      const remainingMs = Math.max(0, 6500 - elapsed);
+      const remainingMs = Math.max(0, 10000 - elapsed);
       await new Promise(r => setTimeout(r, remainingMs));
 
       clearInterval(stageTimer);
@@ -4616,24 +4617,47 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 🛡️ ULTRA-LUXURY MINIMALIST FINTECH SETTLEMENT MODAL */}
+          {/* 🛡️ ULTRA-LUXURY REALISTIC BANK TRANSFER CLEARANCE MODAL */}
           {laborModalOpen && (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(6, 7, 10, 0.94)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
+            <div style={{ position: "fixed", inset: 0, background: "rgba(5, 6, 9, 0.96)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
               <div style={{
                 width: "100%",
                 maxWidth: "540px",
-                padding: "2rem 1.8rem",
-                background: "linear-gradient(180deg, rgba(16, 17, 22, 0.98) 0%, rgba(10, 10, 14, 0.99) 100%)",
-                border: "1px solid rgba(212, 175, 55, 0.22)",
-                borderRadius: "22px",
+                background: "linear-gradient(180deg, #0e0f14 0%, #08090c 100%)",
+                border: "1px solid rgba(212, 175, 55, 0.25)",
+                borderRadius: "24px",
+                padding: "1.8rem 1.8rem",
                 textAlign: "left",
-                boxShadow: "0 35px 80px rgba(0,0,0,0.85), 0 0 1px 1px rgba(212, 175, 55, 0.15), inset 0 1px 1px rgba(255,255,255,0.08)",
+                boxShadow: "0 35px 80px rgba(0,0,0,0.92), 0 0 30px rgba(212, 175, 55, 0.12), inset 0 1px 1px rgba(255,255,255,0.08)",
                 position: "relative",
                 overflow: "hidden"
               }}>
 
+                {/* ⚠️ ANTI-FRAUD WARNING BANNER */}
+                <div style={{
+                  background: "rgba(239, 68, 68, 0.08)",
+                  border: "1px solid rgba(239, 68, 68, 0.28)",
+                  borderRadius: "12px",
+                  padding: "0.65rem 0.9rem",
+                  marginBottom: "1.2rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px"
+                }}>
+                  <div style={{ flexShrink: 0, width: "26px", height: "26px", borderRadius: "50%", background: "rgba(239, 68, 68, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.74rem", color: "#fca5a5", lineHeight: 1.4, fontWeight: "500" }}>
+                    <strong style={{ color: "#ef4444", fontWeight: "700" }}>Notice:</strong> If you use a fake or duplicate payment slip, your account and IP could get permanently banned.
+                  </p>
+                </div>
+
                 {/* INSTITUTIONAL SETTLEMENT HEADER BADGE */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.6rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.3rem", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{
                       width: "7px",
@@ -4641,29 +4665,44 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       borderRadius: "50%",
                       background: laborResult?.autoApproved ? "#10b981" : "#d4af37",
                       display: "inline-block",
-                      boxShadow: laborResult?.autoApproved ? "0 0 8px rgba(16,185,129,0.5)" : "0 0 8px rgba(212,175,55,0.5)"
+                      boxShadow: laborResult?.autoApproved ? "0 0 8px rgba(16,185,129,0.6)" : "0 0 8px rgba(212,175,55,0.6)"
                     }} />
-                    <span style={{ fontSize: "0.72rem", color: "#d4af37", fontFamily: "monospace", letterSpacing: "1.5px", fontWeight: "600", textTransform: "uppercase" }}>
-                      INSTITUTIONAL SETTLEMENT // SECURE AUDIT
+                    <span style={{ fontSize: "0.7rem", color: "#d4af37", fontFamily: "monospace", letterSpacing: "1.4px", fontWeight: "600", textTransform: "uppercase" }}>
+                      BANK TRANSFER CLEARANCE // AUDIT LEDGER
                     </span>
                   </div>
                   <span style={{ fontSize: "0.68rem", color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "monospace" }}>
-                    LEGION ESCROW
+                    COMMERCIAL BANK GATEWAY
                   </span>
                 </div>
 
                 {/* MODAL STATUS TITLE & ICON */}
-                <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                <div style={{ textAlign: "center", marginBottom: "1.4rem" }}>
                   {!laborResult ? (
                     <div>
-                      <div style={{ width: "56px", height: "56px", margin: "0 auto 1.2rem auto", borderRadius: "50%", border: "2px solid rgba(212, 175, 55, 0.2)", borderTopColor: "#d4af37", animation: "spin 1s linear infinite", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                      <div style={{
+                        width: "60px",
+                        height: "60px",
+                        margin: "0 auto 1rem auto",
+                        borderRadius: "50%",
+                        border: "2px solid rgba(212, 175, 55, 0.2)",
+                        borderTopColor: "#d4af37",
+                        animation: "spin 1s linear infinite",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 25px rgba(212, 175, 55, 0.2)"
+                      }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2" />
+                          <line x1="2" y1="10" x2="22" y2="10" />
+                        </svg>
                       </div>
-                      <h3 style={{ color: "#f3f4f6", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "600", letterSpacing: "0.3px" }}>
-                        Processing Settlement Clearance
+                      <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600", letterSpacing: "0.3px" }}>
+                        Bank Transfer Clearance
                       </h3>
-                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: "0 0 1.2rem 0", lineHeight: 1.5, minHeight: "20px" }}>
-                        {LABOR_STAGES[laborStage] || "Reconciling institutional transfer ledger..."}
+                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: "0 0 1rem 0", lineHeight: 1.5, minHeight: "20px" }}>
+                        {LABOR_STAGES[laborStage] || "Performing real-time audit against Commercial Bank payment records..."}
                       </p>
                       {/* SUBTLE PROGRESS BAR */}
                       <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "4px", overflow: "hidden" }}>
@@ -4672,158 +4711,336 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     </div>
                   ) : laborResult.autoApproved ? (
                     <div>
-                      <div style={{ width: "56px", height: "56px", margin: "0 auto 1.2rem auto", borderRadius: "50%", background: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <div style={{
+                        width: "60px",
+                        height: "60px",
+                        margin: "0 auto 1rem auto",
+                        borderRadius: "50%",
+                        background: "rgba(16, 185, 129, 0.12)",
+                        border: "2px solid rgba(16, 185, 129, 0.45)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 28px rgba(16, 185, 129, 0.28)"
+                      }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       </div>
-                      <h3 style={{ color: "#f3f4f6", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
-                        Payment Confirmed &amp; Verified
+                      <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
+                        Transfer Verified Successfully
                       </h3>
                       <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0, lineHeight: 1.5 }}>
-                        {laborResult.message || "Your 10Gbps high-speed VPN slot is active and configured."}
+                        {laborResult.message || "Your 10Gbps Singapore core line and V2RAY configuration are active."}
                       </p>
                     </div>
                   ) : (
                     <div>
-                      <div style={{ width: "56px", height: "56px", margin: "0 auto 1.2rem auto", borderRadius: "50%", background: "rgba(212, 175, 55, 0.12)", border: "1px solid rgba(212, 175, 55, 0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <div style={{
+                        width: "60px",
+                        height: "60px",
+                        margin: "0 auto 1rem auto",
+                        borderRadius: "50%",
+                        background: "rgba(212, 175, 55, 0.12)",
+                        border: "2px solid rgba(212, 175, 55, 0.45)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 25px rgba(212, 175, 55, 0.2)"
+                      }}>
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                           <polyline points="9 12 11 14 15 10" />
                         </svg>
                       </div>
-                      <h3 style={{ color: "#f3f4f6", fontSize: "1.25rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
-                        Receipt Awaiting Verification
+                      <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
+                        Settlement Queued for Swift Clearance
                       </h3>
                       <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0, lineHeight: 1.5 }}>
-                        Your payment transfer has been securely registered in the audit ledger. Activation will finalize shortly.
+                        Your deposit slip has been securely archived in the audit vault. Flagged details forwarded for fast-track clearance.
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* 🔍 4 MINIMALIST FINTECH AUDIT ROWS */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "9px", marginBottom: "1.5rem" }}>
+                {/* 🧭 VERTICAL STEPPER TIMELINE */}
+                <div style={{ position: "relative", marginBottom: "1.5rem", paddingLeft: "1.8rem" }}>
+                  {/* CONTINUOUS VERTICAL TRACK LINE */}
+                  <div style={{
+                    position: "absolute",
+                    left: "14px",
+                    top: "16px",
+                    bottom: "24px",
+                    width: "2px",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    borderRadius: "2px"
+                  }} />
+
                   {(() => {
                     const expectedAcc = "8029138148";
                     const expectedPrice = currentQuotaList[selectedQuota!] || 0;
                     const report = laborResult?.auditReport;
 
-                    const defaultChecks = [
+                    const steps = [
                       {
                         id: "doc",
-                        title: "Document Received",
-                        activeLabel: "Authenticating payment slip document...",
-                        passedText: "Receipt document registered in secure ledger.",
+                        title: "Document Analyzed",
+                        activeLabel: "Scanning deposit slip document & forensic OCR...",
+                        passedText: "Slip cryptographic signature & banking metadata verified.",
                         failedText: "Slip uploaded successfully to verification vault."
                       },
                       {
                         id: "account",
-                        title: "Beneficiary Matching",
+                        title: "Beneficiary Confirmed",
                         activeLabel: `Reconciling target account ${expectedAcc}...`,
-                        passedText: `Commercial Bank beneficiary account ${expectedAcc} verified.`,
-                        failedText: "Beneficiary matching queued for rapid clearance."
+                        passedText: `Commercial Bank Account ${expectedAcc} verified.`,
+                        failedText: `Beneficiary account reconciliation queued.`
                       },
                       {
-                        id: "ledger",
-                        title: "Ledger Inscription",
-                        activeLabel: `Validating tariff balance against package price (Rs. ${expectedPrice})...`,
-                        passedText: "Transfer balance authenticated & inscribed in ledger.",
-                        failedText: "Reference hash queued for swift ledger clearance."
+                        id: "trace",
+                        title: "Transaction Trace Valid",
+                        activeLabel: "Checking transaction trace & duplicate anti-replay ledger...",
+                        passedText: "Unique reference hash verified against anti-replay ledger.",
+                        failedText: "Transaction reference hash queued for clearance."
                       },
                       {
-                        id: "node",
-                        title: "Slot Provisioning",
-                        activeLabel: "Allocating dedicated Singapore 10Gbps core...",
-                        passedText: "Singapore high-speed core slot activated.",
+                        id: "amount",
+                        title: "Settlement Matched",
+                        activeLabel: `Authenticating deposit amount against package (Rs. ${expectedPrice})...`,
+                        passedText: `Exact tariff Rs. ${expectedPrice} verified.`,
+                        failedText: `Tariff balance queued for swift settlement confirmation.`
+                      },
+                      {
+                        id: "line",
+                        title: "Line Activated",
+                        activeLabel: "Creating dedicated V2RAY key & 3x-ui client slot...",
+                        passedText: "10Gbps Singapore core slot & subscription link generated.",
                         failedText: "Dedicated slot allocated upon final clearance."
                       }
                     ];
 
-                    return defaultChecks.map((step, idx) => {
+                    return steps.map((step, idx) => {
                       let isPassed = false;
                       let isScanning = false;
-                      let detailText = "";
+                      let isSuspicious = false;
+                      let detailNode: React.ReactNode = null;
                       let checkData: any = undefined;
 
                       if (!laborResult) {
                         if (idx < laborStage) {
                           isPassed = true;
-                          detailText = step.passedText;
+                          detailNode = <span style={{ color: "#9ca3af" }}>{step.passedText}</span>;
                         } else if (idx === laborStage) {
                           isScanning = true;
-                          detailText = step.activeLabel;
+                          detailNode = <span style={{ color: "#d4af37" }}>{step.activeLabel}</span>;
                         } else {
-                          detailText = "Queued in settlement pipeline...";
+                          detailNode = <span style={{ color: "#6b7280" }}>Queued in settlement pipeline...</span>;
                         }
                       } else {
                         checkData = Array.isArray(report?.checks)
-                          ? report.checks.find((c: any) => c.id === step.id || (step.id === "doc" && c.id === "ocr") || (step.id === "ledger" && (c.id === "amount" || c.id === "replay")))
+                          ? report.checks.find((c: any) => c.id === step.id || (step.id === "doc" && c.id === "ocr") || (step.id === "trace" && (c.id === "replay" || c.id === "ledger")) || (step.id === "line" && c.id === "node"))
                           : undefined;
 
                         if (checkData) {
                           isPassed = Boolean(checkData.passed);
-                          detailText = checkData.message || (isPassed ? step.passedText : step.failedText);
+                          isSuspicious = Boolean(checkData.isSuspicious);
+
+                          if (step.id === "account" && isSuspicious) {
+                            detailNode = (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
+                                <div style={{ fontSize: "0.74rem", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                                  <span style={{ color: "#34d399", fontWeight: "600" }}>Expected: {expectedAcc}</span>
+                                  <span style={{ color: "#6b7280" }}>|</span>
+                                  <span style={{ color: "#fca5a5" }}>Slip:</span>
+                                  <span style={{ textDecoration: "line-through", textDecorationColor: "#ef4444", textDecorationThickness: "2px", color: "#f87171", fontWeight: "600" }}>
+                                    {checkData.detected || "Not Detected"}
+                                  </span>
+                                </div>
+                                <span style={{ color: "#fca5a5", fontSize: "0.72rem" }}>{checkData.message || step.failedText}</span>
+                              </div>
+                            );
+                          } else if (step.id === "amount" && isSuspicious) {
+                            detailNode = (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
+                                <div style={{ fontSize: "0.74rem", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                                  <span style={{ color: "#34d399", fontWeight: "600" }}>Package Price: Rs. {expectedPrice}</span>
+                                  <span style={{ color: "#6b7280" }}>|</span>
+                                  <span style={{ color: "#fca5a5" }}>Slip Amount:</span>
+                                  <span style={{ textDecoration: "line-through", textDecorationColor: "#ef4444", textDecorationThickness: "2px", color: "#f87171", fontWeight: "600" }}>
+                                    Rs. {checkData.detected || 0}
+                                  </span>
+                                </div>
+                                <span style={{ color: "#fca5a5", fontSize: "0.72rem" }}>{checkData.message || step.failedText}</span>
+                              </div>
+                            );
+                          } else if (step.id === "trace" && isSuspicious) {
+                            detailNode = (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
+                                <span style={{ textDecoration: "line-through", textDecorationColor: "#ef4444", textDecorationThickness: "2px", color: "#f87171", fontSize: "0.74rem", fontWeight: "600" }}>
+                                  Trace #{checkData.refNumber || "Unknown"}
+                                </span>
+                                <span style={{ color: "#fca5a5", fontSize: "0.72rem" }}>{checkData.message || step.failedText}</span>
+                              </div>
+                            );
+                          } else {
+                            detailNode = (
+                              <span style={{ color: isPassed ? "#9ca3af" : "#6b7280" }}>
+                                {checkData.message || (isPassed ? step.passedText : step.failedText)}
+                              </span>
+                            );
+                          }
                         } else {
                           isPassed = Boolean(laborResult.autoApproved);
-                          detailText = isPassed ? step.passedText : step.failedText;
+                          detailNode = <span style={{ color: isPassed ? "#9ca3af" : "#6b7280" }}>{isPassed ? step.passedText : step.failedText}</span>;
                         }
                       }
 
-                      const rowBg = isPassed
-                        ? "rgba(16, 185, 129, 0.04)"
-                        : "rgba(255, 255, 255, 0.02)";
-
-                      const rowBorder = isPassed
-                        ? "1px solid rgba(16, 185, 129, 0.28)"
-                        : isScanning
-                        ? "1px solid rgba(212, 175, 55, 0.35)"
-                        : "1px solid rgba(212, 175, 55, 0.14)";
-
+                      const dotLeft = "-1.8rem";
                       return (
                         <div
                           key={step.id}
                           style={{
-                            background: rowBg,
-                            border: rowBorder,
-                            borderRadius: "10px",
-                            padding: "0.75rem 1rem",
-                            transition: "all 0.25s ease"
+                            position: "relative",
+                            marginBottom: idx === steps.length - 1 ? 0 : "1.1rem",
+                            paddingBottom: idx === steps.length - 1 ? 0 : "0.2rem"
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              {isPassed ? (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                              ) : isScanning ? (
-                                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d4af37", display: "inline-block", boxShadow: "0 0 6px #d4af37" }} />
-                              ) : (
-                                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6b7280", display: "inline-block" }} />
-                              )}
-                              <span style={{ fontSize: "0.82rem", fontWeight: "600", color: isPassed ? "#d1fae5" : isScanning ? "#fef08a" : "#e5e7eb" }}>
+                          {/* STEP NODE ICON */}
+                          <div style={{
+                            position: "absolute",
+                            left: dotLeft,
+                            top: "2px",
+                            width: "28px",
+                            height: "28px",
+                            borderRadius: "50%",
+                            background: isPassed
+                              ? "rgba(16, 185, 129, 0.16)"
+                              : isSuspicious
+                              ? "rgba(239, 68, 68, 0.18)"
+                              : isScanning
+                              ? "rgba(212, 175, 55, 0.18)"
+                              : "rgba(255, 255, 255, 0.05)",
+                            border: isPassed
+                              ? "2px solid #10b981"
+                              : isSuspicious
+                              ? "2px solid #ef4444"
+                              : isScanning
+                              ? "2px solid #d4af37"
+                              : "2px solid rgba(255, 255, 255, 0.14)",
+                            boxShadow: isPassed
+                              ? "0 0 10px rgba(16, 185, 129, 0.35)"
+                              : isSuspicious
+                              ? "0 0 10px rgba(239, 68, 68, 0.4)"
+                              : isScanning
+                              ? "0 0 12px rgba(212, 175, 55, 0.4)"
+                              : "none",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 2,
+                            transition: "all 0.3s ease"
+                          }}>
+                            {isPassed ? (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : isSuspicious ? (
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            ) : isScanning ? (
+                              <span style={{
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "50%",
+                                background: "#d4af37",
+                                display: "inline-block",
+                                boxShadow: "0 0 8px #d4af37",
+                                animation: "pulse 1.2s ease-in-out infinite"
+                              }} />
+                            ) : (
+                              <span style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                background: "rgba(255, 255, 255, 0.25)",
+                                display: "inline-block"
+                              }} />
+                            )}
+                          </div>
+
+                          {/* STEP DETAILS CARD */}
+                          <div style={{
+                            background: isSuspicious
+                              ? "rgba(239, 68, 68, 0.05)"
+                              : isPassed
+                              ? "rgba(16, 185, 129, 0.03)"
+                              : "rgba(255, 255, 255, 0.015)",
+                            border: isSuspicious
+                              ? "1px solid rgba(239, 68, 68, 0.3)"
+                              : isPassed
+                              ? "1px solid rgba(16, 185, 129, 0.25)"
+                              : isScanning
+                              ? "1px solid rgba(212, 175, 55, 0.32)"
+                              : "1px solid rgba(255, 255, 255, 0.06)",
+                            borderRadius: "12px",
+                            padding: "0.65rem 0.95rem",
+                            transition: "all 0.25s ease"
+                          }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                              <span style={{
+                                fontSize: "0.84rem",
+                                fontWeight: "600",
+                                color: isPassed ? "#ecfdf5" : isSuspicious ? "#fef2f2" : isScanning ? "#fef08a" : "#d1d5db"
+                              }}>
                                 {step.title}
+                              </span>
+
+                              <span style={{
+                                fontSize: "0.68rem",
+                                fontWeight: "600",
+                                fontFamily: "monospace",
+                                padding: "2px 7px",
+                                borderRadius: "6px",
+                                background: isPassed
+                                  ? "rgba(16, 185, 129, 0.12)"
+                                  : isSuspicious
+                                  ? "rgba(239, 68, 68, 0.15)"
+                                  : isScanning
+                                  ? "rgba(212, 175, 55, 0.1)"
+                                  : "rgba(255, 255, 255, 0.04)",
+                                color: isPassed
+                                  ? "#34d399"
+                                  : isSuspicious
+                                  ? "#f87171"
+                                  : isScanning
+                                  ? "#d4af37"
+                                  : "#9ca3af",
+                                border: `1px solid ${
+                                  isPassed
+                                    ? "rgba(16,185,129,0.3)"
+                                    : isSuspicious
+                                    ? "rgba(239,68,68,0.35)"
+                                    : isScanning
+                                    ? "rgba(212,175,55,0.25)"
+                                    : "rgba(255,255,255,0.08)"
+                                }`
+                              }}>
+                                {isPassed
+                                  ? "[CONFIRMED]"
+                                  : isSuspicious
+                                  ? "[DISCREPANCY]"
+                                  : isScanning
+                                  ? "[AUDITING...]"
+                                  : "[QUEUED]"}
                               </span>
                             </div>
 
-                            <span style={{
-                              fontSize: "0.68rem",
-                              fontWeight: "600",
-                              fontFamily: "monospace",
-                              padding: "2px 7px",
-                              borderRadius: "6px",
-                              background: isPassed
-                                ? "rgba(16, 185, 129, 0.12)"
-                                : isScanning
-                                ? "rgba(212, 175, 55, 0.1)"
-                                : "rgba(255, 255, 255, 0.04)",
-                              color: isPassed ? "#34d399" : isScanning ? "#d4af37" : "#9ca3af",
-                              border: `1px solid ${isPassed ? "rgba(16,185,129,0.3)" : isScanning ? "rgba(212,175,55,0.25)" : "rgba(255,255,255,0.08)"}`
-                            }}>
-                              {isPassed ? "[CONFIRMED]" : isScanning ? "[PROCESSING]" : "[QUEUED]"}
-                            </span>
+                            <div style={{ fontSize: "0.76rem", lineHeight: 1.4 }}>
+                              {detailNode}
+                            </div>
                           </div>
-
-                          <p style={{ margin: "3px 0 0 0", fontSize: "0.75rem", color: isPassed ? "#9ca3af" : "#6b7280", lineHeight: 1.4 }}>
-                            {detailText}
-                          </p>
                         </div>
                       );
                     });
@@ -4843,19 +5060,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       }}
                       style={{
                         width: "100%",
-                        padding: "0.9rem",
+                        padding: "0.95rem",
                         background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
                         color: "#FFF",
                         border: "none",
                         borderRadius: "30px",
-                        fontSize: "0.9rem",
+                        fontSize: "0.92rem",
                         fontWeight: "600",
                         cursor: "pointer",
                         boxShadow: "0 6px 20px rgba(5,150,105,0.35)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
                         transition: "all 0.2s ease"
                       }}
                     >
-                      View &amp; Copy Active VPN Configs →
+                      <span>View &amp; Copy Active VPN Configs</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                      </svg>
                     </button>
                   ) : laborResult ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
