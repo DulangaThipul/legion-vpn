@@ -67,7 +67,68 @@ async function provision3xuiClient(
   }
 
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
-  const inboundId = Number(nodeConfig.inboundId || 1);
+  const targetInboundId = Number(nodeConfig?.inboundId || 3);
+
+  const activeBase = auth.effectiveBaseUrl || cleanBase;
+  let originUrl = activeBase;
+  try {
+    originUrl = new URL(activeBase).origin;
+  } catch {}
+
+  // 1. Auto-Detect Available Inbound via List API (ensures target e.g. ID 3 exists and avoids 404)
+  let finalInboundId = targetInboundId;
+  try {
+    let inbounds: any[] = [];
+    for (const listEp of [
+      `${activeBase}/panel/api/inbounds/list`,
+      `${activeBase}/panel/inbound/list`
+    ]) {
+      try {
+        const listRes = await fetch(listEp, {
+          headers: {
+            "Cookie": auth.cookie,
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0",
+            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+          },
+          signal: AbortSignal.timeout(5000)
+        });
+        if (listRes.ok) {
+          const listData = await listRes.json().catch(() => null);
+          if (Array.isArray(listData?.obj)) {
+            inbounds = listData.obj;
+            break;
+          }
+        }
+      } catch {}
+
+      if (inbounds.length === 0) {
+        try {
+          const unsafeRes = await httpRequestUnsafe(listEp, {
+            method: "GET",
+            headers: {
+              "Cookie": auth.cookie,
+              "Accept": "application/json",
+              ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+            },
+            timeout: 5000
+          });
+          if (unsafeRes.statusCode === 200 && Array.isArray(unsafeRes.json?.obj)) {
+            inbounds = unsafeRes.json.obj;
+            break;
+          }
+        } catch {}
+      }
+    }
+
+    if (inbounds.length > 0) {
+      const exists = inbounds.some(ib => Number(ib.id) === targetInboundId);
+      if (!exists && inbounds.length > 0) {
+        finalInboundId = Number(inbounds[0].id);
+      }
+    }
+  } catch {}
+
   const totalBytes = Number(packageData.quotaGb || 100) * 1024 * 1024 * 1024;
   const expiryMs = Date.now() + (Number(packageData.validityDays || 30) * 86400000);
 
@@ -88,12 +149,6 @@ async function provision3xuiClient(
       }
     ]
   });
-
-  const activeBase = auth.effectiveBaseUrl || cleanBase;
-  let originUrl = activeBase;
-  try {
-    originUrl = new URL(activeBase).origin;
-  } catch {}
 
   const addClientEndpoints = [
     `${activeBase}/panel/api/inbounds/addClient`,
@@ -117,7 +172,7 @@ async function provision3xuiClient(
           ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
         },
         body: JSON.stringify({
-          id: inboundId,
+          id: finalInboundId,
           settings: clientSettingsString
         }),
         signal: AbortSignal.timeout(10000)
@@ -151,7 +206,7 @@ async function provision3xuiClient(
             ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
           },
           body: JSON.stringify({
-            id: inboundId,
+            id: finalInboundId,
             settings: clientSettingsString
           }),
           timeout: 10000
@@ -188,7 +243,7 @@ async function provision3xuiClient(
             ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
           },
           body: JSON.stringify({
-            id: inboundId,
+            id: finalInboundId,
             settings: clientSettingsString
           }),
           timeout: 10000
@@ -203,7 +258,7 @@ async function provision3xuiClient(
   }
 
   if (!addedSuccessfully) {
-    throw new Error(`Failed to create client inside 3x-ui inbound ${inboundId}: ${lastError}`);
+    throw new Error(`Failed to create client inside 3x-ui inbound ${finalInboundId}: ${lastError}`);
   }
 
   // Construct the authentic 3x-ui subscription URL
@@ -222,10 +277,10 @@ async function provision3xuiClient(
   let shortId = "";
   let sniHost = packageData.sni || "www.speedtest.net";
 
-  // Fetch real inbound stream settings via GET ${activeBase}/panel/api/inbounds/get/${inboundId}
+  // Fetch real inbound stream settings via GET ${activeBase}/panel/api/inbounds/get/${finalInboundId}
   for (const getEp of [
-    `${activeBase}/panel/api/inbounds/get/${inboundId}`,
-    `${activeBase}/panel/inbound/get/${inboundId}`
+    `${activeBase}/panel/api/inbounds/get/${finalInboundId}`,
+    `${activeBase}/panel/inbound/get/${finalInboundId}`
   ]) {
     try {
       const getRes = await httpRequestUnsafe(getEp, {
