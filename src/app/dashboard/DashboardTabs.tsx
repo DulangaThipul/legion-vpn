@@ -1671,7 +1671,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           quotaLabel: selectedQuota || "Unlimited",
           amount,
           ispPrice: modalPackage?.ispPrice || "",
-          receiptUrl: fileUrl
+          receiptUrl: fileUrl,
+          slipUrl: fileUrl
         })
       });
 
@@ -1688,7 +1689,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       if (processJson.user) {
         setUser(processJson.user);
-      } else if (processJson.autoApproved) {
+      } else if (processJson.autoApproved || processJson.verified) {
         try {
           const uRes = await fetch(`/api/usage?userId=${user.id}`);
           const uData = await uRes.json();
@@ -1707,11 +1708,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         auditReport: {
           overallStatus: "review_required",
           checks: [
-            { id: "ocr", title: "1. Slip Document & OCR Kernel", passed: false, isSuspicious: true, statusText: "Network Warning", message: "Slip network timeout. Forwarded to admin queue." },
-            { id: "account", title: "2. Beneficiary Account Guardrail", passed: true, statusText: "Target: 8029138148", message: "Bank Commercial Bank (8029138148)" },
-            { id: "amount", title: "3. Tariff Amount Verification", passed: true, statusText: "Target: Package Price", message: "Awaiting manual confirmation." },
-            { id: "replay", title: "4. Anti-Replay Duplicate Ledger", passed: true, statusText: "Queued" },
-            { id: "node", title: "5. High-Speed VLESS Node Allocation", passed: false, statusText: "Manual Verification" }
+            { id: "doc", title: "Document Analyzed", passed: false, isSuspicious: true, statusText: "Network Warning", message: "Slip network timeout. Forwarded to admin queue." },
+            { id: "account", title: "Beneficiary Confirmed", passed: true, statusText: "Target: 8029138148", message: "Commercial Bank (8029138148)" },
+            { id: "trace", title: "Transaction Trace Valid", passed: true, statusText: "Queued" },
+            { id: "amount", title: "Settlement Matched", passed: true, statusText: "Target: Package Price", message: "Awaiting manual confirmation." },
+            { id: "line", title: "Line Activated", passed: false, statusText: "Manual Verification" }
           ]
         }
       });
@@ -4663,9 +4664,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       width: "7px",
                       height: "7px",
                       borderRadius: "50%",
-                      background: laborResult?.autoApproved ? "#10b981" : "#d4af37",
+                      background: (laborResult?.autoApproved || laborResult?.verified) ? "#10b981" : "#d4af37",
                       display: "inline-block",
-                      boxShadow: laborResult?.autoApproved ? "0 0 8px rgba(16,185,129,0.6)" : "0 0 8px rgba(212,175,55,0.6)"
+                      boxShadow: (laborResult?.autoApproved || laborResult?.verified) ? "0 0 8px rgba(16,185,129,0.6)" : "0 0 8px rgba(212,175,55,0.6)"
                     }} />
                     <span style={{ fontSize: "0.7rem", color: "#d4af37", fontFamily: "monospace", letterSpacing: "1.4px", fontWeight: "600", textTransform: "uppercase" }}>
                       BANK TRANSFER CLEARANCE // AUDIT LEDGER
@@ -4709,7 +4710,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #d4af37, #fef08a)", transition: "width 0.8s ease" }} />
                       </div>
                     </div>
-                  ) : laborResult.autoApproved ? (
+                  ) : (laborResult.autoApproved || laborResult.verified) ? (
                     <div>
                       <div style={{
                         width: "60px",
@@ -4890,7 +4891,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             );
                           }
                         } else {
-                          isPassed = Boolean(laborResult.autoApproved);
+                          isPassed = Boolean(laborResult.autoApproved || laborResult.verified);
                           detailNode = <span style={{ color: isPassed ? "#9ca3af" : "#6b7280" }}>{isPassed ? step.passedText : step.failedText}</span>;
                         }
                       }
@@ -5049,7 +5050,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                 {/* MODAL ACTION BUTTONS */}
                 <div>
-                  {laborResult?.autoApproved ? (
+                  {(laborResult?.autoApproved || laborResult?.verified) ? (
                     <button
                       type="button"
                       onClick={() => {
