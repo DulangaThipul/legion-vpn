@@ -67,7 +67,7 @@ async function provision3xuiClient(
   }
 
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
-  const targetInboundId = Number(nodeConfig?.inboundId || 3);
+  const targetInboundId = Number(nodeConfig?.inboundId || 1);
 
   const activeBase = auth.effectiveBaseUrl || cleanBase;
   let originUrl = activeBase;
@@ -75,7 +75,7 @@ async function provision3xuiClient(
     originUrl = new URL(activeBase).origin;
   } catch {}
 
-  // 1. Auto-Detect Available Inbound via List API (ensures target e.g. ID 3 exists and avoids 404)
+  // 1. Auto-Detect Available Inbound via List API (ensures target exists and avoids 404)
   let finalInboundId = targetInboundId;
   try {
     let inbounds: any[] = [];
@@ -132,7 +132,24 @@ async function provision3xuiClient(
   const totalBytes = Number(packageData.quotaGb || 100) * 1024 * 1024 * 1024;
   const expiryMs = Date.now() + (Number(packageData.validityDays || 30) * 86400000);
 
-  // 3x-ui expects `settings` as a stringified JSON containing the clients array
+  // Modern Client API payload (/panel/api/clients/add)
+  const modernClientPayload = {
+    inboundIds: [finalInboundId],
+    client: {
+      id: clientUuid,
+      flow: "",
+      email: clientEmail,
+      limitIp: 2,
+      totalGB: totalBytes,
+      expiryTime: expiryMs,
+      enable: true,
+      tgId: "",
+      subId: clientSubId,
+      reset: 0
+    }
+  };
+
+  // Legacy Inbound API payload (/panel/api/inbounds/addClient)
   const clientSettingsString = JSON.stringify({
     clients: [
       {
@@ -150,17 +167,16 @@ async function provision3xuiClient(
     ]
   });
 
-  const addClientEndpoints = [
-    `${activeBase}/panel/api/inbounds/addClient`,
-    `${activeBase}/panel/inbound/addClient`
-  ];
-
   let addedSuccessfully = false;
   let lastError = "";
 
-  for (const ep of addClientEndpoints) {
+  // A. Try Modern Client API first: POST /panel/api/clients/add
+  for (const modernEp of [
+    `${activeBase}/panel/api/clients/add`,
+    `${activeBase}/panel/clients/add`
+  ]) {
     try {
-      const addRes = await fetch(ep, {
+      const modernRes = await httpRequestUnsafe(modernEp, {
         method: "POST",
         headers: {
           "Cookie": auth.cookie,
@@ -171,30 +187,29 @@ async function provision3xuiClient(
           "X-Requested-With": "XMLHttpRequest",
           ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
         },
-        body: JSON.stringify({
-          id: finalInboundId,
-          settings: clientSettingsString
-        }),
-        signal: AbortSignal.timeout(10000)
+        body: JSON.stringify(modernClientPayload),
+        timeout: 8000
       });
 
-      const resData = await addRes.json().catch(() => null);
-      if (addRes.ok && (resData?.success === true || resData?.success === undefined)) {
+      if (modernRes.statusCode >= 200 && modernRes.statusCode < 300 && (modernRes.json?.success === true || modernRes.json?.success === undefined)) {
         addedSuccessfully = true;
         break;
       } else {
-        lastError = resData?.msg || `HTTP ${addRes.status}`;
+        lastError = modernRes.json?.msg || `HTTP ${modernRes.statusCode}`;
       }
     } catch (err: any) {
-      lastError = err?.message || "Fetch failed";
+      lastError = err?.message || "Modern client add failed";
     }
   }
 
-  // Fallback to httpRequestUnsafe (handles self-signed certificates on VPS seamlessly)
+  // B. Fallback to Legacy Inbound API: POST /panel/api/inbounds/addClient
   if (!addedSuccessfully) {
-    for (const ep of addClientEndpoints) {
+    for (const legacyEp of [
+      `${activeBase}/panel/api/inbounds/addClient`,
+      `${activeBase}/panel/inbound/addClient`
+    ]) {
       try {
-        const res = await httpRequestUnsafe(ep, {
+        const legacyRes = await httpRequestUnsafe(legacyEp, {
           method: "POST",
           headers: {
             "Cookie": auth.cookie,
@@ -209,14 +224,14 @@ async function provision3xuiClient(
             id: finalInboundId,
             settings: clientSettingsString
           }),
-          timeout: 10000
+          timeout: 8000
         });
 
-        if (res.statusCode >= 200 && res.statusCode < 300 && (res.json?.success === true || res.json?.success === undefined)) {
+        if (legacyRes.statusCode >= 200 && legacyRes.statusCode < 300 && (legacyRes.json?.success === true || legacyRes.json?.success === undefined)) {
           addedSuccessfully = true;
           break;
         } else {
-          lastError = res.json?.msg || `HTTP ${res.statusCode}`;
+          lastError = legacyRes.json?.msg || `HTTP ${legacyRes.statusCode}`;
         }
       } catch (err: any) {
         lastError = err?.message || lastError;
@@ -224,36 +239,58 @@ async function provision3xuiClient(
     }
   }
 
-  // If client already exists (e.g. renewal or re-order), attempt updateClient
+  // C. If already exists, attempt modern update then legacy update
   if (!addedSuccessfully && (lastError.toLowerCase().includes("duplicate") || lastError.toLowerCase().includes("exist") || lastError.toLowerCase().includes("already"))) {
-    for (const updateEp of [
-      `${activeBase}/panel/api/inbounds/updateClient/${clientUuid}`,
-      `${activeBase}/panel/inbound/updateClient/${clientUuid}`
-    ]) {
-      try {
-        const updateRes = await httpRequestUnsafe(updateEp, {
-          method: "POST",
-          headers: {
-            "Cookie": auth.cookie,
-            "Content-Type": "application/json",
-            "Origin": originUrl,
-            "Referer": `${activeBase}/panel/inbounds`,
-            "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-          },
-          body: JSON.stringify({
-            id: finalInboundId,
-            settings: clientSettingsString
-          }),
-          timeout: 10000
-        });
+    try {
+      const updateRes = await httpRequestUnsafe(`${activeBase}/panel/api/clients/update/${encodeURIComponent(clientEmail)}`, {
+        method: "POST",
+        headers: {
+          "Cookie": auth.cookie,
+          "Content-Type": "application/json",
+          "Origin": originUrl,
+          "Referer": `${activeBase}/panel/inbounds`,
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+        },
+        body: JSON.stringify(modernClientPayload.client),
+        timeout: 8000
+      });
+      if (updateRes.statusCode >= 200 && updateRes.statusCode < 300 && (updateRes.json?.success === true || updateRes.json?.success === undefined)) {
+        addedSuccessfully = true;
+      }
+    } catch {}
 
-        if (updateRes.statusCode >= 200 && updateRes.statusCode < 300 && (updateRes.json?.success === true || updateRes.json?.success === undefined)) {
-          addedSuccessfully = true;
-          break;
-        }
-      } catch {}
+    if (!addedSuccessfully) {
+      for (const updateEp of [
+        `${activeBase}/panel/api/inbounds/updateClient/${clientUuid}`,
+        `${activeBase}/panel/inbound/updateClient/${clientUuid}`
+      ]) {
+        try {
+          const updateRes = await httpRequestUnsafe(updateEp, {
+            method: "POST",
+            headers: {
+              "Cookie": auth.cookie,
+              "Content-Type": "application/json",
+              "Origin": originUrl,
+              "Referer": `${activeBase}/panel/inbounds`,
+              "Accept": "application/json",
+              "X-Requested-With": "XMLHttpRequest",
+              ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+            },
+            body: JSON.stringify({
+              id: finalInboundId,
+              settings: clientSettingsString
+            }),
+            timeout: 8000
+          });
+
+          if (updateRes.statusCode >= 200 && updateRes.statusCode < 300 && (updateRes.json?.success === true || updateRes.json?.success === undefined)) {
+            addedSuccessfully = true;
+            break;
+          }
+        } catch {}
+      }
     }
   }
 
@@ -273,17 +310,16 @@ async function provision3xuiClient(
     nodeDomain = activeBase.replace(/^https?:\/\//, "").split(/[:/]/)[0];
   }
 
-  let realityPublicKey = "";
-  let shortId = "";
-  let sniHost = packageData.sni || "www.speedtest.net";
+  const pkgLabel = packageData.name || "VIP";
+  let realVlessKey = "";
 
-  // Fetch real inbound stream settings via GET ${activeBase}/panel/api/inbounds/get/${finalInboundId}
-  for (const getEp of [
-    `${activeBase}/panel/api/inbounds/get/${finalInboundId}`,
-    `${activeBase}/panel/inbound/get/${finalInboundId}`
-  ]) {
-    try {
-      const getRes = await httpRequestUnsafe(getEp, {
+  // 1. First attempt to get exact client links directly from 3x-ui Modern API: GET /panel/api/clients/links/:email
+  try {
+    for (const linksEp of [
+      `${activeBase}/panel/api/clients/links/${encodeURIComponent(clientEmail)}`,
+      `${activeBase}/panel/clients/links/${encodeURIComponent(clientEmail)}`
+    ]) {
+      const linksRes = await httpRequestUnsafe(linksEp, {
         method: "GET",
         headers: {
           "Cookie": auth.cookie,
@@ -291,47 +327,99 @@ async function provision3xuiClient(
           "X-Requested-With": "XMLHttpRequest",
           ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
         },
-        timeout: 8000
+        timeout: 5000
       });
-
-      if (getRes.statusCode === 200 && getRes.json?.obj) {
-        const inboundObj = getRes.json.obj;
-        if (inboundObj.port) nodePort = Number(inboundObj.port);
-
-        let stream: any = {};
-        if (typeof inboundObj.streamSettings === "string") {
-          try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
-        } else if (typeof inboundObj.streamSettings === "object") {
-          stream = inboundObj.streamSettings;
+      if (linksRes.statusCode === 200 && linksRes.json?.obj) {
+        const linkObj = linksRes.json.obj;
+        let foundLink = "";
+        if (Array.isArray(linkObj) && linkObj.length > 0) {
+          foundLink = linkObj.find((l: any) => typeof l === "string" && l.startsWith("vless://")) || linkObj[0];
+        } else if (typeof linkObj === "string" && linkObj.startsWith("vless://")) {
+          foundLink = linkObj;
         }
-
-        if (stream?.realitySettings) {
-          const rs = stream.realitySettings;
-          realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
-          if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
-            shortId = rs.shortIds[0];
-          }
-          if (Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
-            sniHost = packageData.sni || rs.serverNames[0];
-          }
-        } else if (stream?.tlsSettings) {
-          if (Array.isArray(stream.tlsSettings.serverNames) && stream.tlsSettings.serverNames.length > 0) {
-            sniHost = packageData.sni || stream.tlsSettings.serverNames[0];
-          }
+        if (foundLink && typeof foundLink === "string") {
+          const baseNoHash = foundLink.split("#")[0];
+          realVlessKey = `${baseNoHash}#LEGION-${encodeURIComponent(pkgLabel)}`;
+          break;
         }
-        break;
       }
-    } catch (err: any) {
-      console.warn(`Could not read stream settings from ${getEp}:`, err?.message);
     }
-  }
+  } catch {}
 
-  const pkgLabel = packageData.name || "VIP";
-  let realVlessKey = "";
-  if (realityPublicKey) {
-    realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
-  } else {
-    realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
+  // 2. If client link was not returned directly, inspect inbound stream settings: GET /panel/api/inbounds/get/:id
+  if (!realVlessKey) {
+    let realityPublicKey = "";
+    let shortId = "";
+    let sniHost = packageData.sni || "www.speedtest.net";
+    let isWs = false;
+    let wsPath = "/";
+    let wsHost = "";
+    let streamSecurity = "tls";
+
+    for (const getEp of [
+      `${activeBase}/panel/api/inbounds/get/${finalInboundId}`,
+      `${activeBase}/panel/inbound/get/${finalInboundId}`
+    ]) {
+      try {
+        const getRes = await httpRequestUnsafe(getEp, {
+          method: "GET",
+          headers: {
+            "Cookie": auth.cookie,
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
+          },
+          timeout: 8000
+        });
+
+        if (getRes.statusCode === 200 && getRes.json?.obj) {
+          const inboundObj = getRes.json.obj;
+          if (inboundObj.port) nodePort = Number(inboundObj.port);
+
+          let stream: any = {};
+          if (typeof inboundObj.streamSettings === "string") {
+            try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
+          } else if (typeof inboundObj.streamSettings === "object") {
+            stream = inboundObj.streamSettings;
+          }
+
+          if (stream?.security) streamSecurity = stream.security;
+
+          if (stream?.network === "ws" || stream?.wsSettings) {
+            isWs = true;
+            if (stream.wsSettings?.path) wsPath = stream.wsSettings.path;
+            if (stream.wsSettings?.headers?.Host) wsHost = stream.wsSettings.headers.Host;
+          }
+
+          if (stream?.realitySettings) {
+            const rs = stream.realitySettings;
+            realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
+            if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
+              shortId = rs.shortIds[0];
+            }
+            if (Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
+              sniHost = packageData.sni || rs.serverNames[0];
+            }
+          } else if (stream?.tlsSettings) {
+            if (Array.isArray(stream.tlsSettings.serverNames) && stream.tlsSettings.serverNames.length > 0) {
+              sniHost = packageData.sni || stream.tlsSettings.serverNames[0];
+            }
+          }
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`Could not read stream settings from ${getEp}:`, err?.message);
+      }
+    }
+
+    if (isWs) {
+      const hostParam = wsHost ? `&host=${encodeURIComponent(wsHost)}` : "";
+      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=ws&security=${streamSecurity}&path=${encodeURIComponent(wsPath)}${hostParam}&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
+    } else if (realityPublicKey) {
+      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
+    } else {
+      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
+    }
   }
 
   return {
@@ -369,15 +457,26 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { packageId, packageName, quotaLabel, amount, receiptUrl, slipUrl, ispPrice } = body;
+    const { packageId, packageName, quotaLabel, amount, receiptUrl, slipUrl, ispPrice, adminTestMode } = body;
 
     const parsedAmount = Number(amount) || 0;
     const cleanPackageName = (packageName || "VPN Package").trim();
     const cleanQuotaLabel = (quotaLabel || "Unlimited").trim();
-    const cleanReceiptUrl = (receiptUrl || slipUrl || "").trim();
+    let cleanReceiptUrl = (receiptUrl || slipUrl || "").trim();
 
     // 2. Load Global System Configuration
     const systemConfig = await getGlobalSystemConfig();
+
+    const userEmail = (user.email || "").toLowerCase();
+    const adminEmailEnv = (process.env.ADMIN_EMAIL || "").toLowerCase();
+    const isAdmin = userEmail === "dulangathipul@gmail.com" || 
+                    userEmail === "legionzinfo@gmail.com" || 
+                    (adminEmailEnv && userEmail === adminEmailEnv) ||
+                    Boolean((user as any).isAdmin);
+
+    if (adminTestMode && !isAdmin) {
+      return NextResponse.json({ success: false, error: "Unauthorized: Admin test mode is restricted to administrator accounts." }, { status: 403 });
+    }
 
     // Parse user's current metadata safely
     let metaData: any = {
@@ -447,8 +546,36 @@ export async function POST(req: Request) {
       });
     };
 
-    // 3. Check Master Auto-Approval Switch
-    if (!systemConfig.autoApprovalEnabled) {
+    let cleanDestAcc = "";
+    let cleanExpectedAcc = (systemConfig.expectedBankAccount || "8029138148").replace(/\D/g, "");
+    let cleanRefNumber = "";
+    let ocrAmount = 0;
+    let ocrResult: {
+      bankName?: string;
+      destinationAccount?: string;
+      paidAmount?: number;
+      transactionDate?: string;
+      referenceNumber?: string;
+      isLegitimate?: boolean;
+    } | null = null;
+
+    if (adminTestMode && isAdmin) {
+      // Admin Sandbox Mode: Bypass slip upload, OCR, and anti-replay ledger check
+      cleanDestAcc = cleanExpectedAcc;
+      cleanRefNumber = `ADM-${Date.now().toString().slice(-8)}`;
+      ocrAmount = parsedAmount;
+      cleanReceiptUrl = "https://legion.internal/admin-sandbox-test.png";
+      ocrResult = {
+        bankName: "Commercial Bank (Admin Test)",
+        destinationAccount: cleanExpectedAcc,
+        paidAmount: parsedAmount,
+        transactionDate: new Date().toISOString(),
+        referenceNumber: cleanRefNumber,
+        isLegitimate: true
+      };
+    } else {
+      // 3. Check Master Auto-Approval Switch
+      if (!systemConfig.autoApprovalEnabled) {
       return await fallbackToManualVerification("Auto-approval is paused in Admin Settings. Slip routed for fast manual review.", {
         overallStatus: "review_required",
         reason: "Auto-approval paused by administrator.",
@@ -597,10 +724,10 @@ Output STRICT JSON only:
     }
 
     // 6. Strict Multi-Layer Validation
-    const cleanDestAcc = (ocrResult.destinationAccount || "").replace(/\D/g, "");
-    const cleanExpectedAcc = (systemConfig.expectedBankAccount || "8029138148").replace(/\D/g, "");
-    const cleanRefNumber = (ocrResult.referenceNumber || "").trim();
-    const ocrAmount = Number(ocrResult.paidAmount) || 0;
+    cleanDestAcc = (ocrResult.destinationAccount || "").replace(/\D/g, "");
+    cleanExpectedAcc = (systemConfig.expectedBankAccount || "8029138148").replace(/\D/g, "");
+    cleanRefNumber = (ocrResult.referenceNumber || "").trim();
+    ocrAmount = Number(ocrResult.paidAmount) || 0;
 
     const isAccountMatch = Boolean(!cleanDestAcc || cleanDestAcc.includes(cleanExpectedAcc) || cleanExpectedAcc.includes(cleanDestAcc));
     const isAmountMatch = Boolean(parsedAmount <= 0 || Math.abs(ocrAmount - parsedAmount) <= 20);
@@ -683,6 +810,7 @@ Output STRICT JSON only:
 
       return await fallbackToManualVerification(failureReason, discrepancyReport);
     }
+  }
     let clientUuid = metaData.customVpnUserId;
     if (!clientUuid) {
       const existingMatch = (user.vpnConfigKey || "").match(/vless:\/\/([a-f0-9\-]{36})/i);
@@ -711,6 +839,13 @@ Output STRICT JSON only:
       sni: systemConfig.packageSnis?.[packageId] || "zoom.us"
     };
 
+    // Dual Inbound Routing: Dialog Social 547 -> Inbound 5 (WS+TLS), Others -> Inbound 1 (TCP+TLS / Reality)
+    const pkgText = `${packageId || ""} ${cleanPackageName || ""}`.toLowerCase();
+    const isDialogSocial547 = pkgText.includes("dialog") && (pkgText.includes("547") || pkgText.includes("social"));
+    const targetInboundId = isDialogSocial547
+      ? Number(systemConfig.primary3xui?.dialogInboundId || 5)
+      : Number(systemConfig.primary3xui?.inboundId || 1);
+
     // 8. Provision Client to Real 3x-ui Inbound (NO FAKE MOCK CONFIG FALLBACKS)
     let provisionResult: {
       success: boolean;
@@ -725,7 +860,7 @@ Output STRICT JSON only:
       }
 
       provisionResult = await provision3xuiClient(
-        systemConfig.primary3xui,
+        { ...systemConfig.primary3xui, inboundId: targetInboundId },
         clientUuid,
         user.email,
         packageData
