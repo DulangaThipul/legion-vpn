@@ -31,6 +31,8 @@ export interface GlobalSystemConfig {
     inboundId: number | string;
   };
   autoApprovalEnabled: boolean;
+  enableAdminTestButton?: boolean;
+  adminWhatsapp?: string;
   expectedBankAccount: string;
   allowedTimeWindowMinutes: number;
   geminiApiKey?: string;
@@ -65,6 +67,8 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
     inboundId: 1
   },
   autoApprovalEnabled: true,
+  enableAdminTestButton: true,
+  adminWhatsapp: "94701234567",
   expectedBankAccount: "8029138148",
   allowedTimeWindowMinutes: 120,
   geminiApiKey: "",
@@ -80,7 +84,13 @@ const ADMIN_EMAIL = "dulangathipul@gmail.com";
 export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
   try {
     const adminUser = await prisma.user.findFirst({
-      where: { email: ADMIN_EMAIL }
+      where: {
+        OR: [
+          { email: ADMIN_EMAIL },
+          { email: "legionzinfo@gmail.com" },
+          ...(process.env.ADMIN_EMAIL ? [{ email: process.env.ADMIN_EMAIL }] : [])
+        ]
+      }
     });
 
     if (!adminUser || !adminUser.subscriptionLink) {
@@ -120,7 +130,13 @@ export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
 export async function updateGlobalSystemConfig(updates: Partial<GlobalSystemConfig>): Promise<{ success: boolean; config?: GlobalSystemConfig; error?: string }> {
   try {
     const adminUser = await prisma.user.findFirst({
-      where: { email: ADMIN_EMAIL }
+      where: {
+        OR: [
+          { email: ADMIN_EMAIL },
+          { email: "legionzinfo@gmail.com" },
+          ...(process.env.ADMIN_EMAIL ? [{ email: process.env.ADMIN_EMAIL }] : [])
+        ]
+      }
     });
 
     if (!adminUser) {
@@ -143,6 +159,8 @@ export async function updateGlobalSystemConfig(updates: Partial<GlobalSystemConf
       primary3xui: { ...DEFAULT_SYSTEM_CONFIG.primary3xui, ...(currentGlobal.primary3xui || {}), ...(updates.primary3xui || {}) },
       bonusUsa3xui: { ...DEFAULT_SYSTEM_CONFIG.bonusUsa3xui, ...(currentGlobal.bonusUsa3xui || {}), ...(updates.bonusUsa3xui || {}) },
       autoApprovalEnabled: updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApprovalEnabled ?? true),
+      enableAdminTestButton: updates.enableAdminTestButton !== undefined ? Boolean(updates.enableAdminTestButton) : (currentGlobal.enableAdminTestButton ?? true),
+      adminWhatsapp: updates.adminWhatsapp || currentGlobal.adminWhatsapp || DEFAULT_SYSTEM_CONFIG.adminWhatsapp || "94701234567",
       expectedBankAccount: updates.expectedBankAccount || currentGlobal.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
       allowedTimeWindowMinutes: Number(updates.allowedTimeWindowMinutes) || currentGlobal.allowedTimeWindowMinutes || DEFAULT_SYSTEM_CONFIG.allowedTimeWindowMinutes,
       geminiApiKey: updates.geminiApiKey !== undefined ? updates.geminiApiKey : (currentGlobal.geminiApiKey || ""),
