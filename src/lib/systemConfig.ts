@@ -19,6 +19,7 @@ export interface GlobalSystemConfig {
     username: string;
     password: string;
     inboundId: number | string;
+    dialogInboundId?: number | string;
     port: number | string;
     subBaseUrl: string;
   };
@@ -51,7 +52,8 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
     baseUrl: "https://103.179.44.75:2096",
     username: "",
     password: "",
-    inboundId: 3,
+    inboundId: 1,
+    dialogInboundId: 5,
     port: 443,
     subBaseUrl: "https://103.179.44.75:2096/sub/"
   },
