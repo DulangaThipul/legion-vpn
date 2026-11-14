@@ -1738,6 +1738,80 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
   };
 
+  // ADMIN-ONLY SLIP-FREE LIVE 3X-UI PROVISIONING TEST
+  const handleAdminTestOrder = async () => {
+    const userEmail = (user?.email || "").toLowerCase();
+    const isUserAdmin = userEmail === "dulangathipul@gmail.com" || 
+                        userEmail === "legionzinfo@gmail.com" || 
+                        Boolean(user?.isAdmin);
+    if (!isUserAdmin) return;
+
+    setIsUploading(true);
+    setLaborModalOpen(true);
+    setLaborStage(0);
+    setLaborResult(null);
+
+    let stageIdx = 0;
+    const stageTimer = setInterval(() => {
+      stageIdx++;
+      if (stageIdx < LABOR_STAGES.length) {
+        setLaborStage(stageIdx);
+      }
+    }, 1200);
+
+    const startTime = Date.now();
+
+    try {
+      const amount = currentQuotaList[selectedQuota!] || 0;
+
+      const processRes = await fetch("/api/process-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: modalPackage?.id || "custom",
+          packageName: modalPackage?.name || "Custom Plan",
+          quotaLabel: selectedQuota || "Unlimited",
+          amount,
+          ispPrice: modalPackage?.ispPrice || "",
+          adminTestMode: true
+        })
+      });
+
+      const processJson = await processRes.json();
+
+      const elapsed = Date.now() - startTime;
+      const remainingMs = Math.max(0, 4500 - elapsed);
+      await new Promise(r => setTimeout(r, remainingMs));
+
+      clearInterval(stageTimer);
+      setLaborStage(LABOR_STAGES.length - 1);
+      setLaborResult(processJson);
+
+      if (processJson.user) {
+        setUser(processJson.user);
+      } else if (processJson.autoApproved || processJson.verified) {
+        try {
+          const uRes = await fetch(`/api/usage?userId=${user.id}`);
+          const uData = await uRes.json();
+          if (uData.success) {
+            setUser((prev: any) => ({ ...prev, vpnStatus: "Active" }));
+          }
+        } catch {}
+      }
+    } catch (err: any) {
+      clearInterval(stageTimer);
+      setLaborResult({
+        success: false,
+        autoApproved: false,
+        status: "Error",
+        message: err?.message || "Admin test execution failed"
+      });
+    } finally {
+      clearInterval(stageTimer);
+      setIsUploading(false);
+    }
+  };
+
   const closeCheckout = () => { 
     setModalPackage(null); 
     setSimWarningModal(null); 
@@ -4641,152 +4715,124 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         {isUploading ? "Verifying Payment..." : "Submit Order"}
                       </button>
                     </div>
+
+                    {(user?.email?.toLowerCase() === "dulangathipul@gmail.com" || user?.email?.toLowerCase() === "legionzinfo@gmail.com" || user?.isAdmin) && (
+                      <button
+                        type="button"
+                        onClick={handleAdminTestOrder}
+                        disabled={isUploading}
+                        style={{
+                          marginTop: "0.85rem",
+                          width: "100%",
+                          padding: "0.8rem 1rem",
+                          borderRadius: "10px",
+                          background: "linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(30, 27, 75, 0.75) 100%)",
+                          border: "1px solid rgba(168, 85, 247, 0.45)",
+                          color: "#e9d5ff",
+                          fontWeight: "600",
+                          fontSize: "0.82rem",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          cursor: isUploading ? "not-allowed" : "pointer",
+                          boxShadow: "0 4px 15px rgba(126, 34, 206, 0.25)"
+                        }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                        </svg>
+                        <span>⚡ Admin Sandbox: Live Test Provision Without Slip</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* 🛡️ ULTRA-LUXURY REALISTIC BANK TRANSFER CLEARANCE MODAL */}
+          {/* 🛡️ MATTE FROSTED DARK OBSIDIAN & EMERALD VERIFICATION MODAL */}
           {laborModalOpen && (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(5, 6, 9, 0.96)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100000, padding: "1.2rem", overflowY: "auto" }}>
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-xl p-4 overflow-y-auto">
               <div 
-                className="max-h-[85vh] overflow-y-auto pb-36"
-                style={{
-                  width: "100%",
-                  maxWidth: "540px",
-                  maxHeight: "85vh",
-                  overflowY: "auto",
-                  background: "linear-gradient(180deg, #0c0a17 0%, #080711 100%)",
-                  border: "1px solid rgba(139, 92, 246, 0.25)",
-                  borderRadius: "24px",
-                  padding: "1.8rem 1.8rem 9rem 1.8rem",
-                  textAlign: "left",
-                  boxShadow: "0 35px 80px rgba(0,0,0,0.92), 0 0 35px rgba(139, 92, 246, 0.15), inset 0 1px 1px rgba(255,255,255,0.08)",
-                  position: "relative"
-                }}
+                className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.09] bg-[#111312]/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.85)] backdrop-blur-2xl max-h-[85vh] overflow-y-auto pb-36 text-left"
               >
+                {/* TOP-LEFT EMERALD RADIAL GLOW */}
+                <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-emerald-500/15 blur-3xl" />
 
-                {/* INSTITUTIONAL SETTLEMENT HEADER BADGE */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.3rem", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{
-                      width: "7px",
-                      height: "7px",
-                      borderRadius: "50%",
-                      background: (laborResult?.autoApproved || laborResult?.verified) ? "#10b981" : "#8b5cf6",
-                      display: "inline-block",
-                      boxShadow: (laborResult?.autoApproved || laborResult?.verified) ? "0 0 8px rgba(16,185,129,0.6)" : "0 0 8px rgba(139,92,246,0.6)"
-                    }} />
-                    <span style={{ fontSize: "0.7rem", color: "#c4b5fd", background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.2)", padding: "2px 8px", borderRadius: "12px", letterSpacing: "1.2px", fontWeight: "600", textTransform: "uppercase" }}>
-                      SECURE ORDER SETTLEMENT
-                    </span>
+                {/* TOP-RIGHT CLOSE BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLaborModalOpen(false);
+                    if (laborResult?.autoApproved || laborResult?.verified) {
+                      closeCheckout();
+                      setActiveTab("configs");
+                    }
+                  }}
+                  className="absolute top-5 right-5 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 hover:bg-white/[0.1] hover:text-white transition-all cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+
+                {/* TOP 5-SEGMENT PROGRESS BAR */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  {[0, 1, 2, 3, 4].map((segIdx) => {
+                    const isDone = laborResult ? true : segIdx <= laborStage;
+                    return (
+                      <div
+                        key={segIdx}
+                        className={`h-1 w-8 rounded-full transition-all duration-500 ${
+                          isDone
+                            ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
+                            : "bg-white/10"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* CENTERED FROSTED ICON & HEADER */}
+                <div className="text-center mb-6">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] shadow-inner">
+                    {!laborResult ? (
+                      <svg className="animate-spin text-emerald-400" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                      </svg>
+                    ) : (laborResult.autoApproved || laborResult.verified) ? (
+                      <svg className="text-emerald-400" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <svg className="text-emerald-400" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        <polyline points="9 12 11 14 15 10" />
+                      </svg>
+                    )}
                   </div>
-                  <span style={{ fontSize: "0.68rem", color: "#94a3b8", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "monospace" }}>
-                    INSTITUTIONAL GATEWAY
-                  </span>
+                  <h3 className="text-lg font-semibold text-white tracking-tight mb-1">
+                    {!laborResult
+                      ? "Deposit Clearance in Progress"
+                      : (laborResult.autoApproved || laborResult.verified)
+                      ? "Transfer Verified & Cleared"
+                      : "Receipt Logged for Review"}
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                    {!laborResult
+                      ? (LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway...")
+                      : (laborResult.autoApproved || laborResult.verified)
+                      ? (laborResult.message || "Your 10Gbps Singapore core line & subscription configs are active.")
+                      : "Receipt received! Our team is verifying your payment manually. Config will activate shortly."}
+                  </p>
                 </div>
 
-                {/* MODAL STATUS TITLE & ICON */}
-                <div style={{ textAlign: "center", marginBottom: "1.4rem" }}>
-                  {!laborResult ? (
-                    <div>
-                      <div style={{
-                        width: "60px",
-                        height: "60px",
-                        margin: "0 auto 1rem auto",
-                        borderRadius: "50%",
-                        border: "2px solid rgba(139, 92, 246, 0.25)",
-                        borderTopColor: "#8b5cf6",
-                        animation: "spin 1s linear infinite",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 25px rgba(139, 92, 246, 0.25)"
-                      }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="5" width="20" height="14" rx="2" />
-                          <line x1="2" y1="10" x2="22" y2="10" />
-                        </svg>
-                      </div>
-                      <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600", letterSpacing: "0.3px" }}>
-                        Deposit Clearance in Progress
-                      </h3>
-                      <p style={{ color: "#94a3b8", fontSize: "0.82rem", margin: "0 0 1rem 0", lineHeight: 1.5, minHeight: "20px" }}>
-                        {LABOR_STAGES[laborStage] || "Cross-referencing transaction records with institutional gateway..."}
-                      </p>
-                      {/* SUBTLE PROGRESS BAR */}
-                      <div style={{ width: "100%", height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "4px", overflow: "hidden" }}>
-                        <div style={{ width: `${((laborStage + 1) / LABOR_STAGES.length) * 100}%`, height: "100%", background: "linear-gradient(90deg, #8b5cf6, #6366f1)", transition: "width 0.8s ease" }} />
-                      </div>
-                    </div>
-                  ) : (laborResult.autoApproved || laborResult.verified) ? (
-                    <div>
-                      <div style={{
-                        width: "60px",
-                        height: "60px",
-                        margin: "0 auto 1rem auto",
-                        borderRadius: "50%",
-                        background: "rgba(16, 185, 129, 0.12)",
-                        border: "2px solid rgba(16, 185, 129, 0.45)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 28px rgba(16, 185, 129, 0.28)"
-                      }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                      <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
-                        Transfer Verified Successfully
-                      </h3>
-                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0, lineHeight: 1.5 }}>
-                        {laborResult.message || "Your 10Gbps Singapore core line and V2RAY configuration are active."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <div style={{
-                        width: "60px",
-                        height: "60px",
-                        margin: "0 auto 1rem auto",
-                        borderRadius: "50%",
-                        background: "rgba(139, 92, 246, 0.12)",
-                        border: "2px solid rgba(139, 92, 246, 0.45)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 25px rgba(139, 92, 246, 0.2)"
-                      }}>
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                          <polyline points="9 12 11 14 15 10" />
-                        </svg>
-                      </div>
-                      <h3 style={{ color: "#f3f4f6", fontSize: "1.3rem", margin: "0 0 0.35rem 0", fontWeight: "600" }}>
-                        Settlement Queued for Swift Clearance
-                      </h3>
-                      <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0, lineHeight: 1.5 }}>
-                        Your deposit slip has been securely archived in the audit vault. Flagged details forwarded for fast-track clearance.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 🧭 VERTICAL STEPPER TIMELINE */}
-                <div style={{ position: "relative", marginBottom: "1.5rem", paddingLeft: "1.8rem" }}>
-                  {/* CONTINUOUS VERTICAL TRACK LINE */}
-                  <div style={{
-                    position: "absolute",
-                    left: "14px",
-                    top: "16px",
-                    bottom: "24px",
-                    width: "2px",
-                    background: "rgba(255, 255, 255, 0.08)",
-                    borderRadius: "2px"
-                  }} />
-
+                {/* MINIMALIST STEP ROWS */}
+                <div className="mb-6 space-y-2.5">
                   {(() => {
                     const expectedAcc = "8029138148";
                     const expectedPrice = currentQuotaList[selectedQuota!] || 0;
@@ -4797,35 +4843,35 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         id: "doc",
                         title: "Document Analyzed",
                         activeLabel: "Scanning deposit slip document & forensic OCR...",
-                        passedText: "Slip cryptographic signature & banking metadata verified.",
-                        failedText: "Slip uploaded successfully to verification vault."
+                        passedText: "Slip cryptographic signature & metadata verified.",
+                        failedText: "Slip uploaded to secure verification vault."
                       },
                       {
                         id: "account",
                         title: "Beneficiary Confirmed",
                         activeLabel: `Reconciling target account ${expectedAcc}...`,
                         passedText: `Commercial Bank Account ${expectedAcc} verified.`,
-                        failedText: `Beneficiary account reconciliation queued.`
+                        failedText: "Beneficiary account reconciliation queued."
                       },
                       {
                         id: "trace",
                         title: "Transaction Trace Valid",
-                        activeLabel: "Checking transaction trace & duplicate anti-replay ledger...",
-                        passedText: "Unique reference hash verified against anti-replay ledger.",
+                        activeLabel: "Checking anti-replay transaction ledger...",
+                        passedText: "Unique reference hash verified against ledger.",
                         failedText: "Transaction reference hash queued for clearance."
                       },
                       {
                         id: "amount",
                         title: "Settlement Matched",
-                        activeLabel: `Authenticating deposit amount against package (Rs. ${expectedPrice})...`,
+                        activeLabel: `Authenticating tariff balance (Rs. ${expectedPrice})...`,
                         passedText: `Exact tariff Rs. ${expectedPrice} verified.`,
-                        failedText: `Tariff balance queued for swift settlement confirmation.`
+                        failedText: "Tariff balance queued for settlement confirmation."
                       },
                       {
                         id: "line",
                         title: "Line Activated",
-                        activeLabel: "Creating dedicated V2RAY key & secure node slot...",
-                        passedText: "10Gbps Singapore core slot & subscription link generated.",
+                        activeLabel: "Provisioning high-speed 10Gbps core slot...",
+                        passedText: "Singapore core slot & subscription link generated.",
                         failedText: "Dedicated slot allocated upon final clearance."
                       }
                     ];
@@ -4840,12 +4886,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       if (!laborResult) {
                         if (idx < laborStage) {
                           isPassed = true;
-                          detailNode = <span style={{ color: "#9ca3af" }}>{step.passedText}</span>;
+                          detailNode = <span className="text-slate-400">{step.passedText}</span>;
                         } else if (idx === laborStage) {
                           isScanning = true;
-                          detailNode = <span style={{ color: "#c4b5fd" }}>{step.activeLabel}</span>;
+                          detailNode = <span className="text-emerald-400/90">{step.activeLabel}</span>;
                         } else {
-                          detailNode = <span style={{ color: "#6b7280" }}>Queued in settlement pipeline...</span>;
+                          detailNode = <span className="text-slate-500">Queued in settlement pipeline...</span>;
                         }
                       } else {
                         checkData = Array.isArray(report?.checks)
@@ -4858,199 +4904,99 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
                           if (step.id === "account" && isSuspicious) {
                             detailNode = (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
-                                <div style={{ fontSize: "0.74rem", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                                  <span style={{ color: "#34d399", fontWeight: "600" }}>Expected: {expectedAcc}</span>
-                                  <span style={{ color: "#6b7280" }}>|</span>
-                                  <span style={{ color: "#fca5a5" }}>Slip:</span>
-                                  <span style={{ textDecoration: "line-through", textDecorationColor: "#ef4444", textDecorationThickness: "2px", color: "#f87171", fontWeight: "600" }}>
-                                    {checkData.detected || "Not Detected"}
+                              <div className="flex flex-col gap-0.5 mt-1">
+                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                  <span className="text-emerald-400 font-medium">Expected: {expectedAcc}</span>
+                                  <span className="text-slate-600">|</span>
+                                  <span className="text-rose-400 font-medium line-through decoration-rose-500 decoration-2">
+                                    Slip: {checkData.detected || "Not Detected"}
                                   </span>
                                 </div>
-                                <span style={{ color: "#fca5a5", fontSize: "0.72rem" }}>{checkData.message || step.failedText}</span>
+                                <span className="text-[11px] text-rose-300/90">{checkData.message || step.failedText}</span>
                               </div>
                             );
                           } else if (step.id === "amount" && isSuspicious) {
                             detailNode = (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
-                                <div style={{ fontSize: "0.74rem", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                                  <span style={{ color: "#34d399", fontWeight: "600" }}>Package Price: Rs. {expectedPrice}</span>
-                                  <span style={{ color: "#6b7280" }}>|</span>
-                                  <span style={{ color: "#fca5a5" }}>Slip Amount:</span>
-                                  <span style={{ textDecoration: "line-through", textDecorationColor: "#ef4444", textDecorationThickness: "2px", color: "#f87171", fontWeight: "600" }}>
-                                    Rs. {checkData.detected || 0}
+                              <div className="flex flex-col gap-0.5 mt-1">
+                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                  <span className="text-emerald-400 font-medium">Package: Rs. {expectedPrice}</span>
+                                  <span className="text-slate-600">|</span>
+                                  <span className="text-rose-400 font-medium line-through decoration-rose-500 decoration-2">
+                                    Slip: Rs. {checkData.detected || 0}
                                   </span>
                                 </div>
-                                <span style={{ color: "#fca5a5", fontSize: "0.72rem" }}>{checkData.message || step.failedText}</span>
+                                <span className="text-[11px] text-rose-300/90">{checkData.message || step.failedText}</span>
                               </div>
                             );
                           } else if (step.id === "trace" && isSuspicious) {
                             detailNode = (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
-                                <span style={{ textDecoration: "line-through", textDecorationColor: "#ef4444", textDecorationThickness: "2px", color: "#f87171", fontSize: "0.74rem", fontWeight: "600" }}>
+                              <div className="flex flex-col gap-0.5 mt-1">
+                                <span className="text-xs text-rose-400 font-medium line-through decoration-rose-500 decoration-2">
                                   Trace #{checkData.refNumber || "Unknown"}
                                 </span>
-                                <span style={{ color: "#fca5a5", fontSize: "0.72rem" }}>{checkData.message || step.failedText}</span>
+                                <span className="text-[11px] text-rose-300/90">{checkData.message || step.failedText}</span>
                               </div>
                             );
                           } else {
                             detailNode = (
-                              <span style={{ color: isPassed ? "#9ca3af" : "#6b7280" }}>
+                              <span className={isPassed ? "text-slate-400" : "text-slate-500"}>
                                 {checkData.message || (isPassed ? step.passedText : step.failedText)}
                               </span>
                             );
                           }
                         } else {
                           isPassed = Boolean(laborResult.autoApproved || laborResult.verified);
-                          detailNode = <span style={{ color: isPassed ? "#9ca3af" : "#6b7280" }}>{isPassed ? step.passedText : step.failedText}</span>;
+                          detailNode = <span className={isPassed ? "text-slate-400" : "text-slate-500"}>{isPassed ? step.passedText : step.failedText}</span>;
                         }
                       }
 
-                      const dotLeft = "-1.8rem";
                       return (
                         <div
                           key={step.id}
-                          style={{
-                            position: "relative",
-                            marginBottom: idx === steps.length - 1 ? 0 : "1.1rem",
-                            paddingBottom: idx === steps.length - 1 ? 0 : "0.2rem"
-                          }}
+                          className={`rounded-2xl border px-4 py-3 transition-all ${
+                            isSuspicious
+                              ? "border-rose-500/25 bg-rose-500/[0.04]"
+                              : isPassed
+                              ? "border-emerald-500/20 bg-emerald-500/[0.02]"
+                              : isScanning
+                              ? "border-emerald-500/30 bg-white/[0.03]"
+                              : "border-white/[0.06] bg-white/[0.02]"
+                          }`}
                         >
-                          {/* STEP NODE ICON */}
-                          <div style={{
-                            position: "absolute",
-                            left: dotLeft,
-                            top: "2px",
-                            width: "28px",
-                            height: "28px",
-                            borderRadius: "50%",
-                            background: isPassed
-                              ? "rgba(16, 185, 129, 0.16)"
-                              : isSuspicious
-                              ? "rgba(239, 68, 68, 0.18)"
-                              : isScanning
-                              ? "rgba(139, 92, 246, 0.18)"
-                              : "rgba(255, 255, 255, 0.05)",
-                            border: isPassed
-                              ? "2px solid #10b981"
-                              : isSuspicious
-                              ? "2px solid #ef4444"
-                              : isScanning
-                              ? "2px solid #8b5cf6"
-                              : "2px solid rgba(255, 255, 255, 0.14)",
-                            boxShadow: isPassed
-                              ? "0 0 10px rgba(16, 185, 129, 0.35)"
-                              : isSuspicious
-                              ? "0 0 10px rgba(239, 68, 68, 0.4)"
-                              : isScanning
-                              ? "0 0 12px rgba(139, 92, 246, 0.4)"
-                              : "none",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            zIndex: 2,
-                            transition: "all 0.3s ease"
-                          }}>
-                            {isPassed ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : isSuspicious ? (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                            ) : isScanning ? (
-                              <span style={{
-                                width: "8px",
-                                height: "8px",
-                                borderRadius: "50%",
-                                background: "#8b5cf6",
-                                display: "inline-block",
-                                boxShadow: "0 0 8px #8b5cf6",
-                                animation: "pulse 1.2s ease-in-out infinite"
-                              }} />
-                            ) : (
-                              <span style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                background: "rgba(255, 255, 255, 0.25)",
-                                display: "inline-block"
-                              }} />
-                            )}
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-xs font-medium ${isPassed ? "text-slate-200" : isSuspicious ? "text-rose-200" : isScanning ? "text-emerald-300" : "text-slate-400"}`}>
+                              {step.title}
+                            </span>
+                            <div>
+                              {isPassed ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 border border-emerald-500/20">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  Confirmed
+                                </span>
+                              ) : isSuspicious ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400 border border-rose-500/20">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                  Flagged
+                                </span>
+                              ) : isScanning ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300 border border-emerald-500/20">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  Auditing
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-slate-500 border border-white/[0.06]">
+                                  Pending
+                                </span>
+                              )}
+                            </div>
                           </div>
-
-                          {/* STEP DETAILS CARD */}
-                          <div style={{
-                            background: isSuspicious
-                              ? "rgba(239, 68, 68, 0.05)"
-                              : isPassed
-                              ? "rgba(16, 185, 129, 0.03)"
-                              : "rgba(255, 255, 255, 0.015)",
-                            border: isSuspicious
-                              ? "1px solid rgba(239, 68, 68, 0.3)"
-                              : isPassed
-                              ? "1px solid rgba(16, 185, 129, 0.25)"
-                              : isScanning
-                              ? "1px solid rgba(139, 92, 246, 0.32)"
-                              : "1px solid rgba(255, 255, 255, 0.06)",
-                            borderRadius: "12px",
-                            padding: "0.65rem 0.95rem",
-                            transition: "all 0.25s ease"
-                          }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
-                              <span style={{
-                                fontSize: "0.84rem",
-                                fontWeight: "600",
-                                color: isPassed ? "#ecfdf5" : isSuspicious ? "#fef2f2" : isScanning ? "#e9d5ff" : "#d1d5db"
-                              }}>
-                                {step.title}
-                              </span>
-
-                              <span style={{
-                                fontSize: "0.68rem",
-                                fontWeight: "600",
-                                fontFamily: "monospace",
-                                padding: "2px 7px",
-                                borderRadius: "6px",
-                                background: isPassed
-                                  ? "rgba(16, 185, 129, 0.12)"
-                                  : isSuspicious
-                                  ? "rgba(239, 68, 68, 0.15)"
-                                  : isScanning
-                                  ? "rgba(139, 92, 246, 0.12)"
-                                  : "rgba(255, 255, 255, 0.04)",
-                                color: isPassed
-                                  ? "#34d399"
-                                  : isSuspicious
-                                  ? "#f87171"
-                                  : isScanning
-                                  ? "#c4b5fd"
-                                  : "#9ca3af",
-                                border: `1px solid ${
-                                  isPassed
-                                    ? "rgba(16,185,129,0.3)"
-                                    : isSuspicious
-                                    ? "rgba(239,68,68,0.35)"
-                                    : isScanning
-                                    ? "rgba(139,92,246,0.25)"
-                                    : "rgba(255,255,255,0.08)"
-                                }`
-                              }}>
-                                {isPassed
-                                  ? "[CONFIRMED]"
-                                  : isSuspicious
-                                  ? "[DISCREPANCY]"
-                                  : isScanning
-                                  ? "[AUDITING...]"
-                                  : "[QUEUED]"}
-                              </span>
-                            </div>
-
-                            <div style={{ fontSize: "0.76rem", lineHeight: 1.4 }}>
-                              {detailNode}
-                            </div>
+                          <div className="text-[11px] leading-relaxed">
+                            {detailNode}
                           </div>
                         </div>
                       );
@@ -5061,36 +5007,47 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 {/* MODAL ACTION BUTTONS */}
                 <div>
                   {(laborResult?.autoApproved || laborResult?.verified) ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLaborModalOpen(false);
-                        closeCheckout();
-                        setActiveTab("configs");
-                        window.location.reload();
-                      }}
-                      className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] cursor-pointer"
-                    >
-                      <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
-                      <span className="relative z-10">View &amp; Copy Active VPN Configs</span>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10">
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                        <polyline points="12 5 19 12 12 19" />
-                      </svg>
-                    </button>
+                    <div className="flex flex-col gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLaborModalOpen(false);
+                          closeCheckout();
+                          setActiveTab("configs");
+                          window.location.reload();
+                        }}
+                        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] cursor-pointer"
+                      >
+                        <span>View &amp; Copy Active VPN Configs</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                          <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLaborModalOpen(false);
+                          closeCheckout();
+                          setActiveTab("configs");
+                        }}
+                        className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
+                      >
+                        Close &amp; Continue in Background
+                      </button>
+                    </div>
                   ) : laborResult ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                    <div className="flex flex-col gap-2.5">
                       <a
                         href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, checking status for payment slip: ${modalPackage?.name || "Order"} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+                        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
                       >
-                        <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="relative z-10 flex-shrink-0">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
                           <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
                         </svg>
-                        <span className="relative z-10">WhatsApp Priority Concierge</span>
+                        <span>WhatsApp Priority Concierge</span>
                       </a>
                       <button
                         type="button"
@@ -5099,14 +5056,22 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           closeCheckout();
                           setActiveTab("configs");
                         }}
-                        className="w-full rounded-2xl border border-white/10 bg-white/[0.05] py-3.5 px-5 text-sm font-medium text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition-all duration-200 hover:bg-white/[0.09] hover:text-white hover:border-violet-500/30 active:scale-[0.98] cursor-pointer text-center"
+                        className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
                       >
                         Close &amp; Check Later
                       </button>
                     </div>
                   ) : (
-                    <div style={{ textAlign: "center", color: "#6b7280", fontSize: "0.78rem" }}>
-                      Please wait while settlement integrity checks complete...
+                    <div className="flex flex-col gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLaborModalOpen(false);
+                        }}
+                        className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
+                      >
+                        Close &amp; Continue in Background
+                      </button>
                     </div>
                   )}
                 </div>
