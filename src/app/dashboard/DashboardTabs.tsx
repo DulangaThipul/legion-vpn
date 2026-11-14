@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
@@ -507,6 +508,12 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [systemConfig, setSystemConfig] = useState<any>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // LABOR ILLUSION CYBER SECURITY VERIFICATION STATES
   const [laborModalOpen, setLaborModalOpen] = useState(false);
@@ -548,6 +555,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   useEffect(() => {
     setUser(initialUser);
   }, [initialUser]);
+
+  const isAdmin = useMemo(() => {
+    const userEmail = (user?.email || "").toLowerCase();
+    const adminEmailEnv = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase();
+    return userEmail === "dulangathipul@gmail.com" || 
+           userEmail === "legionzinfo@gmail.com" || 
+           (Boolean(adminEmailEnv) && userEmail === adminEmailEnv) ||
+           Boolean((user as any)?.isAdmin);
+  }, [user?.email, (user as any)?.isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let isSubscribed = true;
+    fetch("/api/admin/system-config")
+      .then(res => res.json())
+      .then(data => {
+        if (isSubscribed && data?.success && data?.config) {
+          setSystemConfig(data.config);
+        }
+      })
+      .catch(() => {});
+    return () => { isSubscribed = false; };
+  }, [isAdmin]);
 
   // Lock background scroll and keep mouse wheel strictly inside Line Check modal
   useEffect(() => {
@@ -1661,19 +1691,42 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const startTime = Date.now();
 
     try {
-      const formData = new FormData();
-      formData.append("file", slipFile);
-      formData.append("upload_preset", "legion_slips");
+      let fileUrl = "";
 
-      const uploadRes = await fetch("https://api.cloudinary.com/v1_1/ddox7uqkb/image/upload", {
-        method: "POST",
-        body: formData,
-      });
+      // Attempt 1: Upload to Cloudinary with strict 15s timeout
+      try {
+        const formData = new FormData();
+        formData.append("file", slipFile);
+        formData.append("upload_preset", "legion_slips");
 
-      if (!uploadRes.ok) throw new Error("Upload Failed");
-      const data = await uploadRes.json();
-      const fileUrl = data.secure_url;
-      if (!fileUrl) throw new Error("Failed to obtain slip URL");
+        const uploadRes = await fetch("https://api.cloudinary.com/v1_1/ddox7uqkb/image/upload", {
+          method: "POST",
+          body: formData,
+          signal: AbortSignal.timeout(15000)
+        });
+
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          if (data.secure_url) {
+            fileUrl = data.secure_url;
+          }
+        }
+      } catch (cloudErr) {
+        console.warn("Cloudinary upload failed or timed out, falling back to base64 data URI:", cloudErr);
+      }
+
+      // Fallback: If Cloudinary fails or timed out, convert slip file to base64 Data URI
+      if (!fileUrl) {
+        fileUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed to read slip image file"));
+          reader.readAsDataURL(slipFile);
+        });
+      }
+
+      // Immediately unfreeze upload state in checkout form so button is never permanently stuck
+      setIsUploading(false);
 
       const amount = currentQuotaList[selectedQuota!] || 0;
 
@@ -1694,9 +1747,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       const processJson = await processRes.json();
 
-      // Ensure realistic banking cadence (~10s minimum duration)
+      // Ensure realistic banking cadence (~8s minimum duration)
       const elapsed = Date.now() - startTime;
-      const remainingMs = Math.max(0, 10000 - elapsed);
+      const remainingMs = Math.max(0, 8000 - elapsed);
       await new Promise(r => setTimeout(r, remainingMs));
 
       clearInterval(stageTimer);
@@ -1716,15 +1769,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     } catch {
       clearInterval(stageTimer);
+      const amount = currentQuotaList[selectedQuota!] || 0;
       setLaborResult({
         success: true,
         autoApproved: false,
-        status: "Verifying",
-        message: "Receipt received! Our team is verifying your payment. Your configs will activate shortly.",
+        manualMode: true,
+        orderId: `ORD-${Date.now()}`,
+        packageName: modalPackage?.name || "VPN Plan",
+        amount,
+        adminWhatsapp: systemConfig?.adminWhatsapp || "94701234567",
+        status: "Pending Admin Review",
+        message: "Receipt received! Our team is verifying your payment manually. Config will activate shortly.",
         auditReport: {
           overallStatus: "review_required",
           checks: [
-            { id: "doc", title: "Document Analyzed", passed: false, isSuspicious: true, statusText: "Network Warning", message: "Slip network timeout. Forwarded to admin queue." },
+            { id: "doc", title: "Document Analyzed", passed: true, statusText: "Received", message: "Slip received and queued for admin review." },
             { id: "account", title: "Beneficiary Confirmed", passed: true, statusText: "Target: 8029138148", message: "Commercial Bank (8029138148)" },
             { id: "trace", title: "Transaction Trace Valid", passed: true, statusText: "Queued" },
             { id: "amount", title: "Settlement Matched", passed: true, statusText: "Target: Package Price", message: "Awaiting manual confirmation." },
@@ -1740,13 +1799,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
   // ADMIN-ONLY SLIP-FREE LIVE 3X-UI PROVISIONING TEST
   const handleAdminTestOrder = async () => {
-    const userEmail = (user?.email || "").toLowerCase();
-    const isUserAdmin = userEmail === "dulangathipul@gmail.com" || 
-                        userEmail === "legionzinfo@gmail.com" || 
-                        Boolean(user?.isAdmin);
-    if (!isUserAdmin) return;
+    if (!isAdmin) return;
 
-    setIsUploading(true);
+    // Do NOT call setIsUploading(true) - prevents freezing checkout button
     setLaborModalOpen(true);
     setLaborStage(0);
     setLaborResult(null);
@@ -1808,7 +1863,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       });
     } finally {
       clearInterval(stageTimer);
-      setIsUploading(false);
     }
   };
 
@@ -4716,7 +4770,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </button>
                     </div>
 
-                    {(user?.email?.toLowerCase() === "dulangathipul@gmail.com" || user?.email?.toLowerCase() === "legionzinfo@gmail.com" || user?.isAdmin) && (
+                    {isAdmin && systemConfig?.enableAdminTestButton !== false && (
                       <button
                         type="button"
                         onClick={handleAdminTestOrder}
@@ -4742,7 +4796,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                         </svg>
-                        <span>⚡ Admin Sandbox: Live Test Provision Without Slip</span>
+                        <span>Admin Sandbox: Live Test Provision Without Slip</span>
                       </button>
                     )}
                   </div>
@@ -4751,11 +4805,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             </div>
           )}
 
-          {/* 🛡️ MATTE FROSTED DARK OBSIDIAN & EMERALD VERIFICATION MODAL */}
-          {laborModalOpen && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-xl p-4 overflow-y-auto">
+          {/* 🛡️ MATTE FROSTED DARK OBSIDIAN & EMERALD VERIFICATION MODAL (PORTALED) */}
+          {mounted && typeof document !== "undefined" && laborModalOpen && createPortal(
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 overflow-y-auto">
               <div 
-                className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.09] bg-[#111312]/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.85)] backdrop-blur-2xl max-h-[85vh] overflow-y-auto pb-36 text-left"
+                className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.09] bg-[#111312]/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-h-[85vh] overflow-y-auto pb-32 text-left"
               >
                 {/* TOP-LEFT EMERALD RADIAL GLOW */}
                 <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-emerald-500/15 blur-3xl" />
@@ -4815,21 +4869,56 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </svg>
                     )}
                   </div>
+
                   <h3 className="text-lg font-semibold text-white tracking-tight mb-1">
                     {!laborResult
                       ? "Deposit Clearance in Progress"
                       : (laborResult.autoApproved || laborResult.verified)
                       ? "Transfer Verified & Cleared"
-                      : "Receipt Logged for Review"}
+                      : "Receipt Uploaded Successfully!"}
                   </h3>
-                  <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-                    {!laborResult
-                      ? (LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway...")
-                      : (laborResult.autoApproved || laborResult.verified)
-                      ? (laborResult.message || "Your 10Gbps Singapore core line & subscription configs are active.")
-                      : "Receipt received! Our team is verifying your payment manually. Config will activate shortly."}
-                  </p>
+
+                  <div className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                    {!laborResult ? (
+                      <p>{LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway..."}</p>
+                    ) : (laborResult.autoApproved || laborResult.verified) ? (
+                      <p>{laborResult.message || "Your 10Gbps Singapore core line & subscription configs are active."}</p>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-slate-300">
+                          Please inform the Admin via WhatsApp now so your V2Ray configuration can be activated immediately.
+                        </p>
+                        <p className="text-[11px] text-emerald-400/90 font-medium">
+                          (WhatsApp හරහා Admin ව දැනුවත් කරන්න — එවිට ඉක්මනින්ම ඔබගේ VPN code එක ලබා ගත හැක.)
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* ORDER DETAILS SUMMARY PILL FOR MANUAL MODE */}
+                {laborResult && !(laborResult.autoApproved || laborResult.verified) && (
+                  <div className="mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5 backdrop-blur-md">
+                    <div className="flex items-center justify-between text-xs py-1 border-b border-white/[0.05]">
+                      <span className="text-slate-400">Package</span>
+                      <span className="font-semibold text-white">
+                        {laborResult?.packageName || modalPackage?.name || "VPN Plan"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs py-1 border-b border-white/[0.05]">
+                      <span className="text-slate-400">Amount</span>
+                      <span className="font-bold text-emerald-400">
+                        Rs. {laborResult?.amount || currentQuotaList[selectedQuota!] || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs py-1">
+                      <span className="text-slate-400">Order ID</span>
+                      <span className="font-mono text-[11px] text-slate-300">
+                        {laborResult?.orderId || "Pending"}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* MINIMALIST STEP ROWS */}
                 <div className="mb-6 space-y-2.5">
@@ -5037,30 +5126,43 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       </button>
                     </div>
                   ) : laborResult ? (
-                    <div className="flex flex-col gap-2.5">
-                      <a
-                        href={`https://wa.me/+441163504152?text=${encodeURIComponent(`Hi Admin, checking status for payment slip: ${modalPackage?.name || "Order"} (Rs. ${currentQuotaList[selectedQuota!] || 0}). Please fast-track verify.`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
-                          <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
-                        </svg>
-                        <span>WhatsApp Priority Concierge</span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLaborModalOpen(false);
-                          closeCheckout();
-                          setActiveTab("configs");
-                        }}
-                        className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
-                      >
-                        Close &amp; Check Later
-                      </button>
-                    </div>
+                    (() => {
+                      const rawWa = laborResult?.adminWhatsapp || systemConfig?.adminWhatsapp || "94701234567";
+                      const cleanWa = String(rawWa).replace(/\+/g, "").replace(/\s+/g, "").trim();
+                      const pkgName = laborResult?.packageName || modalPackage?.name || "VPN Plan";
+                      const price = laborResult?.amount || currentQuotaList[selectedQuota!] || 0;
+                      const ordId = laborResult?.orderId || "ORD";
+                      const userEmail = user?.email || "";
+                      const msg = `Hi Admin, I have uploaded my payment slip for package: ${pkgName} (Rs. ${price}).\nOrder ID: ${ordId}\nEmail: ${userEmail}\nPlease activate my V2Ray configuration.`;
+                      const waUrl = `https://wa.me/${cleanWa}?text=${encodeURIComponent(msg)}`;
+
+                      return (
+                        <div className="flex flex-col gap-2.5">
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
+                              <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
+                            </svg>
+                            <span>Inform Admin on WhatsApp</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLaborModalOpen(false);
+                              closeCheckout();
+                              setActiveTab("configs");
+                            }}
+                            className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
+                          >
+                            Close &amp; Check Later
+                          </button>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="flex flex-col gap-2.5">
                       <button
@@ -5077,7 +5179,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 </div>
 
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {/* 🔐 VPN RENEW CUSTOM POPUP MODAL */}
