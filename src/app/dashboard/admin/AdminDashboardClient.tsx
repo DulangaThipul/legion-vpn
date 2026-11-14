@@ -2247,6 +2247,8 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
 function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [autoApproval, setAutoApproval] = useState(true);
+  const [enableAdminTestButton, setEnableAdminTestButton] = useState(true);
+  const [adminWhatsapp, setAdminWhatsapp] = useState("94701234567");
   const [expectedAccount, setExpectedAccount] = useState("8029138148");
   const [timeWindowMins, setTimeWindowMins] = useState(120);
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
@@ -2275,6 +2277,8 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
         const json = await res.json();
         if (json.success && json.config) {
           setAutoApproval(Boolean(json.config.autoApprovalEnabled));
+          if (json.config.enableAdminTestButton !== undefined) setEnableAdminTestButton(Boolean(json.config.enableAdminTestButton));
+          if (json.config.adminWhatsapp) setAdminWhatsapp(json.config.adminWhatsapp);
           if (json.config.expectedBankAccount) setExpectedAccount(json.config.expectedBankAccount);
           if (json.config.allowedTimeWindowMinutes) setTimeWindowMins(Number(json.config.allowedTimeWindowMinutes));
           if (json.config.geminiApiKey) setGeminiKeyInput(json.config.geminiApiKey);
@@ -2323,6 +2327,8 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
         body: JSON.stringify({
           config: {
             autoApprovalEnabled: autoApproval,
+            enableAdminTestButton,
+            adminWhatsapp: adminWhatsapp.trim(),
             expectedBankAccount: expectedAccount.trim(),
             allowedTimeWindowMinutes: Number(timeWindowMins) || 120,
             geminiApiKey: geminiKeyInput.trim(),
@@ -2501,16 +2507,55 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
       {/* MASTER TOGGLE & RULES */}
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "1.5rem" }}>
         
-        {/* MASTER SWITCH CARD */}
-        <div style={{ background: "rgba(12, 12, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "700" }}>Master Auto-Approval Switch</h3>
+        {/* LEFT COLUMN: MASTER SWITCH & ADMIN SANDBOX TOGGLE */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {/* MASTER SWITCH CARD */}
+          <div style={{ background: "rgba(12, 12, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "700" }}>Master Auto-Approval Switch</h3>
+                <button
+                  type="button"
+                  onClick={() => setAutoApproval(!autoApproval)}
+                  style={{
+                    background: autoApproval ? "linear-gradient(90deg, #10b981, #059669)" : "rgba(255,255,255,0.1)",
+                    color: "#FFF",
+                    border: "none",
+                    borderRadius: "20px",
+                    padding: "0.5rem 1.4rem",
+                    fontSize: "0.85rem",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    boxShadow: autoApproval ? "0 4px 14px rgba(16,185,129,0.4)" : "none"
+                  }}
+                >
+                  {autoApproval ? "AUTO-APPROVAL: ON" : "AUTO-APPROVAL: OFF"}
+                </button>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af", lineHeight: 1.6 }}>
+                When <strong>ON</strong>, payment slips submitted by clients are scanned via Groq Vision LPU. Valid transfers directly activate the VPN and provision configs instantly.
+                <br /><br />
+                When <strong>OFF</strong>, all orders are placed into manual admin review queue.
+              </p>
+            </div>
+
+            <div style={{ marginTop: "1.5rem", padding: "0.9rem", borderRadius: "10px", background: autoApproval ? "rgba(34, 197, 94, 0.08)" : "rgba(239, 68, 68, 0.08)", border: `1px solid ${autoApproval ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`, fontSize: "0.8rem", color: autoApproval ? "#86efac" : "#fca5a5" }}>
+              Current State: <strong>{autoApproval ? "Instant Automated Provisioning Active" : "100% Manual Admin Review Fallback Mode"}</strong>
+            </div>
+          </div>
+
+          {/* ADMIN SANDBOX TEST BUTTON CARD */}
+          <div style={{ background: "rgba(12, 12, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.8rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.8rem" }}>
+              <div>
+                <h3 style={{ margin: "0 0 0.3rem 0", fontSize: "1.05rem", fontWeight: "700" }}>Admin Sandbox Test Button</h3>
+                <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>Show &quot;Live Test Provision Without Slip&quot; button inside Store Checkout for Admin account only.</span>
+              </div>
               <button
                 type="button"
-                onClick={() => setAutoApproval(!autoApproval)}
+                onClick={() => setEnableAdminTestButton(!enableAdminTestButton)}
                 style={{
-                  background: autoApproval ? "linear-gradient(90deg, #10b981, #059669)" : "rgba(255,255,255,0.1)",
+                  background: enableAdminTestButton ? "linear-gradient(90deg, #10b981, #059669)" : "rgba(255,255,255,0.1)",
                   color: "#FFF",
                   border: "none",
                   borderRadius: "20px",
@@ -2518,21 +2563,15 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
                   fontSize: "0.85rem",
                   fontWeight: "bold",
                   cursor: "pointer",
-                  boxShadow: autoApproval ? "0 4px 14px rgba(16,185,129,0.4)" : "none"
+                  boxShadow: enableAdminTestButton ? "0 4px 14px rgba(16,185,129,0.4)" : "none"
                 }}
               >
-                {autoApproval ? "AUTO-APPROVAL: ON" : "AUTO-APPROVAL: OFF"}
+                {enableAdminTestButton ? "TEST BUTTON: ON" : "TEST BUTTON: OFF"}
               </button>
             </div>
-            <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af", lineHeight: 1.6 }}>
-              When <strong>ON</strong>, payment slips submitted by clients are scanned via Gemini 1.5 Flash Vision. Valid transfers directly activate the VPN and provision configs instantly.
-              <br /><br />
-              When <strong>OFF</strong>, all orders are placed into manual admin review queue.
+            <p style={{ margin: 0, fontSize: "0.82rem", color: "#6b7280", lineHeight: 1.5 }}>
+              Allows the admin to rapidly live-test 3x-ui inbound provisioning and VLESS subscription injection without uploading a payment slip.
             </p>
-          </div>
-
-          <div style={{ marginTop: "1.5rem", padding: "0.9rem", borderRadius: "10px", background: autoApproval ? "rgba(34, 197, 94, 0.08)" : "rgba(239, 68, 68, 0.08)", border: `1px solid ${autoApproval ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`, fontSize: "0.8rem", color: autoApproval ? "#86efac" : "#fca5a5" }}>
-            Current State: <strong>{autoApproval ? "Instant Automated Provisioning Active" : "100% Manual Admin Review Fallback Mode"}</strong>
           </div>
         </div>
 
@@ -2552,6 +2591,20 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
               style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
             />
             <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Receipts to other accounts will fail OCR check</span>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>
+              Admin WhatsApp Number (for manual orders)
+            </label>
+            <input
+              type="text"
+              value={adminWhatsapp}
+              onChange={(e) => setAdminWhatsapp(e.target.value.trim())}
+              placeholder="94701234567"
+              style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#34d399", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+            />
+            <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Used to pre-fill WhatsApp message when manual approval is active</span>
           </div>
 
           <div>
