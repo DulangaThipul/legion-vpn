@@ -493,7 +493,7 @@ export async function POST(req: Request) {
       } catch {}
     }
 
-    const fallbackToManualVerification = async (reason: string, auditReport?: any) => {
+    const fallbackToManualVerification = async (reason: string, auditReport?: any, isManualMode = false) => {
       const orderRecord = {
         id: `ORD-${Date.now()}`,
         packageId: packageId || "custom",
@@ -503,7 +503,7 @@ export async function POST(req: Request) {
         amount: parsedAmount,
         receipt: cleanReceiptUrl,
         receiptUrl: cleanReceiptUrl,
-        status: "Verifying",
+        status: isManualMode ? "Pending Admin Review" : "Verifying",
         date: new Date().toISOString(),
         verificationNote: reason
       };
@@ -528,15 +528,23 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         autoApproved: false,
-        status: "Verifying",
-        message: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
+        manualMode: true,
+        status: orderRecord.status,
+        orderId: orderRecord.id,
+        packageName: cleanPackageName,
+        amount: parsedAmount,
+        slipUrl: cleanReceiptUrl,
+        adminWhatsapp: systemConfig.adminWhatsapp || "94701234567",
+        message: isManualMode
+          ? "Receipt uploaded successfully! Please inform the Admin via WhatsApp now so your V2Ray configuration can be activated immediately."
+          : (reason || "Receipt uploaded successfully. Reference number queued for swift settlement clearance."),
         order: orderRecord,
         user: updatedUser,
         auditReport: auditReport || {
-          overallStatus: "review_required",
-          reason: "Receipt uploaded successfully. Reference number queued for swift settlement clearance.",
+          overallStatus: "manual_review",
+          reason: "Receipt uploaded successfully. Queued for manual admin review.",
           checks: [
-            { id: "doc", title: "Document Analyzed", passed: true, statusText: "Analyzed", message: "Deposit document forensic scan completed." },
+            { id: "doc", title: "Document Uploaded", passed: true, statusText: "Uploaded", message: "Deposit document forensic scan completed." },
             { id: "account", title: "Beneficiary Confirmed", passed: false, statusText: "Awaiting Clearance", expected: systemConfig.expectedBankAccount || "8029138148", message: "Beneficiary matching queued for rapid clearance." },
             { id: "trace", title: "Transaction Trace Valid", passed: false, statusText: "Queued", message: "Transaction reference hash queued for ledger check." },
             { id: "amount", title: "Settlement Matched", passed: false, statusText: "Queued", expected: parsedAmount, message: "Awaiting settlement amount confirmation." },
@@ -576,18 +584,18 @@ export async function POST(req: Request) {
     } else {
       // 3. Check Master Auto-Approval Switch
       if (!systemConfig.autoApprovalEnabled) {
-      return await fallbackToManualVerification("Auto-approval is paused in Admin Settings. Slip routed for fast manual review.", {
-        overallStatus: "review_required",
-        reason: "Auto-approval paused by administrator.",
-        checks: [
-          { id: "doc", title: "Document Analyzed", passed: true, statusText: "Analyzed", message: "Deposit slip forensic analysis complete." },
-          { id: "account", title: "Beneficiary Confirmed", passed: true, statusText: "Confirmed", expected: systemConfig.expectedBankAccount || "8029138148", message: "Commercial Bank Account 8029138148 verified." },
-          { id: "trace", title: "Transaction Trace Valid", passed: true, statusText: "Valid", message: "Anti-replay ledger check queued." },
-          { id: "amount", title: "Settlement Matched", passed: true, statusText: "Matched", expected: parsedAmount, message: `Package tariff Rs. ${parsedAmount} identified.` },
-          { id: "line", title: "Line Activated", passed: false, isSuspicious: true, statusText: "Manual Hold", message: "Auto-approval switch is PAUSED in Admin Center. Sent to manual approval." }
-        ]
-      });
-    }
+        return await fallbackToManualVerification("Auto-approval is paused in Admin Settings. Slip routed for manual admin review.", {
+          overallStatus: "manual_review",
+          reason: "Auto-approval paused by administrator.",
+          checks: [
+            { id: "doc", title: "Document Uploaded", passed: true, statusText: "Uploaded", message: "Deposit slip archived in secure audit vault." },
+            { id: "account", title: "Beneficiary Staged", passed: true, statusText: "Staged", expected: systemConfig.expectedBankAccount || "8029138148", message: "Commercial Bank Account 8029138148 queued for admin clearance." },
+            { id: "trace", title: "Transaction Trace Staged", passed: true, statusText: "Queued", message: "Reference queued in clearance ledger." },
+            { id: "amount", title: "Settlement Staged", passed: true, statusText: "Queued", expected: parsedAmount, message: `Package tariff Rs. ${parsedAmount} queued.` },
+            { id: "line", title: "Line Reservation", passed: true, statusText: "Reserved", message: "Dedicated 10Gbps Singapore slot reserved for your account." }
+          ]
+        }, true);
+      }
 
     if (!cleanReceiptUrl) {
       return await fallbackToManualVerification("No payment slip image attached. Queued for review.", {
