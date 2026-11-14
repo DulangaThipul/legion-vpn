@@ -1918,6 +1918,7 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
     username: "",
     password: "",
     inboundId: 1,
+    dialogInboundId: 5,
     port: 443,
     subBaseUrl: "https://103.179.44.75:2096/sub/"
   });
@@ -1940,7 +1941,12 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
         const res = await fetch("/api/admin/system-config");
         const json = await res.json();
         if (json.success && json.config) {
-          if (json.config.primary3xui) setPrimaryNode(json.config.primary3xui);
+          if (json.config.primary3xui) {
+            setPrimaryNode({
+              ...json.config.primary3xui,
+              dialogInboundId: json.config.primary3xui.dialogInboundId ?? 5
+            });
+          }
           if (json.config.bonusUsa3xui) setBonusUsaNode(json.config.bonusUsa3xui);
         }
       } catch (err) {
@@ -2068,7 +2074,7 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
       <div style={{ background: "rgba(12, 12, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.8rem" }}>
         <h3 style={{ margin: "0 0 1.2rem 0", fontSize: "1.1rem", fontWeight: "700" }}>Primary Singapore Node (Main 10Gbps Core)</h3>
         
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
           <div>
             <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>3x-ui Base URL</label>
             <input
@@ -2081,12 +2087,22 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
             <span style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "3px", display: "block" }}>Tip: If SSL is enabled on your panel, use https:// (e.g. https://143.42.79.58:38887/tuycp9km2369ii/)</span>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>Inbound ID</label>
+            <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>Inbound ID (Default 1)</label>
             <input
               type="number"
               value={primaryNode.inboundId}
               onChange={(e) => setPrimaryNode(prev => ({ ...prev, inboundId: Number(e.target.value) || 1 }))}
               placeholder="1"
+              style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.4rem" }}>Dialog Social ID (WS+TLS 5)</label>
+            <input
+              type="number"
+              value={primaryNode.dialogInboundId}
+              onChange={(e) => setPrimaryNode(prev => ({ ...prev, dialogInboundId: Number(e.target.value) || 5 }))}
+              placeholder="5"
               style={{ width: "100%", padding: "0.7rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" }}
             />
           </div>
