@@ -4807,14 +4807,59 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
           {/* 🛡️ MATTE FROSTED DARK OBSIDIAN & EMERALD VERIFICATION MODAL (PORTALED) */}
           {mounted && typeof document !== "undefined" && laborModalOpen && createPortal(
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 overflow-y-auto">
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                height: "100vh",
+                zIndex: 99999,
+                backgroundColor: "rgba(5, 7, 6, 0.82)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+                boxSizing: "border-box"
+              }}
+            >
               <div 
-                className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.09] bg-[#111312]/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-h-[85vh] overflow-y-auto pb-32 text-left"
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  maxWidth: "430px",
+                  maxHeight: "86vh",
+                  overflowY: "auto",
+                  borderRadius: "28px",
+                  background: "linear-gradient(165deg, rgba(22, 26, 24, 0.96) 0%, rgba(11, 13, 12, 0.98) 100%)",
+                  border: "1px solid rgba(255, 255, 255, 0.10)",
+                  boxShadow: "0 28px 90px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                  padding: "28px 22px",
+                  color: "#f8fafc",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  textAlign: "left"
+                }}
               >
-                {/* TOP-LEFT EMERALD RADIAL GLOW */}
-                <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-emerald-500/15 blur-3xl" />
+                {/* TOP-LEFT AMBIENT EMERALD LIGHT GLOW (DECORATIVE) */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-60px",
+                    left: "-60px",
+                    width: "200px",
+                    height: "200px",
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, transparent 70%)",
+                    pointerEvents: "none"
+                  }}
+                />
 
-                {/* TOP-RIGHT CLOSE BUTTON */}
+                {/* TOP-RIGHT CLOSE (X) BUTTON */}
                 <button
                   type="button"
                   onClick={() => {
@@ -4824,309 +4869,135 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       setActiveTab("configs");
                     }
                   }}
-                  className="absolute top-5 right-5 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 hover:bg-white/[0.1] hover:text-white transition-all cursor-pointer"
+                  style={{
+                    position: "absolute",
+                    top: "18px",
+                    right: "18px",
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    color: "#94a3b8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: "15px",
+                    lineHeight: 1,
+                    zIndex: 10
+                  }}
                   aria-label="Close modal"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  ✕
                 </button>
 
-                {/* TOP 5-SEGMENT PROGRESS BAR */}
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  {[0, 1, 2, 3, 4].map((segIdx) => {
-                    const isDone = laborResult ? true : segIdx <= laborStage;
+                {/* TOP SEGMENTED EMERALD PROGRESS BARS (5 PILLS) */}
+                <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "22px" }}>
+                  {[0, 1, 2, 3, 4].map((idx) => {
+                    const isDone = laborResult ? true : idx <= laborStage;
                     return (
                       <div
-                        key={segIdx}
-                        className={`h-1 w-8 rounded-full transition-all duration-500 ${
-                          isDone
-                            ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
-                            : "bg-white/10"
-                        }`}
+                        key={idx}
+                        style={{
+                          height: "4px",
+                          width: "32px",
+                          borderRadius: "999px",
+                          backgroundColor: isDone ? "#34d399" : "rgba(255, 255, 255, 0.12)",
+                          boxShadow: isDone ? "0 0 10px rgba(52, 211, 153, 0.5)" : "none",
+                          transition: "all 0.4s ease"
+                        }}
                       />
                     );
                   })}
                 </div>
 
-                {/* CENTERED FROSTED ICON & HEADER */}
-                <div className="text-center mb-6">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] shadow-inner">
-                    {!laborResult ? (
-                      <svg className="animate-spin text-emerald-400" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                        <path d="M12 2a10 10 0 0 1 10 10" />
-                      </svg>
-                    ) : (laborResult.autoApproved || laborResult.verified) ? (
-                      <svg className="text-emerald-400" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <svg className="text-emerald-400" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                {/* STRICT VIEW SEPARATION: VIEW A (MANUAL MODE) vs VIEW B (AUTO / TEST / AUDITING) */}
+                {Boolean(laborResult?.manualMode) ? (
+                  /* ==================================================================== */
+                  /* VIEW A: MANUAL MODE CONFIRMATION (ONLY SHIELD, SUMMARY & WHATSAPP)   */
+                  /* ==================================================================== */
+                  <div>
+                    {/* FROSTED SHIELD ICON BADGE */}
+                    <div
+                      style={{
+                        width: "52px",
+                        height: "52px",
+                        borderRadius: "16px",
+                        background: "rgba(16, 185, 129, 0.12)",
+                        border: "1px solid rgba(16, 185, 129, 0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 12px auto",
+                        boxShadow: "0 0 20px rgba(16, 185, 129, 0.15)"
+                      }}
+                    >
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                         <polyline points="9 12 11 14 15 10" />
                       </svg>
-                    )}
-                  </div>
+                    </div>
 
-                  <h3 className="text-lg font-semibold text-white tracking-tight mb-1">
-                    {!laborResult
-                      ? "Deposit Clearance in Progress"
-                      : (laborResult.autoApproved || laborResult.verified)
-                      ? "Transfer Verified & Cleared"
-                      : "Receipt Uploaded Successfully!"}
-                  </h3>
+                    {/* TITLE */}
+                    <h3
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: 700,
+                        textAlign: "center",
+                        margin: "12px 0 6px",
+                        color: "#ffffff",
+                        letterSpacing: "-0.01em"
+                      }}
+                    >
+                      Receipt Uploaded Successfully!
+                    </h3>
 
-                  <div className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-                    {!laborResult ? (
-                      <p>{LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway..."}</p>
-                    ) : (laborResult.autoApproved || laborResult.verified) ? (
-                      <p>{laborResult.message || "Your 10Gbps Singapore core line & subscription configs are active."}</p>
-                    ) : (
-                      <div className="space-y-1">
-                        <p className="text-slate-300">
-                          Please inform the Admin via WhatsApp now so your V2Ray configuration can be activated immediately.
-                        </p>
-                        <p className="text-[11px] text-emerald-400/90 font-medium">
-                          (WhatsApp හරහා Admin ව දැනුවත් කරන්න — එවිට ඉක්මනින්ම ඔබගේ VPN code එක ලබා ගත හැක.)
-                        </p>
+                    {/* SUBTITLE & SINHALA NOTICE */}
+                    <div style={{ textAlign: "center", marginBottom: "18px" }}>
+                      <p style={{ fontSize: "12.5px", color: "#94a3b8", textAlign: "center", lineHeight: 1.5, margin: "0 0 4px 0" }}>
+                        Please inform the Admin via WhatsApp now so your V2Ray configuration can be activated immediately.
+                      </p>
+                      <p style={{ fontSize: "12px", color: "rgba(52, 211, 153, 0.95)", textAlign: "center", lineHeight: 1.5, fontWeight: 500, margin: 0 }}>
+                        (WhatsApp හරහා Admin ව දැනුවත් කරන්න — එවිට ඉක්මනින්ම ඔබගේ VPN code එක ලබා ගත හැක.)
+                      </p>
+                    </div>
+
+                    {/* ORDER SUMMARY BOX */}
+                    <div
+                      style={{
+                        background: "rgba(255, 255, 255, 0.03)",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        borderRadius: "16px",
+                        padding: "14px 16px",
+                        margin: "18px 0",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>Package</span>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#ffffff" }}>
+                          {laborResult?.packageName || modalPackage?.name || "VPN Plan"}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ORDER DETAILS SUMMARY PILL FOR MANUAL MODE */}
-                {laborResult && !(laborResult.autoApproved || laborResult.verified) && (
-                  <div className="mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5 backdrop-blur-md">
-                    <div className="flex items-center justify-between text-xs py-1 border-b border-white/[0.05]">
-                      <span className="text-slate-400">Package</span>
-                      <span className="font-semibold text-white">
-                        {laborResult?.packageName || modalPackage?.name || "VPN Plan"}
-                      </span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>Amount</span>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#34d399" }}>
+                          Rs. {laborResult?.amount || currentQuotaList[selectedQuota!] || 0}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>Order ID</span>
+                        <span style={{ fontFamily: "monospace", fontSize: "12px", color: "#cbd5e1" }}>
+                          {laborResult?.orderId || "Pending"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs py-1 border-b border-white/[0.05]">
-                      <span className="text-slate-400">Amount</span>
-                      <span className="font-bold text-emerald-400">
-                        Rs. {laborResult?.amount || currentQuotaList[selectedQuota!] || 0}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs py-1">
-                      <span className="text-slate-400">Order ID</span>
-                      <span className="font-mono text-[11px] text-slate-300">
-                        {laborResult?.orderId || "Pending"}
-                      </span>
-                    </div>
-                  </div>
-                )}
 
-                {/* MINIMALIST STEP ROWS */}
-                <div className="mb-6 space-y-2.5">
-                  {(() => {
-                    const expectedAcc = "8029138148";
-                    const expectedPrice = currentQuotaList[selectedQuota!] || 0;
-                    const report = laborResult?.auditReport;
-
-                    const steps = [
-                      {
-                        id: "doc",
-                        title: "Document Analyzed",
-                        activeLabel: "Scanning deposit slip document & forensic OCR...",
-                        passedText: "Slip cryptographic signature & metadata verified.",
-                        failedText: "Slip uploaded to secure verification vault."
-                      },
-                      {
-                        id: "account",
-                        title: "Beneficiary Confirmed",
-                        activeLabel: `Reconciling target account ${expectedAcc}...`,
-                        passedText: `Commercial Bank Account ${expectedAcc} verified.`,
-                        failedText: "Beneficiary account reconciliation queued."
-                      },
-                      {
-                        id: "trace",
-                        title: "Transaction Trace Valid",
-                        activeLabel: "Checking anti-replay transaction ledger...",
-                        passedText: "Unique reference hash verified against ledger.",
-                        failedText: "Transaction reference hash queued for clearance."
-                      },
-                      {
-                        id: "amount",
-                        title: "Settlement Matched",
-                        activeLabel: `Authenticating tariff balance (Rs. ${expectedPrice})...`,
-                        passedText: `Exact tariff Rs. ${expectedPrice} verified.`,
-                        failedText: "Tariff balance queued for settlement confirmation."
-                      },
-                      {
-                        id: "line",
-                        title: "Line Activated",
-                        activeLabel: "Provisioning high-speed 10Gbps core slot...",
-                        passedText: "Singapore core slot & subscription link generated.",
-                        failedText: "Dedicated slot allocated upon final clearance."
-                      }
-                    ];
-
-                    return steps.map((step, idx) => {
-                      let isPassed = false;
-                      let isScanning = false;
-                      let isSuspicious = false;
-                      let detailNode: React.ReactNode = null;
-                      let checkData: any = undefined;
-
-                      if (!laborResult) {
-                        if (idx < laborStage) {
-                          isPassed = true;
-                          detailNode = <span className="text-slate-400">{step.passedText}</span>;
-                        } else if (idx === laborStage) {
-                          isScanning = true;
-                          detailNode = <span className="text-emerald-400/90">{step.activeLabel}</span>;
-                        } else {
-                          detailNode = <span className="text-slate-500">Queued in settlement pipeline...</span>;
-                        }
-                      } else {
-                        checkData = Array.isArray(report?.checks)
-                          ? report.checks.find((c: any) => c.id === step.id || (step.id === "doc" && c.id === "ocr") || (step.id === "trace" && (c.id === "replay" || c.id === "ledger")) || (step.id === "line" && c.id === "node"))
-                          : undefined;
-
-                        if (checkData) {
-                          isPassed = Boolean(checkData.passed);
-                          isSuspicious = Boolean(checkData.isSuspicious);
-
-                          if (step.id === "account" && isSuspicious) {
-                            detailNode = (
-                              <div className="flex flex-col gap-0.5 mt-1">
-                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                                  <span className="text-emerald-400 font-medium">Expected: {expectedAcc}</span>
-                                  <span className="text-slate-600">|</span>
-                                  <span className="text-rose-400 font-medium line-through decoration-rose-500 decoration-2">
-                                    Slip: {checkData.detected || "Not Detected"}
-                                  </span>
-                                </div>
-                                <span className="text-[11px] text-rose-300/90">{checkData.message || step.failedText}</span>
-                              </div>
-                            );
-                          } else if (step.id === "amount" && isSuspicious) {
-                            detailNode = (
-                              <div className="flex flex-col gap-0.5 mt-1">
-                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                                  <span className="text-emerald-400 font-medium">Package: Rs. {expectedPrice}</span>
-                                  <span className="text-slate-600">|</span>
-                                  <span className="text-rose-400 font-medium line-through decoration-rose-500 decoration-2">
-                                    Slip: Rs. {checkData.detected || 0}
-                                  </span>
-                                </div>
-                                <span className="text-[11px] text-rose-300/90">{checkData.message || step.failedText}</span>
-                              </div>
-                            );
-                          } else if (step.id === "trace" && isSuspicious) {
-                            detailNode = (
-                              <div className="flex flex-col gap-0.5 mt-1">
-                                <span className="text-xs text-rose-400 font-medium line-through decoration-rose-500 decoration-2">
-                                  Trace #{checkData.refNumber || "Unknown"}
-                                </span>
-                                <span className="text-[11px] text-rose-300/90">{checkData.message || step.failedText}</span>
-                              </div>
-                            );
-                          } else {
-                            detailNode = (
-                              <span className={isPassed ? "text-slate-400" : "text-slate-500"}>
-                                {checkData.message || (isPassed ? step.passedText : step.failedText)}
-                              </span>
-                            );
-                          }
-                        } else {
-                          isPassed = Boolean(laborResult.autoApproved || laborResult.verified);
-                          detailNode = <span className={isPassed ? "text-slate-400" : "text-slate-500"}>{isPassed ? step.passedText : step.failedText}</span>;
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={step.id}
-                          className={`rounded-2xl border px-4 py-3 transition-all ${
-                            isSuspicious
-                              ? "border-rose-500/25 bg-rose-500/[0.04]"
-                              : isPassed
-                              ? "border-emerald-500/20 bg-emerald-500/[0.02]"
-                              : isScanning
-                              ? "border-emerald-500/30 bg-white/[0.03]"
-                              : "border-white/[0.06] bg-white/[0.02]"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-xs font-medium ${isPassed ? "text-slate-200" : isSuspicious ? "text-rose-200" : isScanning ? "text-emerald-300" : "text-slate-400"}`}>
-                              {step.title}
-                            </span>
-                            <div>
-                              {isPassed ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 border border-emerald-500/20">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                  Confirmed
-                                </span>
-                              ) : isSuspicious ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400 border border-rose-500/20">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                  </svg>
-                                  Flagged
-                                </span>
-                              ) : isScanning ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300 border border-emerald-500/20">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                  Auditing
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-full bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-slate-500 border border-white/[0.06]">
-                                  Pending
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-[11px] leading-relaxed">
-                            {detailNode}
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-
-                {/* MODAL ACTION BUTTONS */}
-                <div>
-                  {(laborResult?.autoApproved || laborResult?.verified) ? (
-                    <div className="flex flex-col gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLaborModalOpen(false);
-                          closeCheckout();
-                          setActiveTab("configs");
-                          window.location.reload();
-                        }}
-                        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98] cursor-pointer"
-                      >
-                        <span>View &amp; Copy Active VPN Configs</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                          <polyline points="12 5 19 12 12 19" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLaborModalOpen(false);
-                          closeCheckout();
-                          setActiveTab("configs");
-                        }}
-                        className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
-                      >
-                        Close &amp; Continue in Background
-                      </button>
-                    </div>
-                  ) : laborResult ? (
-                    (() => {
+                    {/* WHATSAPP & CLOSE BUTTONS */}
+                    {(() => {
                       const rawWa = laborResult?.adminWhatsapp || systemConfig?.adminWhatsapp || "94701234567";
                       const cleanWa = String(rawWa).replace(/\+/g, "").replace(/\s+/g, "").trim();
                       const pkgName = laborResult?.packageName || modalPackage?.name || "VPN Plan";
@@ -5137,14 +5008,30 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       const waUrl = `https://wa.me/${cleanWa}?text=${encodeURIComponent(msg)}`;
 
                       return (
-                        <div className="flex flex-col gap-2.5">
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "16px" }}>
                           <a
                             href={waUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 py-3.5 px-5 text-sm font-semibold text-white shadow-[0_4px_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "8px",
+                              width: "100%",
+                              padding: "14px",
+                              borderRadius: "14px",
+                              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                              color: "#ffffff",
+                              fontWeight: 600,
+                              fontSize: "14px",
+                              textDecoration: "none",
+                              boxShadow: "0 8px 24px rgba(16, 185, 129, 0.35)",
+                              boxSizing: "border-box",
+                              cursor: "pointer"
+                            }}
                           >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
                             </svg>
                             <span>Inform Admin on WhatsApp</span>
@@ -5156,27 +5043,400 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               closeCheckout();
                               setActiveTab("configs");
                             }}
-                            className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
+                            style={{
+                              width: "100%",
+                              marginTop: "10px",
+                              padding: "12px",
+                              borderRadius: "14px",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              backgroundColor: "rgba(255, 255, 255, 0.04)",
+                              color: "#cbd5e1",
+                              fontSize: "13px",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              boxSizing: "border-box"
+                            }}
                           >
                             Close &amp; Check Later
                           </button>
                         </div>
                       );
-                    })()
-                  ) : (
-                    <div className="flex flex-col gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLaborModalOpen(false);
+                    })()}
+                  </div>
+                ) : (
+                  /* ==================================================================== */
+                  /* VIEW B: AUTO-APPROVAL / ADMIN TEST / AUDITING (5 STEP ROWS ONLY)    */
+                  /* ==================================================================== */
+                  <div>
+                    {/* CENTERED FROSTED ICON & HEADER */}
+                    <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                      <div
+                        style={{
+                          width: "52px",
+                          height: "52px",
+                          borderRadius: "16px",
+                          backgroundColor: "rgba(255, 255, 255, 0.04)",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 12px auto"
                         }}
-                        className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer text-center"
                       >
-                        Close &amp; Continue in Background
-                      </button>
+                        {!laborResult ? (
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
+                            <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                            <path d="M12 2a10 10 0 0 1 10 10" />
+                          </svg>
+                        ) : (laborResult.autoApproved || laborResult.verified) ? (
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                        )}
+                      </div>
+
+                      <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 6px 0", color: "#ffffff", letterSpacing: "-0.01em" }}>
+                        {!laborResult
+                          ? "Deposit Clearance in Progress"
+                          : (laborResult.autoApproved || laborResult.verified)
+                          ? "Transfer Verified & Cleared"
+                          : "Verification Discrepancy"}
+                      </h3>
+
+                      <p style={{ fontSize: "12.5px", color: "#94a3b8", lineHeight: 1.5, margin: 0, maxWidth: "360px", marginLeft: "auto", marginRight: "auto" }}>
+                        {!laborResult
+                          ? (LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway...")
+                          : (laborResult.autoApproved || laborResult.verified)
+                          ? (laborResult.message || "Your 10Gbps Singapore core line & subscription configs are active.")
+                          : (laborResult.message || "A discrepancy was detected during automated clearance.")}
+                      </p>
                     </div>
-                  )}
-                </div>
+
+                    {/* 5 MATTE STEP ROWS (EXPLICIT INLINE STYLES) */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+                      {(() => {
+                        const expectedAcc = "8029138148";
+                        const expectedPrice = currentQuotaList[selectedQuota!] || 0;
+                        const report = laborResult?.auditReport;
+
+                        const steps = [
+                          {
+                            id: "doc",
+                            title: "Document Analyzed",
+                            activeLabel: "Scanning deposit slip document & forensic OCR...",
+                            passedText: "Slip cryptographic signature & metadata verified.",
+                            failedText: "Slip uploaded to secure verification vault."
+                          },
+                          {
+                            id: "account",
+                            title: "Beneficiary Confirmed",
+                            activeLabel: `Reconciling target account ${expectedAcc}...`,
+                            passedText: `Commercial Bank Account ${expectedAcc} verified.`,
+                            failedText: "Beneficiary account reconciliation queued."
+                          },
+                          {
+                            id: "trace",
+                            title: "Transaction Trace Valid",
+                            activeLabel: "Checking anti-replay transaction ledger...",
+                            passedText: "Unique reference hash verified against ledger.",
+                            failedText: "Transaction reference hash queued for clearance."
+                          },
+                          {
+                            id: "amount",
+                            title: "Settlement Matched",
+                            activeLabel: `Authenticating tariff balance (Rs. ${expectedPrice})...`,
+                            passedText: `Exact tariff Rs. ${expectedPrice} verified.`,
+                            failedText: "Tariff balance queued for settlement confirmation."
+                          },
+                          {
+                            id: "line",
+                            title: "Line Activated",
+                            activeLabel: "Provisioning high-speed 10Gbps core slot...",
+                            passedText: "Singapore core slot & subscription link generated.",
+                            failedText: "Dedicated slot allocated upon final clearance."
+                          }
+                        ];
+
+                        return steps.map((step, idx) => {
+                          let isPassed = false;
+                          let isScanning = false;
+                          let isSuspicious = false;
+                          let detailNode: React.ReactNode = null;
+                          let checkData: any = undefined;
+
+                          if (!laborResult) {
+                            if (idx < laborStage) {
+                              isPassed = true;
+                              detailNode = <span style={{ color: "#94a3b8" }}>{step.passedText}</span>;
+                            } else if (idx === laborStage) {
+                              isScanning = true;
+                              detailNode = <span style={{ color: "#34d399" }}>{step.activeLabel}</span>;
+                            } else {
+                              detailNode = <span style={{ color: "#64748b" }}>Queued in settlement pipeline...</span>;
+                            }
+                          } else {
+                            checkData = Array.isArray(report?.checks)
+                              ? report.checks.find((c: any) => c.id === step.id || (step.id === "doc" && c.id === "ocr") || (step.id === "trace" && (c.id === "replay" || c.id === "ledger")) || (step.id === "line" && c.id === "node"))
+                              : undefined;
+
+                            if (checkData) {
+                              isPassed = Boolean(checkData.passed);
+                              isSuspicious = Boolean(checkData.isSuspicious);
+
+                              if (step.id === "account" && isSuspicious) {
+                                detailNode = (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
+                                    <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "11px" }}>
+                                      <span style={{ color: "#34d399", fontWeight: 600 }}>Expected: {expectedAcc}</span>
+                                      <span style={{ color: "#64748b" }}>|</span>
+                                      <span style={{ color: "#f87171", textDecoration: "line-through", fontWeight: 600 }}>
+                                        Slip: {checkData.detected || "Not Detected"}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: "11px", color: "#fca5a5" }}>{checkData.message || step.failedText}</span>
+                                  </div>
+                                );
+                              } else if (step.id === "amount" && isSuspicious) {
+                                detailNode = (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
+                                    <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "11px" }}>
+                                      <span style={{ color: "#34d399", fontWeight: 600 }}>Package: Rs. {expectedPrice}</span>
+                                      <span style={{ color: "#64748b" }}>|</span>
+                                      <span style={{ color: "#f87171", textDecoration: "line-through", fontWeight: 600 }}>
+                                        Slip: Rs. {checkData.detected || 0}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: "11px", color: "#fca5a5" }}>{checkData.message || step.failedText}</span>
+                                  </div>
+                                );
+                              } else if (step.id === "trace" && isSuspicious) {
+                                detailNode = (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "3px" }}>
+                                    <span style={{ fontSize: "11px", color: "#f87171", textDecoration: "line-through", fontWeight: 600 }}>
+                                      Trace #{checkData.refNumber || "Unknown"}
+                                    </span>
+                                    <span style={{ fontSize: "11px", color: "#fca5a5" }}>{checkData.message || step.failedText}</span>
+                                  </div>
+                                );
+                              } else {
+                                detailNode = (
+                                  <span style={{ color: isPassed ? "#94a3b8" : "#64748b" }}>
+                                    {checkData.message || (isPassed ? step.passedText : step.failedText)}
+                                  </span>
+                                );
+                              }
+                            } else {
+                              isPassed = Boolean(laborResult.autoApproved || laborResult.verified);
+                              detailNode = <span style={{ color: isPassed ? "#94a3b8" : "#64748b" }}>{isPassed ? step.passedText : step.failedText}</span>;
+                            }
+                          }
+
+                          return (
+                            <div
+                              key={step.id}
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "4px",
+                                padding: "12px 14px",
+                                borderRadius: "16px",
+                                backgroundColor: isSuspicious ? "rgba(239, 68, 68, 0.06)" : isPassed ? "rgba(16, 185, 129, 0.04)" : "rgba(255, 255, 255, 0.03)",
+                                border: `1px solid ${isSuspicious ? "rgba(239, 68, 68, 0.25)" : isPassed ? "rgba(16, 185, 129, 0.2)" : isScanning ? "rgba(16, 185, 129, 0.35)" : "rgba(255, 255, 255, 0.07)"}`,
+                                boxSizing: "border-box"
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <span style={{ fontSize: "12px", fontWeight: 600, color: isPassed ? "#f1f5f9" : isSuspicious ? "#fca5a5" : isScanning ? "#6ee7b7" : "#94a3b8" }}>
+                                  {step.title}
+                                </span>
+                                <div>
+                                  {isPassed ? (
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.25)", color: "#34d399", fontSize: "11px", fontWeight: 600 }}>
+                                      ✓ Confirmed
+                                    </span>
+                                  ) : isSuspicious ? (
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.25)", color: "#f87171", fontSize: "11px", fontWeight: 600 }}>
+                                      ✕ Flagged
+                                    </span>
+                                  ) : isScanning ? (
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.25)", color: "#6ee7b7", fontSize: "11px", fontWeight: 600 }}>
+                                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#34d399" }} />
+                                      Auditing
+                                    </span>
+                                  ) : (
+                                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", color: "#64748b", fontSize: "11px" }}>
+                                      Pending
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: "11px", lineHeight: 1.4 }}>
+                                {detailNode}
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    {/* ACTION BUTTONS FOR AUTO / TEST / AUDITING */}
+                    <div>
+                      {(laborResult?.autoApproved || laborResult?.verified) ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLaborModalOpen(false);
+                              closeCheckout();
+                              setActiveTab("configs");
+                              window.location.reload();
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "8px",
+                              width: "100%",
+                              padding: "14px",
+                              borderRadius: "14px",
+                              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                              color: "#ffffff",
+                              fontWeight: 600,
+                              fontSize: "14px",
+                              border: "none",
+                              boxShadow: "0 8px 24px rgba(16, 185, 129, 0.35)",
+                              cursor: "pointer",
+                              boxSizing: "border-box"
+                            }}
+                          >
+                            <span>View &amp; Copy Active VPN Configs</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                              <polyline points="12 5 19 12 12 19" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLaborModalOpen(false);
+                              closeCheckout();
+                              setActiveTab("configs");
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "12px",
+                              borderRadius: "14px",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              backgroundColor: "rgba(255, 255, 255, 0.04)",
+                              color: "#cbd5e1",
+                              fontSize: "13px",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              boxSizing: "border-box"
+                            }}
+                          >
+                            Close &amp; Continue in Background
+                          </button>
+                        </div>
+                      ) : laborResult ? (
+                        (() => {
+                          const rawWa = laborResult?.adminWhatsapp || systemConfig?.adminWhatsapp || "94701234567";
+                          const cleanWa = String(rawWa).replace(/\+/g, "").replace(/\s+/g, "").trim();
+                          const pkgName = laborResult?.packageName || modalPackage?.name || "VPN Plan";
+                          const price = laborResult?.amount || currentQuotaList[selectedQuota!] || 0;
+                          const ordId = laborResult?.orderId || "ORD";
+                          const userEmail = user?.email || "";
+                          const msg = `Hi Admin, checking discrepancy status for order: ${pkgName} (Rs. ${price}).\nOrder ID: ${ordId}\nEmail: ${userEmail}\nPlease assist with manual clearance.`;
+                          const waUrl = `https://wa.me/${cleanWa}?text=${encodeURIComponent(msg)}`;
+
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "8px",
+                                  width: "100%",
+                                  padding: "14px",
+                                  borderRadius: "14px",
+                                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                  color: "#ffffff",
+                                  fontWeight: 600,
+                                  fontSize: "14px",
+                                  textDecoration: "none",
+                                  boxShadow: "0 8px 24px rgba(16, 185, 129, 0.35)",
+                                  boxSizing: "border-box",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
+                                </svg>
+                                <span>Inform Admin on WhatsApp</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLaborModalOpen(false);
+                                  closeCheckout();
+                                  setActiveTab("configs");
+                                }}
+                                style={{
+                                  width: "100%",
+                                  marginTop: "10px",
+                                  padding: "12px",
+                                  borderRadius: "14px",
+                                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                                  backgroundColor: "rgba(255, 255, 255, 0.04)",
+                                  color: "#cbd5e1",
+                                  fontSize: "13px",
+                                  fontWeight: 500,
+                                  cursor: "pointer",
+                                  boxSizing: "border-box"
+                                }}
+                              >
+                                Close &amp; Check Later
+                              </button>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLaborModalOpen(false);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "12px",
+                              borderRadius: "14px",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              backgroundColor: "rgba(255, 255, 255, 0.04)",
+                              color: "#cbd5e1",
+                              fontSize: "13px",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              boxSizing: "border-box"
+                            }}
+                          >
+                            Close &amp; Continue in Background
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>,
