@@ -415,5 +415,24 @@ h1, h2, h3 {
   z-index: 5;
 }
 
+/* Custom Matte Frosted Obsidian & Emerald Scrollbar */
+.legion-matte-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52, 211, 153, 0.3) transparent;
+}
+.legion-matte-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.legion-matte-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.legion-matte-scroll::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.3);
+  border-radius: 9999px;
+}
+.legion-matte-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.6);
+}
+
 
 
