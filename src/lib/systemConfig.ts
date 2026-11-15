@@ -8,8 +8,38 @@ import http from "http";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS } from "./vlessGenerator";
 
+const ThreeXUI = require("3xui-api-client");
+
 // Bypass self-signed SSL errors globally for VPS connections
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+/**
+ * Creates an authenticated 3x-ui client with explicit self-signed SSL certificate tolerance
+ */
+export function createXuiClient(nodeConfig: {
+  baseUrl: string;
+  username: string;
+  password: string;
+}) {
+  const cleanBase = (nodeConfig.baseUrl || "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/panel\/?$/, "");
+
+  const xui = new ThreeXUI(
+    cleanBase,
+    (nodeConfig.username || "").trim(),
+    (nodeConfig.password || "").trim(),
+    { timeout: 15000 }
+  );
+
+  // Crucial: Allow self-signed SSL certs on IP:Port VPS panels
+  if (xui?.api?.defaults) {
+    xui.api.defaults.httpsAgent = new https.Agent({ rejectUnauthorized: false });
+  }
+
+  return xui;
+}
 
 export interface GlobalSystemConfig {
   ispDomains: Record<string, string>;
@@ -31,6 +61,7 @@ export interface GlobalSystemConfig {
     inboundId: number | string;
   };
   autoApprovalEnabled: boolean;
+  autoApproval?: boolean;
   enableAdminTestButton?: boolean;
   adminWhatsapp?: string;
   expectedBankAccount: string;
@@ -67,6 +98,7 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
     inboundId: 1
   },
   autoApprovalEnabled: true,
+  autoApproval: true,
   enableAdminTestButton: true,
   adminWhatsapp: "94701234567",
   expectedBankAccount: "8029138148",
@@ -80,6 +112,7 @@ const ADMIN_EMAIL = "dulangathipul@gmail.com";
 
 /**
  * Loads the Global System Configuration from Admin user's subscriptionLink JSON
+ * Never relies on stale in-memory cache; reads fresh from DB
  */
 export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
   try {
@@ -105,13 +138,19 @@ export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
     }
 
     const saved = parsedMeta._globalSystemConfig || {};
+    const isAuto = saved.autoApproval !== undefined
+      ? Boolean(saved.autoApproval)
+      : (saved.autoApprovalEnabled !== undefined ? Boolean(saved.autoApprovalEnabled) : true);
 
     return {
       ispDomains: { ...DEFAULT_SYSTEM_CONFIG.ispDomains, ...(saved.ispDomains || {}) },
       packageSnis: { ...DEFAULT_PACKAGE_SNIS, ...(saved.packageSnis || {}) },
       primary3xui: { ...DEFAULT_SYSTEM_CONFIG.primary3xui, ...(saved.primary3xui || {}) },
       bonusUsa3xui: { ...DEFAULT_SYSTEM_CONFIG.bonusUsa3xui, ...(saved.bonusUsa3xui || {}) },
-      autoApprovalEnabled: saved.autoApprovalEnabled !== undefined ? Boolean(saved.autoApprovalEnabled) : true,
+      autoApprovalEnabled: isAuto,
+      autoApproval: isAuto,
+      enableAdminTestButton: saved.enableAdminTestButton !== undefined ? Boolean(saved.enableAdminTestButton) : true,
+      adminWhatsapp: saved.adminWhatsapp || DEFAULT_SYSTEM_CONFIG.adminWhatsapp || "94701234567",
       expectedBankAccount: saved.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
       allowedTimeWindowMinutes: Number(saved.allowedTimeWindowMinutes) || DEFAULT_SYSTEM_CONFIG.allowedTimeWindowMinutes,
       geminiApiKey: saved.geminiApiKey || process.env.GEMINI_API_KEY || "",
@@ -123,6 +162,8 @@ export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
     return { ...DEFAULT_SYSTEM_CONFIG };
   }
 }
+
+export const getSystemConfig = getGlobalSystemConfig;
 
 /**
  * Updates Global System Configuration in Admin user's subscriptionLink JSON
@@ -158,7 +199,8 @@ export async function updateGlobalSystemConfig(updates: Partial<GlobalSystemConf
       packageSnis: { ...DEFAULT_PACKAGE_SNIS, ...(currentGlobal.packageSnis || {}), ...(updates.packageSnis || {}) },
       primary3xui: { ...DEFAULT_SYSTEM_CONFIG.primary3xui, ...(currentGlobal.primary3xui || {}), ...(updates.primary3xui || {}) },
       bonusUsa3xui: { ...DEFAULT_SYSTEM_CONFIG.bonusUsa3xui, ...(currentGlobal.bonusUsa3xui || {}), ...(updates.bonusUsa3xui || {}) },
-      autoApprovalEnabled: updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApprovalEnabled ?? true),
+      autoApprovalEnabled: updates.autoApproval !== undefined ? Boolean(updates.autoApproval) : (updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApproval ?? currentGlobal.autoApprovalEnabled ?? true)),
+      autoApproval: updates.autoApproval !== undefined ? Boolean(updates.autoApproval) : (updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApproval ?? currentGlobal.autoApprovalEnabled ?? true)),
       enableAdminTestButton: updates.enableAdminTestButton !== undefined ? Boolean(updates.enableAdminTestButton) : (currentGlobal.enableAdminTestButton ?? true),
       adminWhatsapp: updates.adminWhatsapp || currentGlobal.adminWhatsapp || DEFAULT_SYSTEM_CONFIG.adminWhatsapp || "94701234567",
       expectedBankAccount: updates.expectedBankAccount || currentGlobal.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
