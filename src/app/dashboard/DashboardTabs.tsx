@@ -4114,130 +4114,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       );
                     })}
 
-                    {/* Cloud Subscription URL Card */}
-                    {hasSubUrl && (
-                      <div style={{ background: "linear-gradient(180deg, rgba(16, 12, 34, 0.95) 0%, rgba(10, 8, 22, 0.98) 100%)", border: "1px solid rgba(168, 85, 247, 0.4)", borderRadius: "18px", padding: "1.6rem", boxShadow: "0 12px 35px rgba(0,0,0,0.7), 0 0 25px rgba(168, 85, 247, 0.15)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
-                          <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                              <span style={{ fontSize: "0.72rem", background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", border: "1px solid rgba(34, 197, 94, 0.35)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                                ● LEGION High-Speed Core Sync
-                              </span>
-                              <span style={{ fontSize: "0.72rem", background: "rgba(168, 85, 247, 0.18)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.35)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                                LEGION Node Hub
-                              </span>
-                            </div>
-                            <h3 style={{ margin: "4px 0 0 0", color: "#FFF", fontSize: "1.25rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                              <span>Your Cloud Subscription URL</span>
-                            </h3>
-                            <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: "0.83rem", maxWidth: "600px", lineHeight: 1.5 }}>
-                              Import this single subscription URL into your VPN App (v2rayNG, Sing-box, Streisand, Nekobox) to automatically download and sync all your server lines.
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(validSubscriptionUrl);
-                              setCopiedConfigIndex(9999);
-                              setTimeout(() => setCopiedConfigIndex(null), 2000);
-                            }}
-                            style={{
-                              background: copiedConfigIndex === 9999 ? "rgba(34, 197, 94, 0.25)" : "linear-gradient(90deg, #9333ea, #7c3aed)",
-                              color: "#FFF",
-                              border: copiedConfigIndex === 9999 ? "1px solid #22c55e" : "none",
-                              padding: "0.65rem 1.4rem",
-                              borderRadius: "10px",
-                              fontWeight: "bold",
-                              fontSize: "0.85rem",
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              boxShadow: "0 4px 14px rgba(147, 51, 234, 0.3)"
-                            }}
-                          >
-                            {copiedConfigIndex === 9999 ? (
-                              <>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                <span>Sub Link Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                <span>Copy Subscription Link</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-
-                        <div style={{ background: "#05050c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem", wordBreak: "break-all", fontFamily: "monospace", color: "#38bdf8", fontSize: "0.82rem" }}>
-                          {validSubscriptionUrl}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-               ) : hasSubUrl ? (
-                  <div style={{ background: "linear-gradient(180deg, rgba(16, 12, 34, 0.95) 0%, rgba(10, 8, 22, 0.98) 100%)", border: "1px solid rgba(168, 85, 247, 0.4)", borderRadius: "18px", padding: "1.6rem", boxShadow: "0 12px 35px rgba(0,0,0,0.7), 0 0 25px rgba(168, 85, 247, 0.15)" }}>
-                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
-                       <div>
-                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                           <span style={{ fontSize: "0.72rem", background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", border: "1px solid rgba(34, 197, 94, 0.35)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                             ● LEGION High-Speed Core Sync
-                           </span>
-                           <span style={{ fontSize: "0.72rem", background: "rgba(168, 85, 247, 0.18)", color: "#c084fc", border: "1px solid rgba(168, 85, 247, 0.35)", padding: "2px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                             LEGION Node Hub
-                           </span>
-                         </div>
-                         <h3 style={{ margin: "4px 0 0 0", color: "#FFF", fontSize: "1.25rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
-                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                           <span>Your Cloud Subscription URL</span>
-                         </h3>
-                         <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: "0.83rem", maxWidth: "600px", lineHeight: 1.5 }}>
-                           Import this single subscription URL into your VPN App (v2rayNG, Sing-box, Streisand, Nekobox) to automatically download and sync all your server lines.
-                         </p>
-                       </div>
-
-                       <button
-                         type="button"
-                         onClick={() => {
-                           navigator.clipboard.writeText(validSubscriptionUrl);
-                           setCopiedConfigIndex(9999);
-                           setTimeout(() => setCopiedConfigIndex(null), 2000);
-                         }}
-                         style={{
-                           background: copiedConfigIndex === 9999 ? "rgba(34, 197, 94, 0.25)" : "linear-gradient(90deg, #9333ea, #7c3aed)",
-                           color: "#FFF",
-                           border: copiedConfigIndex === 9999 ? "1px solid #22c55e" : "none",
-                           padding: "0.65rem 1.4rem",
-                           borderRadius: "10px",
-                           fontWeight: "bold",
-                           fontSize: "0.85rem",
-                           cursor: "pointer",
-                           display: "inline-flex",
-                           alignItems: "center",
-                           gap: "8px",
-                           boxShadow: "0 4px 14px rgba(147, 51, 234, 0.3)"
-                         }}
-                       >
-                         {copiedConfigIndex === 9999 ? (
-                           <>
-                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                             <span>Sub Link Copied!</span>
-                           </>
-                         ) : (
-                           <>
-                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                             <span>Copy Subscription Link</span>
-                           </>
-                         )}
-                       </button>
-                     </div>
-
-                     <div style={{ background: "#05050c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem", wordBreak: "break-all", fontFamily: "monospace", color: "#38bdf8", fontSize: "0.82rem" }}>
-                       {validSubscriptionUrl}
-                     </div>
                   </div>
                ) : (
                   <div className="rounded-2xl border border-violet-500/20 bg-violet-950/20 p-8 text-center backdrop-blur-md">
@@ -4249,7 +4125,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                      </div>
                      <h4 className="text-base font-semibold text-slate-200">Dedicated Node Key Allocation in Progress</h4>
                      <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
-                       Your cryptographic line and subscription link will appear here immediately upon order clearance.
+                       Your cryptographic line and dedicated configs will appear here immediately upon order clearance.
                      </p>
                      <button 
                        onClick={() => setActiveTab("buy")} 
@@ -4941,7 +4817,29 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 boxSizing: "border-box"
               }}
             >
+              {/* SCOPED DARK/EMERALD SCROLLBAR FOR VERIFICATION MODAL */}
+              <style>{`
+                .legion-matte-scroll {
+                  scrollbar-width: thin;
+                  scrollbar-color: rgba(52, 211, 153, 0.3) transparent;
+                }
+                .legion-matte-scroll::-webkit-scrollbar {
+                  width: 5px;
+                }
+                .legion-matte-scroll::-webkit-scrollbar-track {
+                  background: transparent;
+                }
+                .legion-matte-scroll::-webkit-scrollbar-thumb {
+                  background: rgba(52, 211, 153, 0.3);
+                  border-radius: 9999px;
+                }
+                .legion-matte-scroll::-webkit-scrollbar-thumb:hover {
+                  background: rgba(52, 211, 153, 0.6);
+                }
+              `}</style>
+
               <div 
+                className="legion-matte-scroll"
                 style={{
                   position: "relative",
                   width: "100%",
@@ -5227,7 +5125,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         {!laborResult
                           ? (LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway...")
                           : (laborResult.autoApproved || laborResult.verified)
-                          ? (laborResult.message || "Your 10Gbps Singapore core line & subscription configs are active.")
+                          ? (laborResult.message || "Your 10Gbps Singapore core line & VLESS configs are active.")
                           : (laborResult.message || "A discrepancy was detected during automated clearance.")}
                       </p>
                     </div>
@@ -5272,7 +5170,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                             id: "line",
                             title: "Line Activated",
                             activeLabel: "Provisioning high-speed 10Gbps core slot...",
-                            passedText: "Singapore core slot & subscription link generated.",
+                            passedText: "Singapore core slot & VLESS config key generated.",
                             failedText: "Dedicated slot allocated upon final clearance."
                           }
                         ];
@@ -5431,7 +5329,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                               boxSizing: "border-box"
                             }}
                           >
-                            <span>View My VPN Key &amp; Subscription</span>
+                            <span>View &amp; Copy Active VPN Config</span>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="5" y1="12" x2="19" y2="12" />
                               <polyline points="12 5 19 12 12 19" />
