@@ -5,7 +5,7 @@ export class ThreeXUI {
   private baseURL: string;
   private username: string;
   private password: string;
-  private cookie: string = "";
+  private cookieJar: Map<string, string> = new Map<string, string>();
   private csrfToken: string = "";
 
   constructor(baseURL: string, username: string, password: string) {
@@ -15,6 +15,35 @@ export class ThreeXUI {
       .replace(/\/panel\/?$/, "");
     this.username = (username || "").trim();
     this.password = (password || "").trim();
+  }
+
+  get cookie(): string {
+    return this.getCookieString();
+  }
+
+  private getCookieString(): string {
+    const pairs: string[] = [];
+    this.cookieJar.forEach((val, key) => {
+      pairs.push(`${key}=${val}`);
+    });
+    return pairs.join("; ");
+  }
+
+  private updateCookies(setCookies?: string | string[]) {
+    if (!setCookies) return;
+    const cookieArray = Array.isArray(setCookies) ? setCookies : [setCookies];
+    for (const c of cookieArray) {
+      if (!c || typeof c !== "string") continue;
+      const firstPart = c.split(";")[0];
+      const eqIdx = firstPart.indexOf("=");
+      if (eqIdx !== -1) {
+        const k = firstPart.slice(0, eqIdx).trim();
+        const v = firstPart.slice(eqIdx + 1).trim();
+        if (k) {
+          this.cookieJar.set(k, v);
+        }
+      }
+    }
   }
 
   private rawRequest(
@@ -38,8 +67,9 @@ export class ThreeXUI {
         ...extraHeaders
       };
 
-      if (this.cookie) {
-        headers["Cookie"] = this.cookie;
+      const cookieStr = this.getCookieString();
+      if (cookieStr) {
+        headers["Cookie"] = cookieStr;
       }
       if (this.csrfToken && method.toUpperCase() !== "GET") {
         headers["X-CSRF-Token"] = this.csrfToken;
@@ -64,27 +94,13 @@ export class ThreeXUI {
           res.on("end", () => {
             const rawText = Buffer.concat(chunks).toString("utf8");
             const setCookies = res.headers["set-cookie"];
-            if (Array.isArray(setCookies) && setCookies.length > 0) {
-              const cookieMap = new Map<string, string>();
-              if (this.cookie) {
-                this.cookie.split(";").forEach((pair) => {
-                  const [k, ...v] = pair.trim().split("=");
-                  if (k) cookieMap.set(k.trim(), v.join("="));
-                });
-              }
-              setCookies.forEach((c) => {
-                const firstPart = c.split(";")[0];
-                const [k, ...v] = firstPart.trim().split("=");
-                if (k) cookieMap.set(k.trim(), v.join("="));
-              });
-              const merged: string[] = [];
-              cookieMap.forEach((v, k) => merged.push(`${k}=${v}`));
-              this.cookie = merged.join("; ");
-            }
+            this.updateCookies(setCookies);
+
             let parsedJson: any = null;
             try {
               parsedJson = JSON.parse(rawText);
             } catch {}
+
             resolve({
               status: res.statusCode || 0,
               headers: res.headers,
@@ -109,7 +125,7 @@ export class ThreeXUI {
 
   async login(forceRefresh = false) {
     if (forceRefresh) {
-      this.cookie = "";
+      this.cookieJar.clear();
       this.csrfToken = "";
     }
 
@@ -150,19 +166,20 @@ export class ThreeXUI {
     }
 
     if (res.status >= 200 && res.status < 300 && (res.data?.success || res.data === null || res.data === undefined)) {
-      if (!this.cookie) {
+      const cookieStr = this.getCookieString();
+      if (!cookieStr) {
         throw new Error("Login succeeded but no session cookie was returned by 3x-ui.");
       }
-      return { success: true, cookie: this.cookie, data: res.data, msg: res.data?.msg || "Success" };
+      return { success: true, cookie: cookieStr, data: res.data, msg: res.data?.msg || "Success" };
     }
 
     throw new Error(
-      res.data?.msg || `3x-ui Login failed (HTTP ${res.status})`
+      res.data?.msg || res.data?.error || `3x-ui Login failed (HTTP ${res.status})`
     );
   }
 
   private async request(method: string, path: string, payload?: any) {
-    if (!this.cookie) {
+    if (this.cookieJar.size === 0) {
       await this.login();
     }
 
@@ -181,11 +198,21 @@ export class ThreeXUI {
       res = await this.rawRequest(method, path, bodyStr, headers);
     }
 
+    // Preserve exact error message from 3x-ui panel when status >= 400
+    if (res.status >= 400) {
+      const errMsg =
+        res.data?.msg ||
+        res.data?.error ||
+        (typeof res.data === "string" ? res.data : "") ||
+        `3x-ui HTTP ${res.status} on ${path}`;
+      const err = new Error(errMsg);
+      (err as any).status = res.status;
+      (err as any).data = res.data;
+      throw err;
+    }
+
     if (res.data) {
       return res.data;
-    }
-    if (res.status >= 400) {
-      throw new Error(`3x-ui API error HTTP ${res.status} on ${path}`);
     }
     return { success: true, raw: res.rawText };
   }
