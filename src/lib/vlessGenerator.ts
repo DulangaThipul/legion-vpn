@@ -198,3 +198,49 @@ export function generateOrderConfigs(options: {
 
   return slots;
 }
+
+/**
+ * Extracts quota from Primary Config #1 title (e.g. "Dialog Zoom (200GB)" -> 200 GB, "Airtel Unlimited" -> Unlimited)
+ */
+export function extractQuotaFromPrimaryConfig(configTitle: string, fallbackDataTotal?: string): {
+  isUnlimited: boolean;
+  quotaGb: number; // 0 for Unlimited in 3x-ui, or exact GB (20, 50, 100, 200, 300, 500)
+  displayQuota: string; // "Unlimited" or "200 GB"
+} {
+  const sourceText = `${configTitle || ""} ${fallbackDataTotal || ""}`.trim();
+
+  if (/unlimited/i.test(sourceText)) {
+    return { isUnlimited: true, quotaGb: 0, displayQuota: "Unlimited" };
+  }
+
+  const gbMatch = sourceText.match(/\b(20|50|100|200|300|500)\s*gb\b/i) || sourceText.match(/(\d+)\s*gb/i);
+  if (gbMatch && gbMatch[1]) {
+    const parsedGb = Number(gbMatch[1]);
+    return { isUnlimited: false, quotaGb: parsedGb, displayQuota: `${parsedGb} GB` };
+  }
+
+  return { isUnlimited: false, quotaGb: 100, displayQuota: "100 GB" };
+}
+
+/**
+ * Extracts UUID, decoded remark, and tariff price from Config #1 VLESS URI
+ */
+export function parsePrimaryVlessUri(vlessUri: string, userEmail: string) {
+  const uuidMatch = (vlessUri || "").match(/vless:\/\/([^@]+)@/i);
+  const extractedUuid = uuidMatch ? uuidMatch[1].trim() : "";
+
+  const hashIndex = (vlessUri || "").indexOf("#");
+  const rawFragment = hashIndex !== -1 ? vlessUri.slice(hashIndex + 1).trim() : "";
+  const decodedRemark = decodeURIComponent(rawFragment);
+
+  // Extract price from remark like LEGION-VPN-724Dialog-email@gmail.com
+  const priceMatch = decodedRemark.match(/LEGION-VPN-(\d+)/i);
+  const extractedPrice = priceMatch ? Number(priceMatch[1]) : null;
+
+  return {
+    uuid: extractedUuid,
+    remark: decodedRemark,
+    extractedPrice,
+    userEmail: (userEmail || "").trim().toLowerCase()
+  };
+}
