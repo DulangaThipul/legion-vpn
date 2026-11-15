@@ -7,8 +7,9 @@ import https from "https";
 import http from "http";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS } from "./vlessGenerator";
+import { ThreeXUI } from "./threeXuiClient";
 
-const ThreeXUI = require("3xui-api-client");
+export { ThreeXUI };
 
 // Bypass self-signed SSL errors globally for VPS connections
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -21,24 +22,11 @@ export function createXuiClient(nodeConfig: {
   username: string;
   password: string;
 }) {
-  const cleanBase = (nodeConfig.baseUrl || "")
-    .trim()
-    .replace(/\/+$/, "")
-    .replace(/\/panel\/?$/, "");
-
-  const xui = new ThreeXUI(
-    cleanBase,
-    (nodeConfig.username || "").trim(),
-    (nodeConfig.password || "").trim(),
-    { timeout: 15000 }
+  return new ThreeXUI(
+    nodeConfig.baseUrl,
+    nodeConfig.username,
+    nodeConfig.password
   );
-
-  // Crucial: Allow self-signed SSL certs on IP:Port VPS panels
-  if (xui?.api?.defaults) {
-    xui.api.defaults.httpsAgent = new https.Agent({ rejectUnauthorized: false });
-  }
-
-  return xui;
 }
 
 export interface GlobalSystemConfig {
