@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGlobalSystemConfig, updateGlobalSystemConfig, authenticate3xui, httpRequestUnsafe } from "@/lib/systemConfig";
+import { getGlobalSystemConfig, updateGlobalSystemConfig, createXuiClient } from "@/lib/systemConfig";
 import { PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
@@ -38,6 +38,7 @@ async function provision3xuiClient(
     username: string;
     password: string;
     inboundId?: number | string;
+    dialogInboundId?: number | string;
     port?: number | string;
     subBaseUrl?: string;
   },
@@ -56,78 +57,49 @@ async function provision3xuiClient(
   vlessKey: string;
   subId: string;
 }> {
-  const cleanBase = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "");
+  const cleanBase = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "").replace(/\/panel\/?$/, "");
   if (!cleanBase) {
     throw new Error("3x-ui Base URL is not configured");
   }
 
-  const auth = await authenticate3xui(nodeConfig);
-  if (!auth.success || !auth.cookie) {
-    throw new Error(`3x-ui Auth Failed: ${auth.error || "Cannot authenticate with VPS node"}`);
+  // 1. Authenticate with VPS 3x-ui node via 3xui-api-client
+  const xui = createXuiClient(nodeConfig);
+  const loginRes = await xui.login(true);
+  if (!loginRes?.success && loginRes?.success !== undefined) {
+    throw new Error(`3x-ui Login Failed: ${loginRes?.msg || "Invalid credentials or node unreachable"}`);
   }
 
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
   const targetInboundId = Number(nodeConfig?.inboundId || 1);
 
-  const activeBase = auth.effectiveBaseUrl || cleanBase;
-  let originUrl = activeBase;
-  try {
-    originUrl = new URL(activeBase).origin;
-  } catch {}
-
-  // 1. Auto-Detect Available Inbound via List API (ensures target exists and avoids 404)
+  // 2. Query inbounds to verify target exists and extract streamSettings
   let finalInboundId = targetInboundId;
+  let inboundObj: any = null;
   try {
-    let inbounds: any[] = [];
-    for (const listEp of [
-      `${activeBase}/panel/api/inbounds/list`,
-      `${activeBase}/panel/inbound/list`
-    ]) {
-      try {
-        const listRes = await fetch(listEp, {
-          headers: {
-            "Cookie": auth.cookie,
-            "Accept": "application/json",
-            "User-Agent": "Mozilla/5.0",
-            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-          },
-          signal: AbortSignal.timeout(5000)
-        });
-        if (listRes.ok) {
-          const listData = await listRes.json().catch(() => null);
-          if (Array.isArray(listData?.obj)) {
-            inbounds = listData.obj;
-            break;
-          }
-        }
-      } catch {}
-
-      if (inbounds.length === 0) {
-        try {
-          const unsafeRes = await httpRequestUnsafe(listEp, {
-            method: "GET",
-            headers: {
-              "Cookie": auth.cookie,
-              "Accept": "application/json",
-              ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-            },
-            timeout: 5000
-          });
-          if (unsafeRes.statusCode === 200 && Array.isArray(unsafeRes.json?.obj)) {
-            inbounds = unsafeRes.json.obj;
-            break;
-          }
-        } catch {}
-      }
-    }
-
+    const inboundsRes = await xui.getInbounds();
+    const inbounds = Array.isArray(inboundsRes?.obj) ? inboundsRes.obj : [];
     if (inbounds.length > 0) {
-      const exists = inbounds.some(ib => Number(ib.id) === targetInboundId);
-      if (!exists && inbounds.length > 0) {
+      const matched = inbounds.find((ib: any) => Number(ib.id) === targetInboundId);
+      if (matched) {
+        finalInboundId = targetInboundId;
+        inboundObj = matched;
+      } else {
         finalInboundId = Number(inbounds[0].id);
+        inboundObj = inbounds[0];
       }
     }
-  } catch {}
+  } catch (err: any) {
+    console.warn("Could not list inbounds via 3xui client:", err?.message);
+  }
+
+  if (!inboundObj) {
+    try {
+      const getIb = await xui.getInbound(finalInboundId);
+      if (getIb?.success && getIb?.obj) {
+        inboundObj = getIb.obj;
+      }
+    } catch {}
+  }
 
   const totalBytes = Number(packageData.quotaGb || 100) * 1024 * 1024 * 1024;
   const expiryMs = Date.now() + (Number(packageData.validityDays || 30) * 86400000);
@@ -170,127 +142,54 @@ async function provision3xuiClient(
   let addedSuccessfully = false;
   let lastError = "";
 
-  // A. Try Modern Client API first: POST /panel/api/clients/add
-  for (const modernEp of [
-    `${activeBase}/panel/api/clients/add`,
-    `${activeBase}/panel/clients/add`
-  ]) {
-    try {
-      const modernRes = await httpRequestUnsafe(modernEp, {
-        method: "POST",
-        headers: {
-          "Cookie": auth.cookie,
-          "Content-Type": "application/json",
-          "Origin": originUrl,
-          "Referer": `${activeBase}/panel/inbounds`,
-          "Accept": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-        },
-        body: JSON.stringify(modernClientPayload),
-        timeout: 8000
-      });
-
-      if (modernRes.statusCode >= 200 && modernRes.statusCode < 300 && (modernRes.json?.success === true || modernRes.json?.success === undefined)) {
-        addedSuccessfully = true;
-        break;
-      } else {
-        lastError = modernRes.json?.msg || `HTTP ${modernRes.statusCode}`;
-      }
-    } catch (err: any) {
-      lastError = err?.message || "Modern client add failed";
+  // A. Try Modern Client API first: POST /panel/api/clients/add (MHSanaei default)
+  try {
+    const modernRes = await xui.addModernClient(modernClientPayload);
+    if (modernRes?.success) {
+      addedSuccessfully = true;
+    } else {
+      lastError = modernRes?.msg || "Modern addModernClient failed";
     }
+  } catch (err: any) {
+    lastError = err?.message || "Modern client add error";
   }
 
   // B. Fallback to Legacy Inbound API: POST /panel/api/inbounds/addClient
   if (!addedSuccessfully) {
-    for (const legacyEp of [
-      `${activeBase}/panel/api/inbounds/addClient`,
-      `${activeBase}/panel/inbound/addClient`
-    ]) {
-      try {
-        const legacyRes = await httpRequestUnsafe(legacyEp, {
-          method: "POST",
-          headers: {
-            "Cookie": auth.cookie,
-            "Content-Type": "application/json",
-            "Origin": originUrl,
-            "Referer": `${activeBase}/panel/inbounds`,
-            "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-          },
-          body: JSON.stringify({
-            id: finalInboundId,
-            settings: clientSettingsString
-          }),
-          timeout: 8000
-        });
-
-        if (legacyRes.statusCode >= 200 && legacyRes.statusCode < 300 && (legacyRes.json?.success === true || legacyRes.json?.success === undefined)) {
-          addedSuccessfully = true;
-          break;
-        } else {
-          lastError = legacyRes.json?.msg || `HTTP ${legacyRes.statusCode}`;
-        }
-      } catch (err: any) {
-        lastError = err?.message || lastError;
+    try {
+      const legacyRes = await xui.addClient({
+        id: finalInboundId,
+        settings: clientSettingsString
+      });
+      if (legacyRes?.success) {
+        addedSuccessfully = true;
+      } else {
+        lastError = legacyRes?.msg || lastError;
       }
+    } catch (err: any) {
+      lastError = err?.message || lastError;
     }
   }
 
-  // C. If already exists, attempt modern update then legacy update
+  // C. If already exists / duplicate, attempt update
   if (!addedSuccessfully && (lastError.toLowerCase().includes("duplicate") || lastError.toLowerCase().includes("exist") || lastError.toLowerCase().includes("already"))) {
     try {
-      const updateRes = await httpRequestUnsafe(`${activeBase}/panel/api/clients/update/${encodeURIComponent(clientEmail)}`, {
-        method: "POST",
-        headers: {
-          "Cookie": auth.cookie,
-          "Content-Type": "application/json",
-          "Origin": originUrl,
-          "Referer": `${activeBase}/panel/inbounds`,
-          "Accept": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-        },
-        body: JSON.stringify(modernClientPayload.client),
-        timeout: 8000
-      });
-      if (updateRes.statusCode >= 200 && updateRes.statusCode < 300 && (updateRes.json?.success === true || updateRes.json?.success === undefined)) {
+      const updateRes = await xui.updateModernClient(clientEmail, modernClientPayload.client);
+      if (updateRes?.success) {
         addedSuccessfully = true;
       }
     } catch {}
 
     if (!addedSuccessfully) {
-      for (const updateEp of [
-        `${activeBase}/panel/api/inbounds/updateClient/${clientUuid}`,
-        `${activeBase}/panel/inbound/updateClient/${clientUuid}`
-      ]) {
-        try {
-          const updateRes = await httpRequestUnsafe(updateEp, {
-            method: "POST",
-            headers: {
-              "Cookie": auth.cookie,
-              "Content-Type": "application/json",
-              "Origin": originUrl,
-              "Referer": `${activeBase}/panel/inbounds`,
-              "Accept": "application/json",
-              "X-Requested-With": "XMLHttpRequest",
-              ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-            },
-            body: JSON.stringify({
-              id: finalInboundId,
-              settings: clientSettingsString
-            }),
-            timeout: 8000
-          });
-
-          if (updateRes.statusCode >= 200 && updateRes.statusCode < 300 && (updateRes.json?.success === true || updateRes.json?.success === undefined)) {
-            addedSuccessfully = true;
-            break;
-          }
-        } catch {}
-      }
+      try {
+        const legacyUpdate = await xui.updateClient(clientUuid, {
+          id: finalInboundId,
+          settings: clientSettingsString
+        });
+        if (legacyUpdate?.success) {
+          addedSuccessfully = true;
+        }
+      } catch {}
     }
   }
 
@@ -299,127 +198,102 @@ async function provision3xuiClient(
   }
 
   // Construct the authentic 3x-ui subscription URL
-  const subPrefix = (nodeConfig.subBaseUrl || `${activeBase.replace(/:\d+.*$/, "")}:2096/sub/`).trim().replace(/\/+$/, "");
+  const subPrefix = (nodeConfig.subBaseUrl || `${cleanBase.replace(/:\d+.*$/, "")}:2096/sub/`).trim().replace(/\/+$/, "");
   const realSubscriptionUrl = `${subPrefix}/${clientSubId}`;
 
   let nodeDomain = "";
-  let nodePort = Number(nodeConfig.port || 443);
   try {
-    nodeDomain = new URL(activeBase).hostname;
+    nodeDomain = new URL(cleanBase).hostname;
   } catch {
-    nodeDomain = activeBase.replace(/^https?:\/\//, "").split(/[:/]/)[0];
+    nodeDomain = cleanBase.replace(/^https?:\/\//, "").split(/[:/]/)[0];
   }
+  let nodePort = Number(nodeConfig.port || (inboundObj?.port ? inboundObj.port : 443));
 
   const pkgLabel = packageData.name || "VIP";
   let realVlessKey = "";
 
-  // 1. First attempt to get exact client links directly from 3x-ui Modern API: GET /panel/api/clients/links/:email
+  // 1. Try to get exact client links directly from 3x-ui
   try {
-    for (const linksEp of [
-      `${activeBase}/panel/api/clients/links/${encodeURIComponent(clientEmail)}`,
-      `${activeBase}/panel/clients/links/${encodeURIComponent(clientEmail)}`
-    ]) {
-      const linksRes = await httpRequestUnsafe(linksEp, {
-        method: "GET",
-        headers: {
-          "Cookie": auth.cookie,
-          "Accept": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-        },
-        timeout: 5000
-      });
-      if (linksRes.statusCode === 200 && linksRes.json?.obj) {
-        const linkObj = linksRes.json.obj;
-        let foundLink = "";
-        if (Array.isArray(linkObj) && linkObj.length > 0) {
-          foundLink = linkObj.find((l: any) => typeof l === "string" && l.startsWith("vless://")) || linkObj[0];
-        } else if (typeof linkObj === "string" && linkObj.startsWith("vless://")) {
-          foundLink = linkObj;
-        }
-        if (foundLink && typeof foundLink === "string") {
-          const baseNoHash = foundLink.split("#")[0];
-          realVlessKey = `${baseNoHash}#LEGION-${encodeURIComponent(pkgLabel)}`;
-          break;
-        }
+    const linksRes = await xui.getClientLinks(clientEmail);
+    if (linksRes?.success && linksRes?.obj) {
+      const linkObj = linksRes.obj;
+      let foundLink = "";
+      if (Array.isArray(linkObj) && linkObj.length > 0) {
+        foundLink = linkObj.find((l: any) => typeof l === "string" && l.startsWith("vless://")) || linkObj[0];
+      } else if (typeof linkObj === "string" && linkObj.startsWith("vless://")) {
+        foundLink = linkObj;
+      }
+      if (foundLink && typeof foundLink === "string") {
+        const baseNoHash = foundLink.split("#")[0];
+        realVlessKey = `${baseNoHash}#LEGION-${encodeURIComponent(pkgLabel)}`;
       }
     }
   } catch {}
 
-  // 2. If client link was not returned directly, inspect inbound stream settings: GET /panel/api/inbounds/get/:id
-  if (!realVlessKey) {
+  // 2. If client link was not returned directly, inspect inbound stream settings
+  if (!realVlessKey && inboundObj) {
     let realityPublicKey = "";
     let shortId = "";
-    let sniHost = packageData.sni || "www.speedtest.net";
+    let sniHost = packageData.sni || "";
     let isWs = false;
     let wsPath = "/";
     let wsHost = "";
     let streamSecurity = "tls";
 
-    for (const getEp of [
-      `${activeBase}/panel/api/inbounds/get/${finalInboundId}`,
-      `${activeBase}/panel/inbound/get/${finalInboundId}`
-    ]) {
-      try {
-        const getRes = await httpRequestUnsafe(getEp, {
-          method: "GET",
-          headers: {
-            "Cookie": auth.cookie,
-            "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            ...(auth.csrfToken ? { "X-CSRF-Token": auth.csrfToken } : {})
-          },
-          timeout: 8000
-        });
+    if (inboundObj.port) nodePort = Number(inboundObj.port);
 
-        if (getRes.statusCode === 200 && getRes.json?.obj) {
-          const inboundObj = getRes.json.obj;
-          if (inboundObj.port) nodePort = Number(inboundObj.port);
-
-          let stream: any = {};
-          if (typeof inboundObj.streamSettings === "string") {
-            try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
-          } else if (typeof inboundObj.streamSettings === "object") {
-            stream = inboundObj.streamSettings;
-          }
-
-          if (stream?.security) streamSecurity = stream.security;
-
-          if (stream?.network === "ws" || stream?.wsSettings) {
-            isWs = true;
-            if (stream.wsSettings?.path) wsPath = stream.wsSettings.path;
-            if (stream.wsSettings?.headers?.Host) wsHost = stream.wsSettings.headers.Host;
-          }
-
-          if (stream?.realitySettings) {
-            const rs = stream.realitySettings;
-            realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
-            if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
-              shortId = rs.shortIds[0];
-            }
-            if (Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
-              sniHost = packageData.sni || rs.serverNames[0];
-            }
-          } else if (stream?.tlsSettings) {
-            if (Array.isArray(stream.tlsSettings.serverNames) && stream.tlsSettings.serverNames.length > 0) {
-              sniHost = packageData.sni || stream.tlsSettings.serverNames[0];
-            }
-          }
-          break;
-        }
-      } catch (err: any) {
-        console.warn(`Could not read stream settings from ${getEp}:`, err?.message);
-      }
+    let stream: any = {};
+    if (typeof inboundObj.streamSettings === "string") {
+      try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
+    } else if (typeof inboundObj.streamSettings === "object") {
+      stream = inboundObj.streamSettings;
     }
 
-    if (isWs) {
+    if (stream?.security) streamSecurity = stream.security;
+
+    if (stream?.network === "ws" || stream?.wsSettings) {
+      isWs = true;
+      if (stream.wsSettings?.path) wsPath = stream.wsSettings.path;
+      if (stream.wsSettings?.host) wsHost = stream.wsSettings.host;
+      if (!wsHost && stream.wsSettings?.headers?.Host) wsHost = stream.wsSettings.headers.Host;
+    }
+
+    if (stream?.realitySettings) {
+      const rs = stream.realitySettings;
+      realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
+      if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
+        shortId = rs.shortIds[0];
+      }
+      if (!sniHost && Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
+        sniHost = rs.serverNames[0];
+      }
+      if (!sniHost) sniHost = "www.speedtest.net";
+      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
+    } else if (isWs) {
+      if (!sniHost) {
+        if (wsHost) sniHost = wsHost;
+        else if (Array.isArray(stream?.tlsSettings?.serverNames) && stream.tlsSettings.serverNames.length > 0) {
+          sniHost = stream.tlsSettings.serverNames[0];
+        } else {
+          sniHost = "dialog-social.duckdns.org";
+        }
+      }
       const hostParam = wsHost ? `&host=${encodeURIComponent(wsHost)}` : "";
       realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=ws&security=${streamSecurity}&path=${encodeURIComponent(wsPath)}${hostParam}&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
-    } else if (realityPublicKey) {
-      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
     } else {
+      if (!sniHost) {
+        if (Array.isArray(stream?.tlsSettings?.serverNames) && stream.tlsSettings.serverNames.length > 0) {
+          sniHost = stream.tlsSettings.serverNames[0];
+        } else {
+          sniHost = "www.speedtest.net";
+        }
+      }
       realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
     }
+  }
+
+  if (!realVlessKey) {
+    realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${packageData.sni || "www.speedtest.net"}#LEGION-${encodeURIComponent(pkgLabel)}`;
   }
 
   return {
@@ -528,7 +402,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         autoApproved: false,
-        manualMode: true,
+        manualMode: isManualMode,
         status: orderRecord.status,
         orderId: orderRecord.id,
         packageName: cleanPackageName,
@@ -875,10 +749,16 @@ Output STRICT JSON only:
       );
     } catch (provisionErr: any) {
       console.error("Real 3x-ui provisioning failed:", provisionErr);
-      return await fallbackToManualVerification(
-        `Document Analyzed [CONFIRMED] - Automatic Node Provisioning Failed: ${provisionErr?.message || "3x-ui API unreachable"}. Forwarded to admin queue for instant line activation.`,
-        {
-          overallStatus: "manual_review",
+      return NextResponse.json({
+        success: false,
+        manualMode: false,
+        verified: false,
+        autoApproved: false,
+        status: "Error",
+        error: provisionErr?.message || "3x-ui API unreachable",
+        message: `Automatic Node Provisioning Failed: ${provisionErr?.message || "3x-ui API unreachable"}`,
+        auditReport: {
+          overallStatus: "error",
           reason: `3x-ui Provisioning Error: ${provisionErr?.message || "Failed to add client to inbound"}`,
           checks: [
             {
@@ -921,12 +801,12 @@ Output STRICT JSON only:
               title: "Line Activated",
               passed: false,
               isSuspicious: true,
-              statusText: "Provisioning Error",
-              message: `Node error: ${provisionErr?.message || "3x-ui API unreachable"}. Admin will provision line manually.`
+              statusText: "Failed",
+              message: `Line Activated: Failed — ${provisionErr?.message || "3x-ui API unreachable"}`
             }
           ]
         }
-      );
+      });
     }
 
     const realSubscriptionUrl = provisionResult.subscriptionUrl;
