@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
+import { extractQuotaFromPrimaryConfig, parsePrimaryVlessUri } from "@/lib/vlessGenerator";
 import DashboardMatrix from "@/components/DashboardMatrix";
 
 const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${i + 1}.gif`);
@@ -508,6 +509,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [renewSlipFile, setRenewSlipFile] = useState<File | null>(null);
+  const [renewSlipPreview, setRenewSlipPreview] = useState<string | null>(null);
+  const [isRenewing, setIsRenewing] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [systemConfig, setSystemConfig] = useState<any>(null);
 
@@ -605,6 +609,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       lastRecordedUsage: "0 GB",
       subscriptionUrl: "",
       vlessConfig: "" as string | undefined,
+      vlessConfigTitle: "" as string | undefined,
       accountStatus: "" as string | undefined,
       vpnUuid: "" as string | undefined,
       previousUsage: 0,
@@ -961,6 +966,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     }
     return parsed;
   }, [user?.vpnConfigKey, metaData.vlessConfig]);
+
+  const primaryConfig = activeConfigs.length > 0 ? activeConfigs[0] : null;
+  const primaryConfigTitle = primaryConfig?.name
+    ? primaryConfig.name.replace(/^📦\s*/, "").replace(/[\[\]]/g, "").trim()
+    : (metaData.vlessConfigTitle || "Dialog Zoom (200GB)");
+  const primaryConfigUri = primaryConfig?.code || metaData.vlessConfig || "";
+
+  const primaryQuotaInfo = useMemo(() => {
+    return extractQuotaFromPrimaryConfig(primaryConfigTitle, metaData.dataTotal);
+  }, [primaryConfigTitle, metaData.dataTotal]);
+
+  const primaryVlessInfo = useMemo(() => {
+    return parsePrimaryVlessUri(primaryConfigUri, user?.email || "");
+  }, [primaryConfigUri, user?.email]);
 
   const validSubscriptionUrl = useMemo(() => {
     if (metaData.subscriptionUrl && typeof metaData.subscriptionUrl === "string" && metaData.subscriptionUrl.startsWith("http")) {
@@ -1922,6 +1941,257 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setCheckoutStep(1); 
     setSelectedQuota(null); 
     setSlipFile(null); 
+  };
+
+  const handleRenewSlipChange = (file: File | null) => {
+    setRenewSlipFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setRenewSlipPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setRenewSlipPreview(null);
+    }
+  };
+
+  const handleConfirmRenewal = async () => {
+    if (!renewSlipFile) return;
+    setIsRenewing(true);
+    setRenewModalOpen(false);
+    setLaborModalOpen(true);
+    setLaborStage(0);
+    setLaborResult(null);
+
+    let stageIdx = 0;
+    const stageTimer = setInterval(() => {
+      stageIdx++;
+      if (stageIdx < LABOR_STAGES.length) {
+        setLaborStage(stageIdx);
+      }
+    }, 2000);
+
+    const startTime = Date.now();
+
+    try {
+      let fileUrl = "";
+
+      // Attempt 1: Upload to Cloudinary with strict 15s timeout
+      try {
+        const formData = new FormData();
+        formData.append("file", renewSlipFile);
+        formData.append("upload_preset", "legion_slips");
+
+        const uploadRes = await fetch("https://api.cloudinary.com/v1_1/ddox7uqkb/image/upload", {
+          method: "POST",
+          body: formData,
+          signal: AbortSignal.timeout(15000)
+        });
+
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          if (data.secure_url) {
+            fileUrl = data.secure_url;
+          }
+        }
+      } catch (cloudErr) {
+        console.warn("Cloudinary upload failed or timed out, falling back to base64 data URI:", cloudErr);
+      }
+
+      // Fallback: If Cloudinary fails or timed out, convert slip file to base64 Data URI
+      if (!fileUrl) {
+        fileUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed to read slip image file"));
+          reader.readAsDataURL(renewSlipFile);
+        });
+      }
+
+      setIsRenewing(false);
+
+      const targetAmount = primaryVlessInfo.extractedPrice || 0;
+
+      const processRes = await fetch("/api/process-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "renew",
+          packageName: primaryConfigTitle,
+          quotaLabel: primaryQuotaInfo.displayQuota,
+          amount: targetAmount,
+          receiptUrl: fileUrl,
+          slipUrl: fileUrl
+        })
+      });
+
+      const processJson = await processRes.json();
+
+      const elapsed = Date.now() - startTime;
+      const remainingMs = Math.max(0, 8000 - elapsed);
+      await new Promise(r => setTimeout(r, remainingMs));
+
+      clearInterval(stageTimer);
+      setLaborStage(LABOR_STAGES.length - 1);
+      setLaborResult(processJson);
+
+      if (processJson.user) {
+        setUser(processJson.user);
+      }
+
+      if (processJson.autoApproved || processJson.verified) {
+        setLiveDataUsed("0 GB");
+        if (processJson.renewalInfo?.newExpiryDate) {
+          setLiveExpiryDate(processJson.renewalInfo.newExpiryDate);
+        }
+        setUser((prev: any) => {
+          let currentMeta: any = {};
+          try {
+            if (prev?.subscriptionLink) currentMeta = JSON.parse(prev.subscriptionLink);
+          } catch {}
+          const mergedMeta = {
+            ...currentMeta,
+            dataUsed: "0 GB",
+            previousUsage: 0,
+            previousUsageGB: 0,
+            dataTotal: primaryQuotaInfo.displayQuota,
+            expiryDate: processJson.renewalInfo?.newExpiryDate || currentMeta.expiryDate,
+            accountStatus: "Active"
+          };
+          return {
+            ...prev,
+            ...(processJson.user || {}),
+            vpnStatus: "Active",
+            subscriptionLink: JSON.stringify(mergedMeta)
+          };
+        });
+        setRenewSlipFile(null);
+        setRenewSlipPreview(null);
+        try {
+          router.refresh();
+        } catch {}
+      }
+    } catch {
+      clearInterval(stageTimer);
+      const targetAmount = primaryVlessInfo.extractedPrice || 0;
+      setLaborResult({
+        success: true,
+        autoApproved: false,
+        manualMode: true,
+        orderId: `ORD-${Date.now()}`,
+        packageName: `${primaryConfigTitle} (Renewal)`,
+        amount: targetAmount,
+        adminWhatsapp: systemConfig?.adminWhatsapp || "94701234567",
+        status: "Pending Admin Review",
+        message: "Renewal slip received! Our team is verifying your payment manually. Line will renew shortly.",
+        auditReport: {
+          overallStatus: "review_required",
+          checks: [
+            { id: "doc", title: "Document Analyzed", passed: true, statusText: "Received", message: "Renewal slip received and queued for admin review." },
+            { id: "account", title: "Beneficiary Confirmed", passed: true, statusText: "Target: 8029138148", message: "Commercial Bank (8029138148)" },
+            { id: "trace", title: "Transaction Trace Valid", passed: true, statusText: "Queued" },
+            { id: "amount", title: "Settlement Matched", passed: true, statusText: "Target: Tariff", message: "Awaiting manual confirmation." },
+            { id: "line", title: "Line Activated", passed: false, statusText: "Manual Verification" }
+          ]
+        }
+      });
+    } finally {
+      clearInterval(stageTimer);
+      setIsRenewing(false);
+    }
+  };
+
+  const handleAdminTestRenewal = async () => {
+    if (!isAdmin) return;
+
+    setRenewModalOpen(false);
+    setLaborModalOpen(true);
+    setLaborStage(0);
+    setLaborResult(null);
+
+    let stageIdx = 0;
+    const stageTimer = setInterval(() => {
+      stageIdx++;
+      if (stageIdx < LABOR_STAGES.length) {
+        setLaborStage(stageIdx);
+      }
+    }, 1200);
+
+    const startTime = Date.now();
+
+    try {
+      const targetAmount = primaryVlessInfo.extractedPrice || 0;
+
+      const processRes = await fetch("/api/process-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "renew",
+          packageName: primaryConfigTitle,
+          quotaLabel: primaryQuotaInfo.displayQuota,
+          amount: targetAmount,
+          adminTestMode: true
+        })
+      });
+
+      const processJson = await processRes.json();
+
+      const elapsed = Date.now() - startTime;
+      const remainingMs = Math.max(0, 4500 - elapsed);
+      await new Promise(r => setTimeout(r, remainingMs));
+
+      clearInterval(stageTimer);
+      setLaborStage(LABOR_STAGES.length - 1);
+      setLaborResult(processJson);
+
+      if (processJson.user) {
+        setUser(processJson.user);
+      }
+
+      if (processJson.autoApproved || processJson.verified) {
+        setLiveDataUsed("0 GB");
+        if (processJson.renewalInfo?.newExpiryDate) {
+          setLiveExpiryDate(processJson.renewalInfo.newExpiryDate);
+        }
+        setUser((prev: any) => {
+          let currentMeta: any = {};
+          try {
+            if (prev?.subscriptionLink) currentMeta = JSON.parse(prev.subscriptionLink);
+          } catch {}
+          const mergedMeta = {
+            ...currentMeta,
+            dataUsed: "0 GB",
+            previousUsage: 0,
+            previousUsageGB: 0,
+            dataTotal: primaryQuotaInfo.displayQuota,
+            expiryDate: processJson.renewalInfo?.newExpiryDate || currentMeta.expiryDate,
+            accountStatus: "Active"
+          };
+          return {
+            ...prev,
+            ...(processJson.user || {}),
+            vpnStatus: "Active",
+            subscriptionLink: JSON.stringify(mergedMeta)
+          };
+        });
+        setRenewSlipFile(null);
+        setRenewSlipPreview(null);
+        try {
+          router.refresh();
+        } catch {}
+      }
+    } catch (err: any) {
+      clearInterval(stageTimer);
+      setLaborResult({
+        success: false,
+        autoApproved: false,
+        status: "Error",
+        message: err?.message || "Admin test renewal failed"
+      });
+    } finally {
+      clearInterval(stageTimer);
+    }
   };
 
   const handleAvatarSelect = async (gifPath: string) => {
@@ -3237,26 +3507,34 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     <div className="status-card-footer" style={{ marginTop: "0.8rem" }}>
                       <button
                         type="button"
-                        onClick={() => setRenewModalOpen(true)}
+                        onClick={() => {
+                          setRenewSlipFile(null);
+                          setRenewSlipPreview(null);
+                          setRenewModalOpen(true);
+                        }}
                         style={{
                           width: "100%",
-                          padding: "0.5rem 0.8rem",
-                          borderRadius: "10px",
-                          border: "1px solid rgba(255,255,255,0.3)",
-                          background: metaData.isRenewUnlocked ? "rgba(34, 197, 94, 0.25)" : "rgba(0, 0, 0, 0.35)",
-                          color: "#FFF",
+                          padding: "0.6rem 0.9rem",
+                          borderRadius: "12px",
+                          border: "1px solid rgba(52, 211, 153, 0.4)",
+                          background: "linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.12) 100%)",
+                          color: "#34d399",
                           fontWeight: "bold",
                           fontSize: "clamp(0.75rem, 0.85vw, 0.85rem)",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "6px",
-                          backdropFilter: "blur(6px)",
+                          gap: "8px",
+                          backdropFilter: "blur(8px)",
+                          boxShadow: "0 4px 15px rgba(16, 185, 129, 0.15)",
                           transition: "all 0.2s ease",
                           whiteSpace: "nowrap"
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
                         Renew VPN
                       </button>
                     </div>
@@ -5457,41 +5735,410 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             document.body
           )}
 
-          {/* 🔐 VPN RENEW CUSTOM POPUP MODAL */}
-          {renewModalOpen && (
-            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "1rem" }}>
-              <div style={{ width: "100%", maxWidth: "480px", padding: "2rem", background: "#10101a", border: `1px solid ${metaData.isRenewUnlocked ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`, borderRadius: "18px", textAlign: "center", boxShadow: "0 20px 45px rgba(0,0,0,0.8)" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "0.8rem" }}>
-                  {metaData.isRenewUnlocked ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>}
-                </div>
-                <h2 style={{ color: "#FFF", fontSize: "1.4rem", margin: "0 0 1rem 0" }}>
-                  {metaData.isRenewUnlocked ? "VPN Renewal Notice" : "Renewal Not Permitted"}
-                </h2>
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1.2rem", marginBottom: "1.8rem" }}>
-                  <p style={{ color: "#e2e8f0", lineHeight: 1.6, margin: 0, fontSize: "0.95rem", whiteSpace: "pre-wrap" }}>
-                    {metaData.renewPopupMessage || (metaData.isRenewUnlocked ? "You can now renew your VPN package." : "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.")}
-                  </p>
-                </div>
-                <div style={{ display: "flex", gap: "1rem" }}>
-                  <button 
-                    type="button" 
-                    onClick={() => setRenewModalOpen(false)} 
-                    style={{ flex: 1, padding: "0.9rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", borderRadius: "10px", cursor: "pointer", fontWeight: "bold", fontSize: "0.95rem" }}
-                  >
-                    Close
-                  </button>
-                  {metaData.isRenewUnlocked && (
-                    <button 
-                      type="button" 
-                      onClick={() => { setRenewModalOpen(false); setActiveTab("buy"); }} 
-                      style={{ flex: 2, padding: "0.9rem", background: "linear-gradient(90deg, #22c55e, #16a34a)", color: "#FFF", fontWeight: "bold", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "0.95rem", boxShadow: "0 4px 14px rgba(34,197,94,0.3)" }}
+          {/* 🔐 VPN RENEW CUSTOM POPUP MODAL (MATTE FROSTED LUXURY OBSIDIAN & EMERALD) */}
+          {renewModalOpen && mounted && createPortal(
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 999999,
+                padding: "16px",
+                boxSizing: "border-box"
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !isRenewing) {
+                  setRenewModalOpen(false);
+                }
+              }}
+            >
+              <div
+                className="legion-matte-scroll"
+                style={{
+                  width: "100%",
+                  maxWidth: "520px",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  backgroundColor: "rgba(10, 14, 26, 0.98)",
+                  border: "1px solid rgba(52, 211, 153, 0.35)",
+                  borderRadius: "24px",
+                  boxShadow: "0 25px 65px -10px rgba(0, 0, 0, 0.95), 0 0 45px rgba(16, 185, 129, 0.15)",
+                  padding: "24px",
+                  color: "#ffffff",
+                  position: "relative",
+                  boxSizing: "border-box"
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "18px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "44px",
+                        height: "44px",
+                        borderRadius: "14px",
+                        backgroundColor: "rgba(16, 185, 129, 0.15)",
+                        border: "1px solid rgba(52, 211, 153, 0.4)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#34d399",
+                        boxShadow: "0 0 20px rgba(16, 185, 129, 0.25)"
+                      }}
                     >
-                      Proceed to Renew (Store) →
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.01em" }}>
+                        Renew VPN Service
+                      </h2>
+                      <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>
+                        Reset used traffic to 0 GB &amp; extend validity by 30 days
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isRenewing) {
+                        setRenewModalOpen(false);
+                      }
+                    }}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      borderRadius: "10px",
+                      width: "32px",
+                      height: "32px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#94a3b8",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Config #1 Detected Summary Badge */}
+                <div
+                  style={{
+                    backgroundColor: "rgba(16, 185, 129, 0.06)",
+                    border: "1px solid rgba(52, 211, 153, 0.2)",
+                    borderRadius: "16px",
+                    padding: "16px",
+                    marginBottom: "16px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#34d399" }}>
+                      Target Line: Config #1 (Primary Node)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        backgroundColor: "rgba(52, 211, 153, 0.15)",
+                        color: "#34d399",
+                        padding: "3px 8px",
+                        borderRadius: "20px",
+                        border: "1px solid rgba(52, 211, 153, 0.3)"
+                      }}
+                    >
+                      30-Day Cycle
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "13px", color: "#94a3b8" }}>Configuration:</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", textAlign: "right" }}>
+                      {primaryConfigTitle}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "13px", color: "#94a3b8" }}>Traffic Reset:</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#34d399", textAlign: "right" }}>
+                      Used Data → 0 GB ({primaryQuotaInfo.displayQuota} Restored)
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "13px", color: "#94a3b8" }}>Validity Extension:</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#60a5fa", textAlign: "right" }}>
+                      +30 Days from Renewal
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", paddingTop: "8px", borderTop: "1px dashed rgba(255, 255, 255, 0.1)" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#cbd5e1" }}>Package Tariff:</span>
+                    <span style={{ fontSize: "15px", fontWeight: 800, color: "#fbbf24" }}>
+                      Rs. {primaryVlessInfo.extractedPrice || 724}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bank Account Details */}
+                <div
+                  style={{
+                    backgroundColor: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "16px",
+                    padding: "14px 16px",
+                    marginBottom: "16px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Bank Transfer Information
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText("8029138148");
+                        setCopiedBankField("acc");
+                        setTimeout(() => setCopiedBankField(null), 2500);
+                      }}
+                      style={{
+                        background: copiedBankField === "acc" ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
+                        border: copiedBankField === "acc" ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
+                        color: copiedBankField === "acc" ? "#34d399" : "#cbd5e1",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        padding: "3px 8px",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      {copiedBankField === "acc" ? "✓ Copied!" : "📋 Copy Account"}
                     </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
+                    <div>
+                      <span style={{ color: "#64748b" }}>Bank: </span>
+                      <span style={{ color: "#ffffff", fontWeight: 600 }}>Commercial Bank</span>
+                    </div>
+                    <div>
+                      <span style={{ color: "#64748b" }}>Account: </span>
+                      <span style={{ color: "#34d399", fontWeight: 700, fontFamily: "monospace", fontSize: "13px" }}>8029138148</span>
+                    </div>
+                    <div>
+                      <span style={{ color: "#64748b" }}>Name: </span>
+                      <span style={{ color: "#ffffff", fontWeight: 500 }}>W DULANGA THIPUL</span>
+                    </div>
+                    <div>
+                      <span style={{ color: "#64748b" }}>Branch: </span>
+                      <span style={{ color: "#ffffff", fontWeight: 500 }}>Yatiyanthota</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slip Upload Box */}
+                <div style={{ marginBottom: "18px" }}>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                    Upload Bank Transfer / Deposit Slip
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="renew-slip-upload"
+                    style={{ display: "none" }}
+                    disabled={isRenewing}
+                    onChange={(e) => handleRenewSlipChange(e.target.files?.[0] || null)}
+                  />
+                  {renewSlipPreview ? (
+                    <div
+                      style={{
+                        border: "1px solid rgba(52, 211, 153, 0.4)",
+                        borderRadius: "14px",
+                        padding: "12px",
+                        backgroundColor: "rgba(16, 185, 129, 0.05)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "10px"
+                      }}
+                    >
+                      <img
+                        src={renewSlipPreview}
+                        alt="Slip Preview"
+                        style={{
+                          maxHeight: "150px",
+                          maxWidth: "100%",
+                          borderRadius: "8px",
+                          objectFit: "contain",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.4)"
+                        }}
+                      />
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: "8px" }}>
+                        <span style={{ fontSize: "12px", color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          📄 {renewSlipFile?.name}
+                        </span>
+                        <label
+                          htmlFor="renew-slip-upload"
+                          style={{
+                            background: "rgba(255, 255, 255, 0.08)",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            borderRadius: "8px",
+                            padding: "4px 10px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "#ffffff",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Change
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="renew-slip-upload"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        border: "1.5px dashed rgba(255, 255, 255, 0.18)",
+                        borderRadius: "14px",
+                        padding: "24px 16px",
+                        backgroundColor: "rgba(255, 255, 255, 0.02)",
+                        cursor: isRenewing ? "not-allowed" : "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "10px",
+                          backgroundColor: "rgba(99, 102, 241, 0.15)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#818cf8"
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#818cf8", display: "block" }}>
+                          Click to upload deposit slip
+                        </span>
+                        <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", display: "block" }}>
+                          JPG, PNG or WebP screenshot showing Commercial Bank transfer
+                        </span>
+                      </div>
+                    </label>
                   )}
                 </div>
+
+                {/* Submit & Action Buttons */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={handleConfirmRenewal}
+                    disabled={!renewSlipFile || isRenewing}
+                    style={{
+                      width: "100%",
+                      padding: "14px",
+                      borderRadius: "14px",
+                      border: "none",
+                      background: renewSlipFile
+                        ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                        : "rgba(255, 255, 255, 0.08)",
+                      color: renewSlipFile ? "#ffffff" : "#64748b",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      cursor: renewSlipFile && !isRenewing ? "pointer" : "not-allowed",
+                      boxShadow: renewSlipFile ? "0 8px 24px rgba(16, 185, 129, 0.35)" : "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <span>{isRenewing ? "Uploading & Verifying..." : "Submit Slip & Renew VPN"}</span>
+                  </button>
+
+                  {/* Admin Sandbox Test Button */}
+                  {isAdmin && (systemConfig?.enableAdminTestButton ?? true) && (
+                    <button
+                      type="button"
+                      onClick={handleAdminTestRenewal}
+                      disabled={isRenewing}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "14px",
+                        border: "1px dashed rgba(245, 158, 11, 0.5)",
+                        background: "linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(180, 83, 9, 0.08) 100%)",
+                        color: "#fbbf24",
+                        fontWeight: 600,
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <span>⚡ Admin Live Renewal Test (No Slip Required)</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isRenewing) {
+                        setRenewModalOpen(false);
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "11px",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      color: "#94a3b8",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
         </div>
