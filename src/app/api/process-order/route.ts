@@ -62,11 +62,11 @@ async function provision3xuiClient(
     throw new Error("3x-ui Base URL is not configured");
   }
 
-  // 1. Authenticate with VPS 3x-ui node via 3xui-api-client
+  // 1. Authenticate with VPS 3x-ui node via native ThreeXUI client
   const xui = createXuiClient(nodeConfig);
   const loginRes = await xui.login(true);
   if (!loginRes?.success && loginRes?.success !== undefined) {
-    throw new Error(`3x-ui Login Failed: ${loginRes?.msg || "Invalid credentials or node unreachable"}`);
+    throw new Error(`3x-ui Login Failed: ${(loginRes as any)?.msg || "Invalid credentials or node unreachable"}`);
   }
 
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
