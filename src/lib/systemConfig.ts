@@ -7,9 +7,9 @@ import https from "https";
 import http from "http";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS } from "./vlessGenerator";
-import { ThreeXUI } from "./threeXuiClient";
+import { ThreeXUI, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri } from "./threeXuiClient";
 
-export { ThreeXUI };
+export { ThreeXUI, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri };
 
 // Bypass self-signed SSL errors globally for VPS connections
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
