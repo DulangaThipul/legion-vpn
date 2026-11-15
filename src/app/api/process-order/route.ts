@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGlobalSystemConfig, updateGlobalSystemConfig, createXuiClient } from "@/lib/systemConfig";
-import { PACKAGE_ISP_PRICES } from "@/lib/vlessGenerator";
+import { PACKAGE_ISP_PRICES, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -12,6 +12,62 @@ export const dynamic = "force-dynamic";
 
 // Allow self-signed certificates on VPS 3x-ui servers
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+/**
+ * Safely extracts Primary Config #1 (ignoring USA Node #2) from user metadata or vpnConfigKey
+ */
+function getPrimaryConfigFromUser(user: any, metaData: any) {
+  let config1Title = "";
+  let config1VlessUri = "";
+
+  // 1. Check existingMeta.configs?.[0]
+  if (Array.isArray(metaData?.configs) && metaData.configs.length > 0) {
+    const c0 = metaData.configs[0];
+    config1Title = c0?.name || c0?.title || "";
+    config1VlessUri = c0?.code || c0?.vlessKey || c0?.link || c0?.url || "";
+  }
+
+  // 2. Fallback to parsing user.vpnConfigKey
+  if (!config1VlessUri && user?.vpnConfigKey) {
+    const raw = String(user.vpnConfigKey).trim();
+    const regex = /(?:📦\s*)?\[(.*?)\]\s*([\s\S]*?)(?=(?:📦\s*)?\[|$)/g;
+    const matches = [...raw.matchAll(regex)];
+    if (matches.length > 0 && matches[0]) {
+      config1Title = (matches[0][1] || "").replace(/📦/g, "").replace(/[\[\]]/g, "").trim();
+      const codePart = (matches[0][2] || "").trim();
+      const vlessMatch = codePart.match(/vless:\/\/[^\s]+/i);
+      config1VlessUri = vlessMatch ? vlessMatch[0] : codePart;
+    } else {
+      const vlessLinks = raw.match(/vless:\/\/[^\s]+/gi);
+      if (vlessLinks && vlessLinks.length > 0) {
+        config1VlessUri = vlessLinks[0].trim();
+      }
+    }
+  }
+
+  // 3. Fallback to metaData.vlessConfig
+  if (!config1VlessUri && metaData?.vlessConfig && typeof metaData.vlessConfig === "string") {
+    config1VlessUri = metaData.vlessConfig.trim();
+  }
+
+  // Fallback title
+  if (!config1Title) {
+    if (Array.isArray(metaData?.payments) && metaData.payments.length > 0) {
+      config1Title = metaData.payments[0]?.packageName || metaData.payments[0]?.package || "";
+    }
+    if (!config1Title && metaData?.dataTotal) {
+      config1Title = `LEGION Core (${metaData.dataTotal})`;
+    }
+    if (!config1Title) {
+      config1Title = "LEGION High-Speed Core";
+    }
+  }
+
+  return {
+    title: config1Title,
+    vlessUri: config1VlessUri
+  };
+}
 
 /**
  * Cloudinary PDF to Image Transformer
@@ -299,7 +355,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { packageId, packageName, quotaLabel, amount, receiptUrl, slipUrl, ispPrice, adminTestMode } = body;
+    const { packageId, packageName, quotaLabel, amount, receiptUrl, slipUrl, ispPrice, adminTestMode, orderType } = body;
 
     const parsedAmount = Number(amount) || 0;
     const cleanPackageName = (packageName || "VPN Package").trim();
@@ -486,14 +542,7 @@ export async function POST(req: Request) {
       });
     }
 
-    let ocrResult: {
-      bankName?: string;
-      destinationAccount?: string;
-      paidAmount?: number;
-      transactionDate?: string;
-      referenceNumber?: string;
-      isLegitimate?: boolean;
-    } | null = null;
+    ocrResult = null;
     let ocrRawDiagnostic = "";
 
     try {
@@ -579,8 +628,16 @@ Output STRICT JSON only:
     cleanRefNumber = (ocrResult.referenceNumber || "").trim();
     ocrAmount = Number(ocrResult.paidAmount) || 0;
 
+    const primaryConfig = getPrimaryConfigFromUser(user, metaData);
+    const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
+    const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
+
+    const effectiveTargetAmount = orderType === "renew" && parsedAmount <= 0 && vlessInfo.extractedPrice
+      ? vlessInfo.extractedPrice
+      : parsedAmount;
+
     const isAccountMatch = Boolean(!cleanDestAcc || cleanDestAcc.includes(cleanExpectedAcc) || cleanExpectedAcc.includes(cleanDestAcc));
-    const isAmountMatch = Boolean(parsedAmount <= 0 || Math.abs(ocrAmount - parsedAmount) <= 20);
+    const isAmountMatch = Boolean(effectiveTargetAmount <= 0 || Math.abs(ocrAmount - effectiveTargetAmount) <= 20);
     const isDuplicate = Boolean(
       cleanRefNumber && (systemConfig.verifiedRefLedger || []).some(
         entry => entry.refNumber.toLowerCase() === cleanRefNumber.toLowerCase()
@@ -594,7 +651,7 @@ Output STRICT JSON only:
       let failureReason = "Payment validation discrepancy detected.";
       if (!isLegitimate) failureReason = "Payment slip could not be confirmed as authentic.";
       else if (!isAccountMatch) failureReason = `Beneficiary account on slip (${cleanDestAcc || "unclear"}) does not match expected (${cleanExpectedAcc}).`;
-      else if (!isAmountMatch) failureReason = `Paid amount on slip (Rs. ${ocrAmount}) does not match package price (Rs. ${parsedAmount}).`;
+      else if (!isAmountMatch) failureReason = `Paid amount on slip (Rs. ${ocrAmount}) does not match package price (Rs. ${effectiveTargetAmount || parsedAmount}).`;
       else if (isDuplicate) failureReason = `Duplicate slip: Reference number #${cleanRefNumber} has already been used!`;
       else if (!cleanRefNumber || cleanRefNumber.length < 4) failureReason = "Transaction reference number could not be read clearly.";
 
@@ -641,12 +698,12 @@ Output STRICT JSON only:
             title: "Settlement Matched",
             passed: isAmountMatch,
             statusText: isAmountMatch ? "Matched" : "Discrepancy",
-            expected: parsedAmount,
+            expected: effectiveTargetAmount || parsedAmount,
             detected: ocrAmount,
             isSuspicious: !isAmountMatch,
             message: isAmountMatch
               ? `Tariff Rs. ${ocrAmount} matched with package price.`
-              : `Deposit amount Rs. ${ocrAmount} differs from package price (Rs. ${parsedAmount}).`
+              : `Deposit amount Rs. ${ocrAmount} differs from package price (Rs. ${effectiveTargetAmount || parsedAmount}).`
           },
           {
             id: "line",
@@ -660,6 +717,225 @@ Output STRICT JSON only:
 
       return await fallbackToManualVerification(failureReason, discrepancyReport);
     }
+  }
+
+  // =========================================================================
+  // VPN RENEWAL FLOW (orderType === "renew")
+  // Reset used traffic to 0 GB, extend 30 days, set exact quota on Primary Node
+  // =========================================================================
+  if (orderType === "renew") {
+    const primaryConfig = getPrimaryConfigFromUser(user, metaData);
+    const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
+    const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
+    const effectiveTargetAmount = parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 0);
+
+    if (!primaryConfig.vlessUri) {
+      return NextResponse.json({
+        success: false,
+        error: "No active primary VPN configuration found to renew."
+      }, { status: 400 });
+    }
+
+    // Renew Client on Primary 3x-ui Node (Ignore USA Node #2)
+    let renewalResult: any = null;
+    try {
+      if (!systemConfig.primary3xui.baseUrl || !systemConfig.primary3xui.username) {
+        throw new Error("3x-ui Primary Node credentials missing in System Config");
+      }
+
+      const xui = createXuiClient(systemConfig.primary3xui);
+      renewalResult = await xui.renewClientFromPrimaryConfig({
+        userEmail: user.email || "",
+        vlessUuid: vlessInfo.uuid || metaData.vpnUuid || metaData.customVpnUserId,
+        vlessRemark: vlessInfo.remark,
+        quotaGb: quotaInfo.quotaGb,
+        isUnlimited: quotaInfo.isUnlimited
+      });
+    } catch (renewErr: any) {
+      console.error("3x-ui renewal failed:", renewErr);
+      return NextResponse.json({
+        success: false,
+        manualMode: false,
+        verified: false,
+        autoApproved: false,
+        status: "Error",
+        error: renewErr?.message || "3x-ui renewal failed",
+        message: `Automatic VPN Renewal Failed: ${renewErr?.message || "3x-ui API unreachable"}`,
+        auditReport: {
+          overallStatus: "error",
+          reason: `3x-ui Renewal Error: ${renewErr?.message || "Failed to update client on inbound"}`,
+          checks: [
+            {
+              id: "doc",
+              title: "Document Analyzed",
+              passed: true,
+              statusText: "Analyzed",
+              detectedBank: ocrResult?.bankName || "Commercial Bank",
+              detectedRef: cleanRefNumber,
+              message: `Forensic scan complete: ${ocrResult?.bankName || "Bank"} slip verified.`
+            },
+            {
+              id: "account",
+              title: "Beneficiary Confirmed",
+              passed: true,
+              statusText: "Confirmed",
+              expected: cleanExpectedAcc,
+              detected: cleanDestAcc,
+              message: `Commercial Bank Account ${cleanExpectedAcc} match confirmed.`
+            },
+            {
+              id: "trace",
+              title: "Transaction Trace Valid",
+              passed: true,
+              statusText: "Valid",
+              refNumber: cleanRefNumber,
+              message: `Unique trace #${cleanRefNumber} recorded in anti-replay ledger.`
+            },
+            {
+              id: "amount",
+              title: "Settlement Matched",
+              passed: true,
+              statusText: "Matched",
+              expected: effectiveTargetAmount,
+              detected: ocrAmount,
+              message: `Exact tariff Rs. ${effectiveTargetAmount} verified.`
+            },
+            {
+              id: "line",
+              title: "Line Activated",
+              passed: false,
+              isSuspicious: true,
+              statusText: "Failed",
+              message: `Line Renewal: Failed — ${renewErr?.message || "3x-ui API unreachable"}`
+            }
+          ]
+        }
+      });
+    }
+
+    // Update Database Record in Prisma
+    const renewedPaymentRecord = {
+      id: cleanRefNumber,
+      refNumber: cleanRefNumber,
+      packageId: "renew",
+      package: `${primaryConfig.title} (Renewed)`,
+      packageName: primaryConfig.title,
+      quotaLabel: quotaInfo.displayQuota,
+      amount: effectiveTargetAmount || ocrAmount || 0,
+      receipt: cleanReceiptUrl || "ADMIN_SANDBOX_RENEWAL",
+      receiptUrl: cleanReceiptUrl || "ADMIN_SANDBOX_RENEWAL",
+      status: "Verified",
+      autoVerified: true,
+      bankName: ocrResult?.bankName || "Commercial Bank",
+      date: new Date().toISOString(),
+      verificationNote: adminTestMode ? "Admin Sandbox VPN Renewal" : "Verified & VPN Renewed (Traffic Reset)"
+    };
+
+    const newExpiry = new Date(renewalResult.expiryTimeMs).toISOString();
+
+    const updatedPayments = [renewedPaymentRecord, ...(Array.isArray(metaData.payments) ? metaData.payments : [])];
+    const updatedMeta = {
+      ...metaData,
+      accountStatus: "Active",
+      dataUsed: "0 GB",
+      previousUsage: 0,
+      previousUsageGB: 0,
+      dataTotal: quotaInfo.displayQuota,
+      expiryDate: renewalResult.newExpiryDate,
+      payments: updatedPayments,
+      pendingOrders: []
+    };
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        vpnStatus: "Active",
+        expiryDate: newExpiry,
+        subscriptionLink: JSON.stringify(updatedMeta)
+      }
+    });
+
+    // Record Reference in Global Ledger
+    const newLedgerEntry = {
+      refNumber: cleanRefNumber,
+      email: user.email,
+      packageName: `${primaryConfig.title} (Renewal)`,
+      amount: effectiveTargetAmount || ocrAmount || 0,
+      date: new Date().toISOString(),
+      verifiedAt: new Date().toISOString()
+    };
+
+    const updatedLedger = [...(systemConfig.verifiedRefLedger || []), newLedgerEntry];
+    await updateGlobalSystemConfig({
+      verifiedRefLedger: updatedLedger
+    });
+
+    const approvedAuditReport = {
+      overallStatus: "approved",
+      reason: `VPN Renewed: Used traffic reset to 0 GB (${quotaInfo.displayQuota} restored). Extended 30 days.`,
+      checks: [
+        {
+          id: "doc",
+          title: "Document Analyzed",
+          passed: true,
+          statusText: "Analyzed",
+          detectedBank: ocrResult?.bankName || "Commercial Bank",
+          detectedRef: cleanRefNumber,
+          message: `Forensic scan complete: ${ocrResult?.bankName || "Bank"} slip verified.`
+        },
+        {
+          id: "account",
+          title: "Beneficiary Confirmed",
+          passed: true,
+          statusText: "Confirmed",
+          expected: cleanExpectedAcc,
+          detected: cleanDestAcc,
+          message: `Commercial Bank Account ${cleanExpectedAcc} match confirmed.`
+        },
+        {
+          id: "trace",
+          title: "Transaction Trace Valid",
+          passed: true,
+          statusText: "Valid",
+          refNumber: cleanRefNumber,
+          message: `Unique trace #${cleanRefNumber} recorded in anti-replay ledger.`
+        },
+        {
+          id: "amount",
+          title: "Settlement Matched",
+          passed: true,
+          statusText: "Matched",
+          expected: effectiveTargetAmount,
+          detected: ocrAmount,
+          message: `Exact tariff Rs. ${effectiveTargetAmount} verified.`
+        },
+        {
+          id: "line",
+          title: "Line Activated",
+          passed: true,
+          statusText: "Renewed",
+          message: `Primary Node #${renewalResult.inboundId} traffic reset to 0 GB. Extended to ${renewalResult.newExpiryDate}.`
+        }
+      ]
+    };
+
+    return NextResponse.json({
+      success: true,
+      verified: true,
+      autoApproved: true,
+      status: "Active",
+      orderType: "renew",
+      message: `VPN Line Renewed Successfully! Traffic reset to 0 GB (${quotaInfo.displayQuota} restored). Valid until ${renewalResult.newExpiryDate}.`,
+      order: renewedPaymentRecord,
+      user: updatedUser,
+      renewalInfo: {
+        configTitle: primaryConfig.title,
+        resetUsedTo: "0 GB",
+        restoredQuota: quotaInfo.displayQuota,
+        newExpiryDate: renewalResult.newExpiryDate
+      },
+      auditReport: approvedAuditReport
+    });
   }
     let clientUuid = metaData.customVpnUserId;
     if (!clientUuid) {
