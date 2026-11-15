@@ -18,7 +18,9 @@ async function isAuthorizedAdmin(): Promise<boolean> {
     const sessionCookie = cookieStore.get("session");
     if (!sessionCookie?.value) return false;
     const payload = await verifyJwt(sessionCookie.value);
-    return payload?.email === ADMIN_EMAIL;
+    const email = String((payload as any)?.email || "").toLowerCase();
+    const envAdmin = (process.env.ADMIN_EMAIL || "").toLowerCase();
+    return email === "dulangathipul@gmail.com" || email === "legionzinfo@gmail.com" || (Boolean(envAdmin) && email === envAdmin);
   } catch {
     return false;
   }
