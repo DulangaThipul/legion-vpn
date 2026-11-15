@@ -29,8 +29,9 @@ function getTransformableImageUrl(url: string): string {
 }
 
 /**
- * Real 3x-ui Client Provisioning & Stream Settings Extraction
- * Adds client to authentic 3x-ui inbound and returns real subscription URL and real VLESS key
+ * Real 3x-ui Node Client Provisioning
+ * Supports dual inbound routing (WS+TLS for Dialog Social 547 vs TCP+TLS for others)
+ * Configurable ISP domains, SNI masks, and client remark formatting
  */
 async function provision3xuiClient(
   nodeConfig: {
@@ -50,12 +51,16 @@ async function provision3xuiClient(
     validityDays?: number;
     isp?: string;
     sni?: string;
-  }
+    packageId?: string;
+    amount?: number;
+  },
+  systemConfig?: any
 ): Promise<{
   success: boolean;
   subscriptionUrl: string;
   vlessKey: string;
   subId: string;
+  clientRemark: string;
 }> {
   const cleanBase = (nodeConfig.baseUrl || "").trim().replace(/\/+$/, "").replace(/\/panel\/?$/, "");
   if (!cleanBase) {
@@ -69,73 +74,86 @@ async function provision3xuiClient(
     throw new Error(`3x-ui Login Failed: ${(loginRes as any)?.msg || "Invalid credentials or node unreachable"}`);
   }
 
+  // 2. Identify ISP and Client Remark: LEGION-VPN-{Price}{ISP}-{ClientEmail}
+  const cleanUserEmail = (clientEmail || "user@legion.lk").trim();
+  const combinedPkg = `${packageData.packageId || ""} ${packageData.name || ""} ${packageData.isp || ""}`.toLowerCase();
+  let ispTag = "VIP";
+  if (combinedPkg.includes("dialog")) ispTag = "Dialog";
+  else if (combinedPkg.includes("airtel")) ispTag = "Airtel";
+  else if (combinedPkg.includes("slt")) ispTag = "SLT";
+  else if (combinedPkg.includes("hutch")) ispTag = "Hutch";
+  else if (combinedPkg.includes("mobitel")) ispTag = "Mobitel";
+
+  const parsedPrice = packageData.amount || 0;
+  const clientRemark = `LEGION-VPN-${parsedPrice}${ispTag}-${cleanUserEmail}`;
+
+  // 3. Dual Inbound Routing: Dialog Social 547 -> Inbound 5 (WS+TLS), Others -> Inbound 1 (TCP+TLS)
+  const isDialogSocial547 =
+    packageData.packageId === "dialog-social" ||
+    (combinedPkg.includes("dialog") && (combinedPkg.includes("social") || Number(parsedPrice) === 547));
+
+  const targetInboundId = isDialogSocial547
+    ? Number(nodeConfig?.dialogInboundId || systemConfig?.primary3xui?.dialogInboundId || 5)
+    : Number(nodeConfig?.inboundId || systemConfig?.primary3xui?.inboundId || 1);
+
+  // 4. Resolve ISP Subdomain (NEVER use raw VPS IP)
+  const ispDomainMap: Record<string, string> = {
+    Dialog: systemConfig?.ispDomains?.dialog || "dialog.legiongraphics.site",
+    Airtel: systemConfig?.ispDomains?.airtel || "airtel.legiongraphics.site",
+    SLT: systemConfig?.ispDomains?.slt || "slt.legiongraphics.site",
+    Hutch: systemConfig?.ispDomains?.hutch || "hutch.legiongraphics.site",
+    Mobitel: systemConfig?.ispDomains?.mobitel || "dialog.legiongraphics.site"
+  };
+  const targetAddress = (ispDomainMap[ispTag] || systemConfig?.ispDomains?.dialog || "dialog.legiongraphics.site").trim();
+
+  // 5. Resolve Package SNI Mask
+  const packageSniMap = systemConfig?.packageSnis || {};
+  const resolvedSni = (
+    (packageData.packageId && packageSniMap[packageData.packageId]) ||
+    packageData.sni ||
+    (isDialogSocial547 ? "web.whatsapp.net" : "zoom.us")
+  ).trim();
+
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
-  const targetInboundId = Number(nodeConfig?.inboundId || 1);
   const expiryMs = Date.now() + Number(packageData.validityDays || 30) * 86400000;
   const quotaGbNum = Number(packageData.quotaGb || 100);
   const totalBytes = quotaGbNum * 1024 * 1024 * 1024;
 
-  // 2. Query inbounds to verify target exists and extract streamSettings
-  let finalInboundId = targetInboundId;
-  let inboundObj: any = null;
-  try {
-    const inboundsRes = await xui.getInbounds();
-    const inbounds = Array.isArray(inboundsRes?.obj) ? inboundsRes.obj : [];
-    if (inbounds.length > 0) {
-      const matched = inbounds.find((ib: any) => Number(ib.id) === targetInboundId);
-      if (matched) {
-        finalInboundId = targetInboundId;
-        inboundObj = matched;
-      } else {
-        finalInboundId = Number(inbounds[0].id);
-        inboundObj = inbounds[0];
-      }
-    }
-  } catch (err: any) {
-    console.warn("Could not list inbounds via 3xui client:", err?.message);
-  }
-
-  if (!inboundObj) {
-    try {
-      const getIb = await xui.getInbound(finalInboundId);
-      if (getIb?.success && getIb?.obj) {
-        inboundObj = getIb.obj;
-      }
-    } catch {}
-  }
-
-  // 3. ALWAYS Call Modern API (/panel/api/clients/add) FIRST
+  // 6. Add Client to 3x-ui with duplicate retry handling
+  let xuiClientEmail = clientRemark;
   let provisionRes: any = null;
   let lastError = "";
 
-  try {
-    provisionRes = await xui.addModernClient({
-      inboundIds: [finalInboundId],
-      client: {
-        id: clientUuid,
-        email: clientEmail,
-        enable: true,
-        expiryTime: expiryMs,
-        limitIp: 2,
-        totalGB: quotaGbNum,
-        subId: clientSubId,
-        flow: ""
-      }
-    });
-  } catch (err: any) {
-    lastError = err?.message || "Modern client add error";
-  }
+  async function tryAddClient(emailToUse: string) {
+    try {
+      const modernRes = await xui.addModernClient({
+        inboundIds: [targetInboundId],
+        client: {
+          id: clientUuid,
+          email: emailToUse,
+          enable: true,
+          expiryTime: expiryMs,
+          limitIp: 2,
+          totalGB: quotaGbNum,
+          subId: clientSubId,
+          flow: ""
+        }
+      });
+      if (modernRes?.success) return modernRes;
+      lastError = modernRes?.msg || "Failed to add modern client";
+    } catch (err: any) {
+      lastError = err?.message || "Modern client add error";
+    }
 
-  // 4. Fallback to Legacy endpoint (/panel/api/inbounds/addClient) ONLY if modern endpoint failed or was rejected
-  if (!provisionRes || provisionRes.success === false) {
+    // Fallback to legacy endpoint if modern endpoint not supported
     try {
       const legacyRes = await xui.addClient({
-        id: finalInboundId,
+        id: targetInboundId,
         settings: JSON.stringify({
           clients: [
             {
               id: clientUuid,
-              email: clientEmail,
+              email: emailToUse,
               enable: true,
               expiryTime: expiryMs,
               limitIp: 2,
@@ -146,24 +164,34 @@ async function provision3xuiClient(
           ]
         })
       });
-      if (legacyRes?.success) {
-        provisionRes = legacyRes;
-      } else {
-        lastError = legacyRes?.msg || lastError;
-      }
+      if (legacyRes?.success) return legacyRes;
+      lastError = legacyRes?.msg || lastError;
     } catch (err: any) {
       lastError = err?.message || lastError;
     }
+
+    return null;
   }
 
-  // 5. If duplicate / already exists, attempt update
+  provisionRes = await tryAddClient(xuiClientEmail);
+
+  // If email already exists, retry once with random suffix while keeping clientRemark for VLESS fragment
+  if (!provisionRes || provisionRes.success === false) {
+    const errLower = (lastError || "").toLowerCase();
+    if (errLower.includes("duplicate") || errLower.includes("exist") || errLower.includes("already")) {
+      xuiClientEmail = `${clientRemark}-${Math.floor(10 + Math.random() * 89)}`;
+      provisionRes = await tryAddClient(xuiClientEmail);
+    }
+  }
+
+  // If still duplicate, attempt update
   if (!provisionRes || provisionRes.success === false) {
     const errLower = (lastError || "").toLowerCase();
     if (errLower.includes("duplicate") || errLower.includes("exist") || errLower.includes("already")) {
       try {
-        const updateRes = await xui.updateModernClient(clientEmail, {
+        const updateRes = await xui.updateModernClient(xuiClientEmail, {
           id: clientUuid,
-          email: clientEmail,
+          email: xuiClientEmail,
           enable: true,
           expiryTime: expiryMs,
           limitIp: 2,
@@ -171,41 +199,40 @@ async function provision3xuiClient(
           subId: clientSubId,
           flow: ""
         });
-        if (updateRes?.success) {
-          provisionRes = updateRes;
-        }
+        if (updateRes?.success) provisionRes = updateRes;
       } catch {}
-
-      if (!provisionRes || provisionRes.success === false) {
-        try {
-          const legacyUpdate = await xui.updateClient(clientUuid, {
-            id: finalInboundId,
-            settings: JSON.stringify({
-              clients: [{
-                id: clientUuid,
-                email: clientEmail,
-                enable: true,
-                expiryTime: expiryMs,
-                limitIp: 2,
-                totalGB: totalBytes,
-                subId: clientSubId,
-                flow: ""
-              }]
-            })
-          });
-          if (legacyUpdate?.success) {
-            provisionRes = legacyUpdate;
-          }
-        } catch {}
-      }
     }
   }
 
   if (!provisionRes || provisionRes.success === false) {
-    throw new Error(provisionRes?.msg || lastError || `3x-ui failed to create client on Inbound ${finalInboundId}`);
+    throw new Error(provisionRes?.msg || lastError || `3x-ui failed to provision client on Inbound ${targetInboundId}`);
   }
 
-  // 6. Build Subscription URL
+  // 7. Query target inbound settings to get real port & transport protocol
+  let inboundObj: any = null;
+  try {
+    const inb = await xui.getInbound(targetInboundId);
+    if (inb?.success && inb?.obj) {
+      inboundObj = inb.obj;
+    }
+  } catch (err: any) {
+    console.warn(`Could not get inbound ${targetInboundId} settings:`, err?.message);
+  }
+
+  let inboundPort = Number(inboundObj?.port || (isDialogSocial547 ? 2096 : 443));
+  let streamSettings: any = {};
+  if (inboundObj?.streamSettings) {
+    if (typeof inboundObj.streamSettings === "string") {
+      try { streamSettings = JSON.parse(inboundObj.streamSettings); } catch {}
+    } else if (typeof inboundObj.streamSettings === "object") {
+      streamSettings = inboundObj.streamSettings;
+    }
+  }
+
+  const network = streamSettings?.network || (isDialogSocial547 ? "ws" : "tcp");
+  const wsPath = streamSettings?.wsSettings?.path || "/";
+
+  // 8. Build Subscription URL
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(cleanBase);
@@ -217,102 +244,37 @@ async function provision3xuiClient(
     .replace(/\/+$/, "");
   const realSubscriptionUrl = `${rawSubPrefix}/${clientSubId}`;
 
-  const nodeDomain = parsedUrl.hostname;
-  let nodePort = Number(nodeConfig.port || (inboundObj?.port ? inboundObj.port : (finalInboundId === 5 ? 2096 : 443)));
-  const pkgLabel = packageData.name || "VIP";
-
-  // 7. Extract Real VLESS Key (Handling string arrays and object arrays from getClientLinks)
-  let realVlessKey = "";
-  try {
-    const linksRes = await xui.getClientLinks(clientEmail);
-    const rawObj = linksRes?.obj;
-    if (typeof rawObj === "string" && rawObj.startsWith("vless://")) {
-      realVlessKey = rawObj.trim();
-    } else if (Array.isArray(rawObj) && rawObj.length > 0) {
-      const first = rawObj.find((l: any) => (typeof l === "string" && l.startsWith("vless://")) || (typeof l?.link === "string" && l.link.startsWith("vless://")) || (typeof l?.url === "string" && l.url.startsWith("vless://"))) || rawObj[0];
-      realVlessKey = typeof first === "string" ? first : (first?.link || first?.url || "");
-    }
-    if (realVlessKey) {
-      const baseNoHash = realVlessKey.split("#")[0];
-      realVlessKey = `${baseNoHash}#LEGION-${encodeURIComponent(pkgLabel)}`;
-    }
-  } catch {}
-
-  // 8. Guaranteed Fallback from Inbound Settings (If client link was not returned directly)
-  if (!realVlessKey) {
-    if (!inboundObj) {
-      try {
-        const inb = await xui.getInbound(finalInboundId);
-        if (inb?.success && inb?.obj) {
-          inboundObj = inb.obj;
-        }
-      } catch {}
-    }
-
-    let realityPublicKey = "";
-    let shortId = "";
-    let sniHost = packageData.sni || "";
-    let isWs = finalInboundId === 5;
-    let wsPath = "/";
-    let wsHost = "";
-    let streamSecurity = "tls";
-
-    if (inboundObj) {
-      if (inboundObj.port) nodePort = Number(inboundObj.port);
-
-      let stream: any = {};
-      if (typeof inboundObj.streamSettings === "string") {
-        try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
-      } else if (typeof inboundObj.streamSettings === "object") {
-        stream = inboundObj.streamSettings;
-      }
-
-      if (stream?.security) streamSecurity = stream.security;
-
-      if (stream?.network === "ws" || stream?.wsSettings) {
-        isWs = true;
-        if (stream.wsSettings?.path) wsPath = stream.wsSettings.path;
-        if (stream.wsSettings?.host) wsHost = stream.wsSettings.host;
-        if (!wsHost && stream.wsSettings?.headers?.Host) wsHost = stream.wsSettings.headers.Host;
-      }
-
-      if (stream?.realitySettings) {
-        const rs = stream.realitySettings;
-        realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
-        if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
-          shortId = rs.shortIds[0];
-        }
-        if (!sniHost && Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
-          sniHost = rs.serverNames[0];
-        }
-      } else if (stream?.tlsSettings) {
-        if (!sniHost && Array.isArray(stream.tlsSettings.serverNames) && stream.tlsSettings.serverNames.length > 0) {
-          sniHost = stream.tlsSettings.serverNames[0];
-        }
-      }
-    }
-
-    if (realityPublicKey) {
-      if (!sniHost) sniHost = "www.speedtest.net";
-      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
-    } else if (isWs) {
-      if (!sniHost) {
-        if (wsHost) sniHost = wsHost;
-        else sniHost = "dialog-social.duckdns.org";
-      }
-      const hostParam = wsHost ? `&host=${encodeURIComponent(wsHost)}` : (sniHost ? `&host=${encodeURIComponent(sniHost)}` : "");
-      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=ws&security=${streamSecurity}&path=${encodeURIComponent(wsPath)}${hostParam}&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
-    } else {
-      if (!sniHost) sniHost = "www.speedtest.net";
-      realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
-    }
+  // 9. Build Exact VLESS URL (WS+TLS for Dialog Social 547 / Inbound 5, TCP+TLS for Others)
+  let finalVlessKey = "";
+  if (network === "ws" || isDialogSocial547) {
+    const wsParams = new URLSearchParams({
+      type: "ws",
+      security: "tls",
+      path: wsPath,
+      host: resolvedSni,
+      sni: resolvedSni,
+      fp: "chrome",
+      encryption: "none"
+    });
+    finalVlessKey = `vless://${clientUuid}@${targetAddress}:${inboundPort}?${wsParams.toString()}#${clientRemark}`;
+  } else {
+    const tcpParams = new URLSearchParams({
+      type: "tcp",
+      security: "tls",
+      sni: resolvedSni,
+      alpn: "h2,http/1.1",
+      fp: "chrome",
+      encryption: "none"
+    });
+    finalVlessKey = `vless://${clientUuid}@${targetAddress}:${inboundPort}?${tcpParams.toString()}#${clientRemark}`;
   }
 
   return {
     success: true,
     subscriptionUrl: realSubscriptionUrl,
-    vlessKey: realVlessKey,
-    subId: clientSubId
+    vlessKey: finalVlessKey,
+    subId: clientSubId,
+    clientRemark
   };
 }
 
@@ -726,10 +688,12 @@ Output STRICT JSON only:
     }
 
     const packageData = {
+      packageId,
       name: cleanPackageName,
       quotaGb,
       validityDays: 30,
       isp,
+      amount: parsedAmount || ocrAmount || 0,
       sni: systemConfig.packageSnis?.[packageId] || "zoom.us"
     };
 
@@ -746,6 +710,7 @@ Output STRICT JSON only:
       subscriptionUrl: string;
       vlessKey: string;
       subId: string;
+      clientRemark?: string;
     };
 
     try {
@@ -757,7 +722,8 @@ Output STRICT JSON only:
         { ...systemConfig.primary3xui, inboundId: targetInboundId },
         clientUuid,
         user.email,
-        packageData
+        packageData,
+        systemConfig
       );
     } catch (provisionErr: any) {
       console.error("Real 3x-ui provisioning failed:", provisionErr);
@@ -833,7 +799,8 @@ Output STRICT JSON only:
           systemConfig.bonusUsa3xui,
           clientUuid,
           user.email,
-          { ...packageData, name: `${cleanPackageName} (Bonus USA)` }
+          { ...packageData, name: `${cleanPackageName} (Bonus USA)` },
+          systemConfig
         );
         generatedUsaSubUrl = bonusRes.subscriptionUrl;
       } catch (bonusErr: any) {
@@ -953,7 +920,7 @@ Output STRICT JSON only:
           title: "Line Activated",
           passed: true,
           statusText: "Activated",
-          message: "10Gbps Singapore core line & subscription link activated."
+          message: "10Gbps Singapore core line & VLESS config activated."
         }
       ]
     };
