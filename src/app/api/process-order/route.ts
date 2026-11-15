@@ -71,6 +71,9 @@ async function provision3xuiClient(
 
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
   const targetInboundId = Number(nodeConfig?.inboundId || 1);
+  const expiryMs = Date.now() + Number(packageData.validityDays || 30) * 86400000;
+  const quotaGbNum = Number(packageData.quotaGb || 100);
+  const totalBytes = quotaGbNum * 1024 * 1024 * 1024;
 
   // 2. Query inbounds to verify target exists and extract streamSettings
   let finalInboundId = targetInboundId;
@@ -101,68 +104,50 @@ async function provision3xuiClient(
     } catch {}
   }
 
-  const totalBytes = Number(packageData.quotaGb || 100) * 1024 * 1024 * 1024;
-  const expiryMs = Date.now() + (Number(packageData.validityDays || 30) * 86400000);
-
-  // Modern Client API payload (/panel/api/clients/add)
-  const modernClientPayload = {
-    inboundIds: [finalInboundId],
-    client: {
-      id: clientUuid,
-      flow: "",
-      email: clientEmail,
-      limitIp: 2,
-      totalGB: totalBytes,
-      expiryTime: expiryMs,
-      enable: true,
-      tgId: "",
-      subId: clientSubId,
-      reset: 0
-    }
-  };
-
-  // Legacy Inbound API payload (/panel/api/inbounds/addClient)
-  const clientSettingsString = JSON.stringify({
-    clients: [
-      {
-        id: clientUuid,
-        flow: "",
-        email: clientEmail,
-        limitIp: 2,
-        totalGB: totalBytes,
-        expiryTime: expiryMs,
-        enable: true,
-        tgId: "",
-        subId: clientSubId,
-        reset: 0
-      }
-    ]
-  });
-
-  let addedSuccessfully = false;
+  // 3. ALWAYS Call Modern API (/panel/api/clients/add) FIRST
+  let provisionRes: any = null;
   let lastError = "";
 
-  // A. Try Modern Client API first: POST /panel/api/clients/add (MHSanaei default)
   try {
-    const modernRes = await xui.addModernClient(modernClientPayload);
-    if (modernRes?.success) {
-      addedSuccessfully = true;
-    } else {
-      lastError = modernRes?.msg || "Modern addModernClient failed";
-    }
+    provisionRes = await xui.addModernClient({
+      inboundIds: [finalInboundId],
+      client: {
+        id: clientUuid,
+        email: clientEmail,
+        enable: true,
+        expiryTime: expiryMs,
+        limitIp: 2,
+        totalGB: quotaGbNum,
+        subId: clientSubId,
+        flow: ""
+      }
+    });
   } catch (err: any) {
     lastError = err?.message || "Modern client add error";
   }
 
-  // B. Fallback to Legacy Inbound API: POST /panel/api/inbounds/addClient
-  if (!addedSuccessfully) {
+  // 4. Fallback to Legacy endpoint (/panel/api/inbounds/addClient) ONLY if modern endpoint failed or was rejected
+  if (!provisionRes || provisionRes.success === false) {
     try {
       const legacyRes = await xui.addClient({
         id: finalInboundId,
-        settings: clientSettingsString
+        settings: JSON.stringify({
+          clients: [
+            {
+              id: clientUuid,
+              email: clientEmail,
+              enable: true,
+              expiryTime: expiryMs,
+              limitIp: 2,
+              totalGB: totalBytes,
+              subId: clientSubId,
+              flow: ""
+            }
+          ]
+        })
       });
       if (legacyRes?.success) {
-        addedSuccessfully = true;
+        provisionRes = legacyRes;
       } else {
         lastError = legacyRes?.msg || lastError;
       }
@@ -171,129 +156,156 @@ async function provision3xuiClient(
     }
   }
 
-  // C. If already exists / duplicate, attempt update
-  if (!addedSuccessfully && (lastError.toLowerCase().includes("duplicate") || lastError.toLowerCase().includes("exist") || lastError.toLowerCase().includes("already"))) {
-    try {
-      const updateRes = await xui.updateModernClient(clientEmail, modernClientPayload.client);
-      if (updateRes?.success) {
-        addedSuccessfully = true;
-      }
-    } catch {}
-
-    if (!addedSuccessfully) {
+  // 5. If duplicate / already exists, attempt update
+  if (!provisionRes || provisionRes.success === false) {
+    const errLower = (lastError || "").toLowerCase();
+    if (errLower.includes("duplicate") || errLower.includes("exist") || errLower.includes("already")) {
       try {
-        const legacyUpdate = await xui.updateClient(clientUuid, {
-          id: finalInboundId,
-          settings: clientSettingsString
+        const updateRes = await xui.updateModernClient(clientEmail, {
+          id: clientUuid,
+          email: clientEmail,
+          enable: true,
+          expiryTime: expiryMs,
+          limitIp: 2,
+          totalGB: quotaGbNum,
+          subId: clientSubId,
+          flow: ""
         });
-        if (legacyUpdate?.success) {
-          addedSuccessfully = true;
+        if (updateRes?.success) {
+          provisionRes = updateRes;
         }
       } catch {}
+
+      if (!provisionRes || provisionRes.success === false) {
+        try {
+          const legacyUpdate = await xui.updateClient(clientUuid, {
+            id: finalInboundId,
+            settings: JSON.stringify({
+              clients: [{
+                id: clientUuid,
+                email: clientEmail,
+                enable: true,
+                expiryTime: expiryMs,
+                limitIp: 2,
+                totalGB: totalBytes,
+                subId: clientSubId,
+                flow: ""
+              }]
+            })
+          });
+          if (legacyUpdate?.success) {
+            provisionRes = legacyUpdate;
+          }
+        } catch {}
+      }
     }
   }
 
-  if (!addedSuccessfully) {
-    throw new Error(`Failed to create client inside 3x-ui inbound ${finalInboundId}: ${lastError}`);
+  if (!provisionRes || provisionRes.success === false) {
+    throw new Error(provisionRes?.msg || lastError || `3x-ui failed to create client on Inbound ${finalInboundId}`);
   }
 
-  // Construct the authentic 3x-ui subscription URL
-  const subPrefix = (nodeConfig.subBaseUrl || `${cleanBase.replace(/:\d+.*$/, "")}:2096/sub/`).trim().replace(/\/+$/, "");
-  const realSubscriptionUrl = `${subPrefix}/${clientSubId}`;
-
-  let nodeDomain = "";
+  // 6. Build Subscription URL
+  let parsedUrl: URL;
   try {
-    nodeDomain = new URL(cleanBase).hostname;
+    parsedUrl = new URL(cleanBase);
   } catch {
-    nodeDomain = cleanBase.replace(/^https?:\/\//, "").split(/[:/]/)[0];
+    parsedUrl = new URL("https://" + cleanBase);
   }
-  let nodePort = Number(nodeConfig.port || (inboundObj?.port ? inboundObj.port : 443));
+  const rawSubPrefix = (nodeConfig.subBaseUrl || `${parsedUrl.protocol}//${parsedUrl.hostname}:2096/sub/`)
+    .trim()
+    .replace(/\/+$/, "");
+  const realSubscriptionUrl = `${rawSubPrefix}/${clientSubId}`;
 
+  const nodeDomain = parsedUrl.hostname;
+  let nodePort = Number(nodeConfig.port || (inboundObj?.port ? inboundObj.port : (finalInboundId === 5 ? 2096 : 443)));
   const pkgLabel = packageData.name || "VIP";
-  let realVlessKey = "";
 
-  // 1. Try to get exact client links directly from 3x-ui
+  // 7. Extract Real VLESS Key (Handling string arrays and object arrays from getClientLinks)
+  let realVlessKey = "";
   try {
     const linksRes = await xui.getClientLinks(clientEmail);
-    if (linksRes?.success && linksRes?.obj) {
-      const linkObj = linksRes.obj;
-      let foundLink = "";
-      if (Array.isArray(linkObj) && linkObj.length > 0) {
-        foundLink = linkObj.find((l: any) => typeof l === "string" && l.startsWith("vless://")) || linkObj[0];
-      } else if (typeof linkObj === "string" && linkObj.startsWith("vless://")) {
-        foundLink = linkObj;
-      }
-      if (foundLink && typeof foundLink === "string") {
-        const baseNoHash = foundLink.split("#")[0];
-        realVlessKey = `${baseNoHash}#LEGION-${encodeURIComponent(pkgLabel)}`;
-      }
+    const rawObj = linksRes?.obj;
+    if (typeof rawObj === "string" && rawObj.startsWith("vless://")) {
+      realVlessKey = rawObj.trim();
+    } else if (Array.isArray(rawObj) && rawObj.length > 0) {
+      const first = rawObj.find((l: any) => (typeof l === "string" && l.startsWith("vless://")) || (typeof l?.link === "string" && l.link.startsWith("vless://")) || (typeof l?.url === "string" && l.url.startsWith("vless://"))) || rawObj[0];
+      realVlessKey = typeof first === "string" ? first : (first?.link || first?.url || "");
+    }
+    if (realVlessKey) {
+      const baseNoHash = realVlessKey.split("#")[0];
+      realVlessKey = `${baseNoHash}#LEGION-${encodeURIComponent(pkgLabel)}`;
     }
   } catch {}
 
-  // 2. If client link was not returned directly, inspect inbound stream settings
-  if (!realVlessKey && inboundObj) {
+  // 8. Guaranteed Fallback from Inbound Settings (If client link was not returned directly)
+  if (!realVlessKey) {
+    if (!inboundObj) {
+      try {
+        const inb = await xui.getInbound(finalInboundId);
+        if (inb?.success && inb?.obj) {
+          inboundObj = inb.obj;
+        }
+      } catch {}
+    }
+
     let realityPublicKey = "";
     let shortId = "";
     let sniHost = packageData.sni || "";
-    let isWs = false;
+    let isWs = finalInboundId === 5;
     let wsPath = "/";
     let wsHost = "";
     let streamSecurity = "tls";
 
-    if (inboundObj.port) nodePort = Number(inboundObj.port);
+    if (inboundObj) {
+      if (inboundObj.port) nodePort = Number(inboundObj.port);
 
-    let stream: any = {};
-    if (typeof inboundObj.streamSettings === "string") {
-      try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
-    } else if (typeof inboundObj.streamSettings === "object") {
-      stream = inboundObj.streamSettings;
+      let stream: any = {};
+      if (typeof inboundObj.streamSettings === "string") {
+        try { stream = JSON.parse(inboundObj.streamSettings); } catch {}
+      } else if (typeof inboundObj.streamSettings === "object") {
+        stream = inboundObj.streamSettings;
+      }
+
+      if (stream?.security) streamSecurity = stream.security;
+
+      if (stream?.network === "ws" || stream?.wsSettings) {
+        isWs = true;
+        if (stream.wsSettings?.path) wsPath = stream.wsSettings.path;
+        if (stream.wsSettings?.host) wsHost = stream.wsSettings.host;
+        if (!wsHost && stream.wsSettings?.headers?.Host) wsHost = stream.wsSettings.headers.Host;
+      }
+
+      if (stream?.realitySettings) {
+        const rs = stream.realitySettings;
+        realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
+        if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
+          shortId = rs.shortIds[0];
+        }
+        if (!sniHost && Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
+          sniHost = rs.serverNames[0];
+        }
+      } else if (stream?.tlsSettings) {
+        if (!sniHost && Array.isArray(stream.tlsSettings.serverNames) && stream.tlsSettings.serverNames.length > 0) {
+          sniHost = stream.tlsSettings.serverNames[0];
+        }
+      }
     }
 
-    if (stream?.security) streamSecurity = stream.security;
-
-    if (stream?.network === "ws" || stream?.wsSettings) {
-      isWs = true;
-      if (stream.wsSettings?.path) wsPath = stream.wsSettings.path;
-      if (stream.wsSettings?.host) wsHost = stream.wsSettings.host;
-      if (!wsHost && stream.wsSettings?.headers?.Host) wsHost = stream.wsSettings.headers.Host;
-    }
-
-    if (stream?.realitySettings) {
-      const rs = stream.realitySettings;
-      realityPublicKey = rs.settings?.publicKey || rs.publicKey || realityPublicKey;
-      if (Array.isArray(rs.shortIds) && rs.shortIds.length > 0) {
-        shortId = rs.shortIds[0];
-      }
-      if (!sniHost && Array.isArray(rs.serverNames) && rs.serverNames.length > 0) {
-        sniHost = rs.serverNames[0];
-      }
+    if (realityPublicKey) {
       if (!sniHost) sniHost = "www.speedtest.net";
       realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=reality&pbk=${realityPublicKey}&fp=chrome&sni=${sniHost}&sid=${shortId}&spx=%2F#LEGION-${encodeURIComponent(pkgLabel)}`;
     } else if (isWs) {
       if (!sniHost) {
         if (wsHost) sniHost = wsHost;
-        else if (Array.isArray(stream?.tlsSettings?.serverNames) && stream.tlsSettings.serverNames.length > 0) {
-          sniHost = stream.tlsSettings.serverNames[0];
-        } else {
-          sniHost = "dialog-social.duckdns.org";
-        }
+        else sniHost = "dialog-social.duckdns.org";
       }
-      const hostParam = wsHost ? `&host=${encodeURIComponent(wsHost)}` : "";
+      const hostParam = wsHost ? `&host=${encodeURIComponent(wsHost)}` : (sniHost ? `&host=${encodeURIComponent(sniHost)}` : "");
       realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=ws&security=${streamSecurity}&path=${encodeURIComponent(wsPath)}${hostParam}&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
     } else {
-      if (!sniHost) {
-        if (Array.isArray(stream?.tlsSettings?.serverNames) && stream.tlsSettings.serverNames.length > 0) {
-          sniHost = stream.tlsSettings.serverNames[0];
-        } else {
-          sniHost = "www.speedtest.net";
-        }
-      }
+      if (!sniHost) sniHost = "www.speedtest.net";
       realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${sniHost}#LEGION-${encodeURIComponent(pkgLabel)}`;
     }
-  }
-
-  if (!realVlessKey) {
-    realVlessKey = `vless://${clientUuid}@${nodeDomain}:${nodePort}?type=tcp&security=tls&fp=chrome&sni=${packageData.sni || "www.speedtest.net"}#LEGION-${encodeURIComponent(pkgLabel)}`;
   }
 
   return {
@@ -838,12 +850,13 @@ Output STRICT JSON only:
       packageName: cleanPackageName,
       quotaLabel: cleanQuotaLabel,
       amount: parsedAmount || ocrAmount,
-      receipt: cleanReceiptUrl,
-      receiptUrl: cleanReceiptUrl,
+      receipt: cleanReceiptUrl || "ADMIN_SANDBOX_TEST",
+      receiptUrl: cleanReceiptUrl || "ADMIN_SANDBOX_TEST",
       status: "Verified",
       autoVerified: true,
-      bankName: ocrResult.bankName || "Commercial Bank",
-      date: new Date().toISOString()
+      bankName: ocrResult?.bankName || "Commercial Bank",
+      date: new Date().toISOString(),
+      verificationNote: adminTestMode ? "Admin Sandbox Live Provisioning" : "Verified & Auto-Provisioned"
     };
 
     const newExpiry = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
@@ -853,15 +866,18 @@ Output STRICT JSON only:
       cleanDataTotal = `${quotaGb} GB`;
     }
 
-    const updatedPayments = [...(metaData.payments || []), verifiedPaymentRecord];
+    const updatedPayments = [verifiedPaymentRecord, ...(Array.isArray(metaData.payments) ? metaData.payments : [])];
     const updatedMeta = {
       ...metaData,
+      accountStatus: "Active",
       customVpnUserId: clientUuid,
       vpnUuid: clientUuid,
       vlessConfig: realVlessKey,
       subscriptionUrl: realSubscriptionUrl,
       ...(generatedUsaSubUrl ? { usaSubscriptionUrl: generatedUsaSubUrl } : {}),
       dataTotal: cleanDataTotal,
+      dataUsed: metaData.dataUsed || "0 GB",
+      expiryDate: newExpiry.split("T")[0],
       payments: updatedPayments,
       pendingOrders: [],
       showUsaUsage: Boolean(generatedUsaSubUrl) || metaData.showUsaUsage
