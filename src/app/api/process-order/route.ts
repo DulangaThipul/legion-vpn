@@ -117,98 +117,73 @@ async function provision3xuiClient(
   const clientSubId = clientUuid.replace(/-/g, "").slice(0, 16);
   const expiryMs = Date.now() + Number(packageData.validityDays || 30) * 86400000;
   const quotaGbNum = Number(packageData.quotaGb || 100);
-  const totalBytes = quotaGbNum * 1024 * 1024 * 1024;
 
-  // 6. Add Client to 3x-ui with duplicate retry handling
-  let xuiClientEmail = clientRemark;
+  // 6. Add Client to 3x-ui via Modern API (/panel/api/clients/add) directly with duplicate auto-handling
+  let panelClientEmail = clientRemark;
+
+  const attemptModernCreate = async (emailToUse: string) => {
+    return await xui.addModernClient({
+      inboundIds: [targetInboundId],
+      client: {
+        id: clientUuid,
+        email: emailToUse,
+        enable: true,
+        expiryTime: expiryMs,
+        limitIp: 2,
+        totalGB: quotaGbNum,
+        subId: clientSubId
+      }
+    });
+  };
+
   let provisionRes: any = null;
-  let lastError = "";
+  try {
+    provisionRes = await attemptModernCreate(panelClientEmail);
 
-  async function tryAddClient(emailToUse: string) {
-    try {
-      const modernRes = await xui.addModernClient({
-        inboundIds: [targetInboundId],
-        client: {
-          id: clientUuid,
-          email: emailToUse,
-          enable: true,
-          expiryTime: expiryMs,
-          limitIp: 2,
-          totalGB: quotaGbNum,
-          subId: clientSubId,
-          flow: ""
-        }
-      });
-      if (modernRes?.success) return modernRes;
-      lastError = modernRes?.msg || "Failed to add modern client";
-    } catch (err: any) {
-      lastError = err?.message || "Modern client add error";
+    // If panel reports duplicate email (e.g. re-testing same package), retry with unique suffix
+    if (
+      provisionRes &&
+      provisionRes.success === false &&
+      String(provisionRes.msg || "").toLowerCase().includes("duplicate")
+    ) {
+      panelClientEmail = `${clientRemark}-${Math.floor(100 + Math.random() * 899)}`;
+      provisionRes = await attemptModernCreate(panelClientEmail);
     }
-
-    // Fallback to legacy endpoint if modern endpoint not supported
-    try {
-      const legacyRes = await xui.addClient({
+  } catch (modernErr: any) {
+    const errMsg = String(modernErr?.message || "");
+    // If duplicate email threw an exception, retry with unique suffix
+    if (errMsg.toLowerCase().includes("duplicate")) {
+      panelClientEmail = `${clientRemark}-${Math.floor(100 + Math.random() * 899)}`;
+      provisionRes = await attemptModernCreate(panelClientEmail);
+    } else if (errMsg.includes("404")) {
+      // Only fallback to legacy endpoint if /panel/api/clients/add itself is 404
+      provisionRes = await xui.addClient({
         id: targetInboundId,
         settings: JSON.stringify({
           clients: [
             {
               id: clientUuid,
-              email: emailToUse,
+              email: panelClientEmail,
               enable: true,
               expiryTime: expiryMs,
               limitIp: 2,
-              totalGB: totalBytes,
+              totalGB: quotaGbNum * 1024 * 1024 * 1024,
               subId: clientSubId,
               flow: ""
             }
           ]
         })
       });
-      if (legacyRes?.success) return legacyRes;
-      lastError = legacyRes?.msg || lastError;
-    } catch (err: any) {
-      lastError = err?.message || lastError;
-    }
-
-    return null;
-  }
-
-  provisionRes = await tryAddClient(xuiClientEmail);
-
-  // If email already exists, retry once with random suffix while keeping clientRemark for VLESS fragment
-  if (!provisionRes || provisionRes.success === false) {
-    const errLower = (lastError || "").toLowerCase();
-    if (errLower.includes("duplicate") || errLower.includes("exist") || errLower.includes("already")) {
-      xuiClientEmail = `${clientRemark}-${Math.floor(10 + Math.random() * 89)}`;
-      provisionRes = await tryAddClient(xuiClientEmail);
-    }
-  }
-
-  // If still duplicate, attempt update
-  if (!provisionRes || provisionRes.success === false) {
-    const errLower = (lastError || "").toLowerCase();
-    if (errLower.includes("duplicate") || errLower.includes("exist") || errLower.includes("already")) {
-      try {
-        const updateRes = await xui.updateModernClient(xuiClientEmail, {
-          id: clientUuid,
-          email: xuiClientEmail,
-          enable: true,
-          expiryTime: expiryMs,
-          limitIp: 2,
-          totalGB: quotaGbNum,
-          subId: clientSubId,
-          flow: ""
-        });
-        if (updateRes?.success) provisionRes = updateRes;
-      } catch {}
+    } else {
+      throw modernErr;
     }
   }
 
   if (!provisionRes || provisionRes.success === false) {
-    throw new Error(provisionRes?.msg || lastError || `3x-ui failed to provision client on Inbound ${targetInboundId}`);
+    throw new Error(provisionRes?.msg || `3x-ui failed to create client on Inbound ${targetInboundId}`);
   }
 
-  // 7. Query target inbound settings to get real port & transport protocol
+  // 7. Safe Inbound Inspection (Never Fail If getInbound Is Unsupported)
   let inboundObj: any = null;
   try {
     const inb = await xui.getInbound(targetInboundId);
@@ -216,20 +191,39 @@ async function provision3xuiClient(
       inboundObj = inb.obj;
     }
   } catch (err: any) {
-    console.warn(`Could not get inbound ${targetInboundId} settings:`, err?.message);
+    console.warn(`xui.getInbound(${targetInboundId}) failed, falling back to list:`, err?.message);
   }
 
-  let inboundPort = Number(inboundObj?.port || (isDialogSocial547 ? 2096 : 443));
+  if (!inboundObj) {
+    try {
+      const inboundsRes = await xui.getInbounds();
+      const inbounds = Array.isArray(inboundsRes?.obj) ? inboundsRes.obj : [];
+      if (inbounds.length > 0) {
+        const matched = inbounds.find((ib: any) => Number(ib.id) === targetInboundId);
+        if (matched) {
+          inboundObj = matched;
+        }
+      }
+    } catch (err: any) {
+      console.warn("xui.getInbounds() list fallback failed:", err?.message);
+    }
+  }
+
   let streamSettings: any = {};
   if (inboundObj?.streamSettings) {
     if (typeof inboundObj.streamSettings === "string") {
-      try { streamSettings = JSON.parse(inboundObj.streamSettings); } catch {}
+      try {
+        streamSettings = JSON.parse(inboundObj.streamSettings);
+      } catch {}
     } else if (typeof inboundObj.streamSettings === "object") {
       streamSettings = inboundObj.streamSettings;
     }
   }
 
-  const network = streamSettings?.network || (isDialogSocial547 ? "ws" : "tcp");
+  const defaultPort = isDialogSocial547 ? 2096 : 443;
+  const inboundPort = Number(inboundObj?.port || defaultPort);
+  const defaultNetwork = isDialogSocial547 ? "ws" : "tcp";
+  const network = streamSettings?.network || defaultNetwork;
   const wsPath = streamSettings?.wsSettings?.path || "/";
 
   // 8. Build Subscription URL
@@ -244,7 +238,7 @@ async function provision3xuiClient(
     .replace(/\/+$/, "");
   const realSubscriptionUrl = `${rawSubPrefix}/${clientSubId}`;
 
-  // 9. Build Exact VLESS URL (WS+TLS for Dialog Social 547 / Inbound 5, TCP+TLS for Others)
+  // 9. Build Exact VLESS URL
   let finalVlessKey = "";
   if (network === "ws" || isDialogSocial547) {
     const wsParams = new URLSearchParams({
