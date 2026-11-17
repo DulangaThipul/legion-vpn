@@ -663,6 +663,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const whatsappRef = useRef<HTMLDivElement>(null);
   const [renewModalOpen, setRenewModalOpen] = useState<boolean>(false);
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
+  const [copiedAccount, setCopiedAccount] = useState<boolean>(false);
 
   // Close WhatsApp popover on click outside
   useEffect(() => {
@@ -1805,9 +1806,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         });
       }
 
-      // Immediately unfreeze upload state in checkout form so button is never stuck
-      setIsUploading(false);
-
       // Call /api/process-order with explicit orderType: "new"
       const processRes = await fetch("/api/process-order", {
         method: "POST",
@@ -1830,6 +1828,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       // DO NOT RUN 5-STEP AUDIT ANIMATION OR SHOW AI DISCREPANCIES.
       // IMMEDIATELY FORCE OPEN MATTE FROSTED WHATSAPP POPUP WINDOW!
       if (isManualMode || processJson.manualMode || !processJson.autoApproved) {
+        setIsUploading(false);
         setLaborModalOpen(false);
         setManualPopupData({
           orderId: processJson.orderId || `ORD-${Date.now()}`,
@@ -1846,6 +1845,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
 
       // If auto-approved (e.g. AI approved or test):
+      setIsUploading(false);
+      closeCheckout();
       if (processJson.user) {
         setUser(processJson.user);
       }
@@ -5784,6 +5785,190 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             document.body
           )}
 
+          {/* ⏳ FULL MATTE FROSTED LOADING SCREEN WHEN SUBMITTING NEW ORDERS */}
+          {isUploading && mounted && typeof document !== "undefined" && createPortal(
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(5, 7, 10, 0.84)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 99999,
+                padding: "16px",
+                boxSizing: "border-box"
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: "390px",
+                  borderRadius: "28px",
+                  padding: "32px 24px",
+                  textAlign: "center",
+                  background: "linear-gradient(180deg, rgba(22, 26, 32, 0.97) 0%, rgba(11, 13, 18, 0.99) 100%)",
+                  border: "1px solid rgba(255, 255, 255, 0.10)",
+                  boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.9)",
+                  position: "relative",
+                  boxSizing: "border-box"
+                }}
+              >
+                {/* Centered Animated Dual-Ring Emerald/Cyan SVG Spinner */}
+                <div style={{ position: "relative", width: "56px", height: "56px", margin: "0 auto" }}>
+                  {/* Outer Emerald Ring */}
+                  <svg
+                    width="56"
+                    height="56"
+                    viewBox="0 0 56 56"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      animation: "legionDualSpinClockwise 2s linear infinite"
+                    }}
+                  >
+                    <circle
+                      cx="28"
+                      cy="28"
+                      r="23"
+                      fill="none"
+                      stroke="rgba(52, 211, 153, 0.18)"
+                      strokeWidth="3.5"
+                    />
+                    <circle
+                      cx="28"
+                      cy="28"
+                      r="23"
+                      fill="none"
+                      stroke="#34d399"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeDasharray="80 65"
+                    />
+                  </svg>
+                  {/* Inner Cyan Ring */}
+                  <svg
+                    width="56"
+                    height="56"
+                    viewBox="0 0 56 56"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      animation: "legionDualSpinCounter 1.3s linear infinite"
+                    }}
+                  >
+                    <circle
+                      cx="28"
+                      cy="28"
+                      r="15"
+                      fill="none"
+                      stroke="rgba(56, 189, 248, 0.2)"
+                      strokeWidth="3"
+                    />
+                    <circle
+                      cx="28"
+                      cy="28"
+                      r="15"
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeDasharray="42 52"
+                    />
+                  </svg>
+                </div>
+
+                {/* Title */}
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 700,
+                    color: "#ffffff",
+                    marginTop: "18px",
+                    marginBottom: "0px",
+                    letterSpacing: "-0.01em"
+                  }}
+                >
+                  Uploading Payment Slip...
+                </h3>
+
+                {/* Subtitle */}
+                <p
+                  style={{
+                    fontSize: "12.5px",
+                    color: "#94a3b8",
+                    marginTop: "6px",
+                    marginBottom: "0px",
+                    lineHeight: 1.45
+                  }}
+                >
+                  Securely archiving your receipt and generating your order reference...
+                </p>
+
+                {/* Smooth Animated Shimmer Progress Bar */}
+                <div
+                  style={{
+                    position: "relative",
+                    height: "5px",
+                    width: "100%",
+                    borderRadius: "999px",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    overflow: "hidden",
+                    marginTop: "20px"
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      height: "100%",
+                      width: "50%",
+                      background: "linear-gradient(90deg, transparent, #34d399, #38bdf8, transparent)",
+                      borderRadius: "999px",
+                      animation: "legionShimmerGlow 1.5s ease-in-out infinite"
+                    }}
+                  />
+                </div>
+
+                {/* Package Pill */}
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "7px 16px",
+                    borderRadius: "999px",
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.10)",
+                    marginTop: "18px"
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "7px",
+                      height: "7px",
+                      borderRadius: "50%",
+                      background: "#34d399",
+                      boxShadow: "0 0 8px #34d399"
+                    }}
+                  />
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#e2e8f0" }}>
+                    {modalPackage?.name || "VIP Plan"} • {resolveOrderedQuotaLabel({ name: modalPackage?.name, quotaLabel: selectedQuota })}
+                  </span>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
           {/* 📱 CENTERED MATTE FROSTED WHATSAPP POP-UP MODAL (MANUAL MODE) */}
           {manualWhatsAppModalOpen && manualPopupData && mounted && typeof document !== "undefined" && createPortal(
             <div
@@ -6093,14 +6278,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   ✕
                 </button>
 
-                {/* Metallic Centerpiece & Floating Confetti */}
+                {/* Metallic Centerpiece */}
                 <div style={{ position: "relative", textAlign: "center", padding: "10px 0 8px 0" }}>
-                  {/* Decorative confetti dots */}
-                  <div style={{ position: "absolute", top: "4px", left: "22%", width: "7px", height: "7px", borderRadius: "2px", background: "#6ee7b7", opacity: 0.8, transform: "rotate(25deg)" }} />
-                  <div style={{ position: "absolute", top: "18px", right: "20%", width: "8px", height: "8px", borderRadius: "50%", background: "#7dd3fc", opacity: 0.85 }} />
-                  <div style={{ position: "absolute", bottom: "10px", left: "14%", width: "6px", height: "6px", borderRadius: "1px", background: "#fef08a", opacity: 0.7, transform: "rotate(45deg)" }} />
-                  <div style={{ position: "absolute", bottom: "14px", right: "16%", width: "7px", height: "7px", borderRadius: "2px", background: "#cbd5e1", opacity: 0.75, transform: "rotate(15deg)" }} />
-
                   {/* Brushed Silver Pill Badge */}
                   <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 14px", borderRadius: "999px", background: "linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)", border: "1px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)", marginBottom: "10px" }}>
                     <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#34d399", boxShadow: "0 0 8px #34d399" }} />
@@ -6135,63 +6314,96 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </p>
                 </div>
 
-                {/* Single-Row Bank Transfer Pill */}
+                {/* Bank Transfer Details Card */}
                 <div
                   style={{
-                    margin: "14px 0",
-                    background: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                    borderRadius: "14px",
-                    padding: "10px 14px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "10px"
+                    borderRadius: "18px",
+                    border: "1px solid rgba(255, 255, 255, 0.10)",
+                    backgroundColor: "rgba(255, 255, 255, 0.035)",
+                    padding: "16px",
+                    marginBottom: "14px"
                   }}
                 >
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>
-                        COMMERCIAL BANK
-                      </span>
-                      <span style={{ color: "#334155" }}>•</span>
-                      <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        W DULANGA THIPUL
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                      <span style={{ fontSize: "14px", fontWeight: 800, color: "#34d399", fontFamily: "monospace", letterSpacing: "0.03em" }}>
-                        8029138148
-                      </span>
-                      <span style={{ fontSize: "10px", color: "#64748b" }}>(Yatiyanthota)</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText("8029138148");
-                      setCopiedBankField("acc");
-                      setTimeout(() => setCopiedBankField(null), 2500);
-                    }}
+                  <div
                     style={{
-                      background: copiedBankField === "acc" ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.07)",
-                      border: copiedBankField === "acc" ? "1px solid rgba(52, 211, 153, 0.45)" : "1px solid rgba(255, 255, 255, 0.12)",
-                      color: copiedBankField === "acc" ? "#34d399" : "#e2e8f0",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      padding: "7px 12px",
-                      borderRadius: "10px",
-                      cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: "5px",
-                      flexShrink: 0,
-                      transition: "all 0.2s"
+                      justifyContent: "space-between",
+                      paddingBottom: "12px",
+                      marginBottom: "12px",
+                      borderBottom: "1px solid rgba(255, 255, 255, 0.07)"
                     }}
                   >
-                    {copiedBankField === "acc" ? "✓ Copied" : "📋 Copy"}
-                  </button>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "#94a3b8"
+                      }}
+                    >
+                      Bank Transfer Details
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText("8029138148");
+                        setCopiedAccount(true);
+                        setTimeout(() => setCopiedAccount(false), 2000);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "5px 12px",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(52, 211, 153, 0.3)",
+                        backgroundColor: "rgba(16, 185, 129, 0.12)",
+                        color: "#34d399",
+                        fontSize: "11.5px",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {copiedAccount ? "✓ Copied" : "Copy Account No"}
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "12px"
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "2px" }}>Bank Name</div>
+                      <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#f8fafc" }}>Commercial Bank</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "2px" }}>Branch</div>
+                      <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#f8fafc" }}>Yatiyanthota</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "2px" }}>Account Number</div>
+                      <div
+                        style={{
+                          fontSize: "15px",
+                          fontWeight: 700,
+                          fontFamily: "monospace",
+                          letterSpacing: "0.04em",
+                          color: "#34d399"
+                        }}
+                      >
+                        8029138148
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "2px" }}>Account Holder</div>
+                      <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#f8fafc" }}>W DULANGA THIPUL</div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Compact Frosted Slip Upload Dropzone */}
@@ -6607,6 +6819,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes legionDualSpinClockwise { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes legionDualSpinCounter { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+        @keyframes legionShimmerGlow { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
 
         /* Status Cards 4-in-a-row Parallel Desktop Grid & Mobile Single-Column */
         .status-cards-grid {
