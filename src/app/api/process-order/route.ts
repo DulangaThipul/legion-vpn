@@ -396,12 +396,14 @@ export async function POST(req: Request) {
       } catch {}
     }
 
+    const isRenewal = body.orderType === "renew" || body.isRenewal === true;
+
     // =========================================================================
-    // CRITICAL MANUAL MODE ROUTING:
-    // If Auto-Review is OFF in Admin Panel OR body.orderType === "new" (and !adminTestMode):
-    // STOP IMMEDIATELY before any Groq/Gemini AI OCR call!
+    // RULE A — When !isRenewal (Store New VPN Purchase — orderType === "new"):
+    // ALWAYS process as Manual Mode (regardless of whether systemConfig.autoApproval is true or false, unless adminTestMode === true).
+    // Do NOT call Groq AI OCR and do NOT call 3x-ui.
     // =========================================================================
-    if ((!isAutoReviewEnabled || orderType === "new") && !adminTestMode) {
+    if (!isRenewal && !adminTestMode) {
       const orderId = `ORD-${Date.now()}`;
       const orderRecord = {
         id: orderId,
@@ -437,6 +439,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         success: true,
+        orderType: "new",
         manualMode: true,
         verified: false,
         orderId,
@@ -512,6 +515,16 @@ export async function POST(req: Request) {
       });
     };
 
+    const primaryConfig = getPrimaryConfigFromUser(user, metaData);
+    const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
+    const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
+
+    const effectiveTargetAmount = isRenewal
+      ? (metaData.customRenewalPrice
+          ? Number(metaData.customRenewalPrice)
+          : (parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 724)))
+      : parsedAmount;
+
     let cleanDestAcc = "";
     let cleanExpectedAcc = (systemConfig.expectedBankAccount || "8029138148").replace(/\D/g, "");
     let cleanRefNumber = "";
@@ -529,19 +542,19 @@ export async function POST(req: Request) {
       // Admin Sandbox Mode: Bypass slip upload, OCR, and anti-replay ledger check
       cleanDestAcc = cleanExpectedAcc;
       cleanRefNumber = `ADM-${Date.now().toString().slice(-8)}`;
-      ocrAmount = parsedAmount;
+      ocrAmount = effectiveTargetAmount;
       cleanReceiptUrl = "https://legion.internal/admin-sandbox-test.png";
       ocrResult = {
         bankName: "Commercial Bank (Admin Test)",
         destinationAccount: cleanExpectedAcc,
-        paidAmount: parsedAmount,
+        paidAmount: effectiveTargetAmount,
         transactionDate: new Date().toISOString(),
         referenceNumber: cleanRefNumber,
         isLegitimate: true
       };
     } else {
-      // 3. Check Master Auto-Approval Switch
-      if (!systemConfig.autoApprovalEnabled) {
+      // 3. Check Master Auto-Approval Switch (Bypassed for Renewals — renewals ALWAYS run AI & 3x-ui)
+      if (!isRenewal && !systemConfig.autoApprovalEnabled) {
         return await fallbackToManualVerification("Auto-approval is paused in Admin Settings. Slip routed for manual admin review.", {
           overallStatus: "manual_review",
           reason: "Auto-approval paused by administrator.",
@@ -549,8 +562,8 @@ export async function POST(req: Request) {
             { id: "doc", title: "Document Uploaded", passed: true, statusText: "Uploaded", message: "Deposit slip archived in secure audit vault." },
             { id: "account", title: "Beneficiary Staged", passed: true, statusText: "Staged", expected: systemConfig.expectedBankAccount || "8029138148", message: "Commercial Bank Account 8029138148 queued for admin clearance." },
             { id: "trace", title: "Transaction Trace Staged", passed: true, statusText: "Queued", message: "Reference queued in clearance ledger." },
-            { id: "amount", title: "Settlement Staged", passed: true, statusText: "Queued", expected: parsedAmount, message: `Package tariff Rs. ${parsedAmount} queued.` },
-            { id: "line", title: "Line Reservation", passed: true, statusText: "Reserved", message: "Dedicated 10Gbps Singapore slot reserved for your account." }
+            { id: "amount", title: "Settlement Staged", passed: true, statusText: "Queued", expected: effectiveTargetAmount, message: `Package tariff Rs. ${effectiveTargetAmount} queued.` },
+            { id: "line", title: "Line Reservation", passed: true, statusText: "Reserved", message: "Dedicated Singapore slot reserved for your account." }
           ]
         }, true);
       }
@@ -620,12 +633,12 @@ export async function POST(req: Request) {
               content: [
                 { 
                   type: "text", 
-                  text: `Analyze this bank slip. Expected Account: ${systemConfig.expectedBankAccount || "8029138148"}. Expected Amount: Rs. ${parsedAmount}.
+                  text: `Analyze this bank slip. Expected Account: ${cleanExpectedAcc}. Expected Amount: Rs. ${effectiveTargetAmount}.
 Output STRICT JSON only:
 {
 "bankName": "string",
 "destinationAccount": "string",
-"paidAmount": ${parsedAmount},
+"paidAmount": ${effectiveTargetAmount},
 "transactionDate": "string",
 "referenceNumber": "string",
 "isLegitimate": true
@@ -687,16 +700,6 @@ Output STRICT JSON only:
     cleanExpectedAcc = (systemConfig.expectedBankAccount || "8029138148").replace(/\D/g, "");
     cleanRefNumber = (ocrResult.referenceNumber || "").trim();
     ocrAmount = Number(ocrResult.paidAmount) || 0;
-
-    const primaryConfig = getPrimaryConfigFromUser(user, metaData);
-    const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
-    const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
-
-    const effectiveTargetAmount = orderType === "renew"
-      ? (metaData.customRenewalPrice
-          ? Number(metaData.customRenewalPrice)
-          : (parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 724)))
-      : parsedAmount;
 
     const isAccountMatch = Boolean(!cleanDestAcc || cleanDestAcc.includes(cleanExpectedAcc) || cleanExpectedAcc.includes(cleanDestAcc));
     const isAmountMatch = Boolean(effectiveTargetAmount <= 0 || Math.abs(ocrAmount - effectiveTargetAmount) <= 20);
@@ -782,17 +785,10 @@ Output STRICT JSON only:
   }
 
   // =========================================================================
-  // VPN RENEWAL FLOW (orderType === "renew")
+  // VPN RENEWAL FLOW (orderType === "renew" || isRenewal)
   // Reset used traffic to 0 GB, extend 30 days, set exact quota on Primary Node
   // =========================================================================
-  if (orderType === "renew") {
-    const primaryConfig = getPrimaryConfigFromUser(user, metaData);
-    const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
-    const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
-    const effectiveTargetAmount = metaData.customRenewalPrice
-      ? Number(metaData.customRenewalPrice)
-      : (parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 724));
-
+  if (isRenewal) {
     if (!primaryConfig.vlessUri) {
       return NextResponse.json({
         success: false,
