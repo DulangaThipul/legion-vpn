@@ -692,8 +692,10 @@ Output STRICT JSON only:
     const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
     const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
 
-    const effectiveTargetAmount = orderType === "renew" && parsedAmount <= 0 && vlessInfo.extractedPrice
-      ? vlessInfo.extractedPrice
+    const effectiveTargetAmount = orderType === "renew"
+      ? (metaData.customRenewalPrice
+          ? Number(metaData.customRenewalPrice)
+          : (parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 724)))
       : parsedAmount;
 
     const isAccountMatch = Boolean(!cleanDestAcc || cleanDestAcc.includes(cleanExpectedAcc) || cleanExpectedAcc.includes(cleanDestAcc));
@@ -787,7 +789,9 @@ Output STRICT JSON only:
     const primaryConfig = getPrimaryConfigFromUser(user, metaData);
     const quotaInfo = extractQuotaFromPrimaryConfig(cleanPackageName || primaryConfig.title, metaData.dataTotal);
     const vlessInfo = parsePrimaryVlessUri(primaryConfig.vlessUri, user.email || "");
-    const effectiveTargetAmount = parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 0);
+    const effectiveTargetAmount = metaData.customRenewalPrice
+      ? Number(metaData.customRenewalPrice)
+      : (parsedAmount > 0 ? parsedAmount : (vlessInfo.extractedPrice || 724));
 
     if (!primaryConfig.vlessUri) {
       return NextResponse.json({
