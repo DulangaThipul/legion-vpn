@@ -591,7 +591,10 @@ function UserDetailsPanel({ user, onUpdate }: { user: any; onUpdate: (id: string
     usaDataTotal: "Unlimited",
     usaDataUsed: "0 GB",
     usaLastRecordedUsage: "0 GB",
-    usaPreviousUsage: 0
+    usaPreviousUsage: 0,
+    customRenewalPrice: undefined as number | undefined,
+    expiryTimeMs: undefined as number | undefined,
+    expiryDate: undefined as string | undefined
   };
 
   if (user?.subscriptionLink) {
@@ -914,13 +917,71 @@ function UserDetailsPanel({ user, onUpdate }: { user: any; onUpdate: (id: string
   const expiryDate = safeParseDate(user?.expiryDate);
   const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
 
-  const handleModifyDays = (add: boolean) => {
-    if (!daysAmount || daysAmount <= 0) return;
-    const base = (expiryDate && daysLeft > 0) ? new Date(expiryDate) : new Date();
-    const multiplier = add ? 1 : -1;
-    base.setDate(base.getDate() + (Number(daysAmount) * multiplier));
-    onUpdate(userId, { expiryDate: base.toISOString(), vpnStatus: "Active" });
+  const handleModifyDays = async (add: boolean) => {
+    if (!daysAmount || Number(daysAmount) <= 0) return;
+    const deltaDays = Number(daysAmount) * (add ? 1 : -1);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "adjust-days",
+          userId,
+          deltaDays
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        onUpdate(userId, {
+          expiryDate: data.user.expiryDate,
+          subscriptionLink: data.user.subscriptionLink,
+          vpnStatus: "Active"
+        });
+      } else {
+        const base = (expiryDate && daysLeft > 0) ? new Date(expiryDate) : new Date();
+        base.setDate(base.getDate() + deltaDays);
+        const newExpiryMs = Math.max(Date.now(), base.getTime());
+        const newExpiryDateStr = new Date(newExpiryMs).toISOString().split("T")[0];
+        const updatedMeta = { ...metaData, expiryTimeMs: newExpiryMs, expiryDate: newExpiryDateStr };
+        onUpdate(userId, {
+          expiryDate: new Date(newExpiryMs).toISOString(),
+          subscriptionLink: JSON.stringify(updatedMeta),
+          vpnStatus: "Active"
+        });
+      }
+    } catch {
+      const base = (expiryDate && daysLeft > 0) ? new Date(expiryDate) : new Date();
+      base.setDate(base.getDate() + deltaDays);
+      const newExpiryMs = Math.max(Date.now(), base.getTime());
+      const newExpiryDateStr = new Date(newExpiryMs).toISOString().split("T")[0];
+      const updatedMeta = { ...metaData, expiryTimeMs: newExpiryMs, expiryDate: newExpiryDateStr };
+      onUpdate(userId, {
+        expiryDate: new Date(newExpiryMs).toISOString(),
+        subscriptionLink: JSON.stringify(updatedMeta),
+        vpnStatus: "Active"
+      });
+    }
     setDaysAmount("");
+  };
+
+  // RENEWAL TARIFF OVERRIDE
+  const [renewalPriceOverride, setRenewalPriceOverride] = useState<number | "">(
+    metaData.customRenewalPrice || ""
+  );
+
+  const handleSaveRenewalPrice = () => {
+    const updated = {
+      ...metaData,
+      customRenewalPrice: renewalPriceOverride ? Number(renewalPriceOverride) : undefined
+    };
+    onUpdate(userId, { subscriptionLink: JSON.stringify(updated) });
+  };
+
+  const handleClearRenewalPrice = () => {
+    const updated = { ...metaData };
+    delete updated.customRenewalPrice;
+    setRenewalPriceOverride("");
+    onUpdate(userId, { subscriptionLink: JSON.stringify(updated) });
   };
 
   // LIVE POPUP MESSAGE TO CLIENT (NO EMOJIS - CLEAN TEXT BADGES)
@@ -1611,6 +1672,45 @@ function UserDetailsPanel({ user, onUpdate }: { user: any; onUpdate: (id: string
               - Deduct Days
             </button>
           </div>
+        </div>
+
+        {/* RENEWAL TARIFF OVERRIDE */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", borderTop: "1px dashed rgba(255,255,255,0.08)", paddingTop: "0.8rem" }}>
+          <div>
+            <span style={{ fontSize: "0.8rem", color: "#9ca3af", display: "block", marginBottom: "4px" }}>
+              Renewal Tariff Override (Rs.):
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                type="number"
+                value={renewalPriceOverride}
+                onChange={(e) => setRenewalPriceOverride(e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder={metaData.customRenewalPrice ? String(metaData.customRenewalPrice) : "Default Price"}
+                style={{ width: "130px", padding: "0.6rem 0.8rem", borderRadius: "8px", background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "#FFF", fontSize: "0.85rem", outline: "none" }}
+              />
+              <button
+                type="button"
+                onClick={handleSaveRenewalPrice}
+                style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#FFF", border: "none", borderRadius: "8px", padding: "0.6rem 1rem", fontWeight: "bold", fontSize: "0.82rem", cursor: "pointer" }}
+              >
+                Save Override
+              </button>
+              {metaData.customRenewalPrice && (
+                <button
+                  type="button"
+                  onClick={handleClearRenewalPrice}
+                  style={{ background: "rgba(255,255,255,0.08)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", padding: "0.6rem 0.8rem", fontSize: "0.82rem", cursor: "pointer" }}
+                >
+                  Reset Default
+                </button>
+              )}
+            </div>
+          </div>
+          {metaData.customRenewalPrice && (
+            <span style={{ fontSize: "0.8rem", color: "#34d399", alignSelf: "flex-end", paddingBottom: "6px" }}>
+              Active Client Override: <strong>Rs. {metaData.customRenewalPrice}</strong>
+            </span>
+          )}
         </div>
       </div>
 
