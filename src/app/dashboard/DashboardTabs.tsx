@@ -632,7 +632,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       isRenewUnlocked: false,
       renewPopupMessage: "ඔබගේ පැකේජය අලුත් කිරීමට (Renew) දැනට අවසර ලබා දී නොමැත. කරුණාකර Admin අමතන්න.",
       forceShowGuide: undefined as boolean | undefined,
-      expiryDate: undefined as string | undefined
+      expiryDate: undefined as string | undefined,
+      expiryTimeMs: undefined as number | undefined,
+      customRenewalPrice: undefined as number | undefined
     };
     if (user?.subscriptionLink) {
       try {
@@ -989,6 +991,37 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     return parsePrimaryVlessUri(primaryConfigUri, user?.email || "");
   }, [primaryConfigUri, user?.email]);
 
+  const liveRenewalPrice = useMemo(() => {
+    if (metaData?.customRenewalPrice && Number(metaData.customRenewalPrice) > 0) {
+      return Number(metaData.customRenewalPrice);
+    }
+    const cleanTitle = (primaryConfigTitle || "").toLowerCase();
+    if (systemConfig?.packagePrices && typeof systemConfig.packagePrices === "object") {
+      for (const [key, price] of Object.entries(systemConfig.packagePrices)) {
+        if (cleanTitle.includes(key.toLowerCase()) && Number(price) > 0) return Number(price);
+      }
+    }
+    const matchedPackage = ALL_PACKAGES.find(p => {
+      const pName = p.name.toLowerCase();
+      const pId = p.id.toLowerCase();
+      return cleanTitle.includes(pName) || cleanTitle.includes(pId) || pName.includes(cleanTitle);
+    });
+    if (matchedPackage) {
+      const quotaStr = primaryQuotaInfo.displayQuota;
+      const isRouter = matchedPackage.type === "router";
+      const quotaMap = isRouter ? ROUTER_CONFIG_PRICES : MOBILE_CONFIG_PRICES;
+      for (const [qKey, qPrice] of Object.entries(quotaMap)) {
+        if (qKey.toLowerCase().includes(quotaStr.toLowerCase())) return qPrice;
+      }
+      const matchDigits = matchedPackage.ispPrice.match(/(\d+)/);
+      if (matchDigits) return Number(matchDigits[1]);
+    }
+    if (primaryVlessInfo.extractedPrice && primaryVlessInfo.extractedPrice > 0) {
+      return primaryVlessInfo.extractedPrice;
+    }
+    return 724;
+  }, [metaData?.customRenewalPrice, primaryConfigTitle, systemConfig?.packagePrices, primaryQuotaInfo.displayQuota, primaryVlessInfo.extractedPrice]);
+
   const validSubscriptionUrl = useMemo(() => {
     if (metaData.subscriptionUrl && typeof metaData.subscriptionUrl === "string" && metaData.subscriptionUrl.startsWith("http")) {
       return metaData.subscriptionUrl.trim();
@@ -1029,11 +1062,27 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const safeName = user?.name || "Premium User";
   const safeEmail = user?.email || "";
   
-  const now = new Date().getTime();
-  const rawExpiryDate = liveExpiryDate || user?.expiryDate || metaData?.expiryDate;
-  const expiry = rawExpiryDate ? new Date(rawExpiryDate).getTime() : null;
-  const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 3600 * 24)) : null;
-  const isExpired = daysLeft !== null && daysLeft <= 0;
+  const expiryTimestamp = useMemo(() => {
+    if (metaData?.expiryTimeMs && Number(metaData.expiryTimeMs) > 0) {
+      return Number(metaData.expiryTimeMs);
+    }
+    const raw = liveExpiryDate || user?.expiryDate || metaData?.expiryDate;
+    if (!raw) return 0;
+    if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) {
+      return new Date(`${raw.trim()}T23:59:59`).getTime();
+    }
+    const t = new Date(raw).getTime();
+    return isNaN(t) ? 0 : t;
+  }, [metaData?.expiryTimeMs, liveExpiryDate, user?.expiryDate, metaData?.expiryDate]);
+
+  const remainingDays = useMemo(() => {
+    if (!expiryTimestamp) return null;
+    if (expiryTimestamp <= Date.now()) return 0;
+    return Math.max(1, Math.ceil((expiryTimestamp - Date.now()) / (1000 * 3600 * 24)));
+  }, [expiryTimestamp]);
+
+  const isExpired = remainingDays !== null && remainingDays === 0;
+  const daysLeft = remainingDays;
 
   // 🎨 EXPIRES IN CARD DYNAMIC COLOR:
   // - Days left < 5 or expired: Red (#dc2626)
@@ -2011,7 +2060,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       setIsRenewing(false);
 
-      const targetAmount = primaryVlessInfo.extractedPrice || 0;
+      const targetAmount = liveRenewalPrice;
 
       const processRes = await fetch("/api/process-order", {
         method: "POST",
@@ -2074,7 +2123,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
       }
     } catch {
       clearInterval(stageTimer);
-      const targetAmount = primaryVlessInfo.extractedPrice || 0;
+      const targetAmount = liveRenewalPrice;
       setLaborResult({
         success: true,
         autoApproved: false,
@@ -2121,7 +2170,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const startTime = Date.now();
 
     try {
-      const targetAmount = primaryVlessInfo.extractedPrice || 0;
+      const targetAmount = liveRenewalPrice;
 
       const processRes = await fetch("/api/process-order", {
         method: "POST",
@@ -3499,7 +3548,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         <span>{daysLeft === null ? "Unlimited" : isExpired ? "Expired" : `${daysLeft} Days`}</span>
                       </h2>
                       <p className="status-card-sub">
-                        {(user?.expiryDate || metaData.expiryDate) ? new Date(user?.expiryDate || metaData.expiryDate).toLocaleDateString() : "Unlimited Plan"}
+                        {expiryTimestamp > 0 ? new Date(expiryTimestamp).toLocaleDateString() : "Unlimited Plan"}
                       </p>
                     </div>
 
@@ -5970,7 +6019,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             document.body
           )}
 
-          {/* 🔐 VPN RENEW CUSTOM POPUP MODAL (MATTE FROSTED LUXURY OBSIDIAN & EMERALD) */}
+          {/* 🔐 VPN RENEW CUSTOM POPUP MODAL (MODERN FINTECH METALLIC & MINT-LIME FROSTED GLASS) */}
           {renewModalOpen && mounted && createPortal(
             <div
               style={{
@@ -5979,9 +6028,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.8)",
-                backdropFilter: "blur(14px)",
-                WebkitBackdropFilter: "blur(14px)",
+                backgroundColor: "rgba(3, 7, 18, 0.78)",
+                backdropFilter: "blur(22px)",
+                WebkitBackdropFilter: "blur(22px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -5999,196 +6048,154 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                 className="legion-matte-scroll"
                 style={{
                   width: "100%",
-                  maxWidth: "520px",
-                  maxHeight: "90vh",
+                  maxWidth: "460px",
+                  maxHeight: "92vh",
                   overflowY: "auto",
-                  backgroundColor: "rgba(10, 14, 26, 0.98)",
-                  border: "1px solid rgba(52, 211, 153, 0.35)",
-                  borderRadius: "24px",
-                  boxShadow: "0 25px 65px -10px rgba(0, 0, 0, 0.95), 0 0 45px rgba(16, 185, 129, 0.15)",
-                  padding: "24px",
+                  backgroundColor: "rgba(10, 15, 29, 0.94)",
+                  border: "1px solid rgba(110, 231, 183, 0.28)",
+                  borderRadius: "28px",
+                  boxShadow: "0 30px 80px -15px rgba(0, 0, 0, 0.95), 0 0 50px rgba(110, 231, 183, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+                  padding: "24px 22px 20px 22px",
                   color: "#ffffff",
                   position: "relative",
                   boxSizing: "border-box"
                 }}
               >
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "18px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div
-                      style={{
-                        width: "44px",
-                        height: "44px",
-                        borderRadius: "14px",
-                        backgroundColor: "rgba(16, 185, 129, 0.15)",
-                        border: "1px solid rgba(52, 211, 153, 0.4)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#34d399",
-                        boxShadow: "0 0 20px rgba(16, 185, 129, 0.25)"
-                      }}
-                    >
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                      </svg>
+                {/* Drag Indicator Bar */}
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
+                  <div style={{ width: "38px", height: "4px", borderRadius: "999px", background: "rgba(255, 255, 255, 0.2)" }} />
+                </div>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isRenewing) setRenewModalOpen(false);
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: "18px",
+                    right: "18px",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    borderRadius: "50%",
+                    width: "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#94a3b8",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  ✕
+                </button>
+
+                {/* Metallic Centerpiece & Floating Confetti */}
+                <div style={{ position: "relative", textAlign: "center", padding: "10px 0 8px 0" }}>
+                  {/* Decorative confetti dots */}
+                  <div style={{ position: "absolute", top: "4px", left: "22%", width: "7px", height: "7px", borderRadius: "2px", background: "#6ee7b7", opacity: 0.8, transform: "rotate(25deg)" }} />
+                  <div style={{ position: "absolute", top: "18px", right: "20%", width: "8px", height: "8px", borderRadius: "50%", background: "#7dd3fc", opacity: 0.85 }} />
+                  <div style={{ position: "absolute", bottom: "10px", left: "14%", width: "6px", height: "6px", borderRadius: "1px", background: "#fef08a", opacity: 0.7, transform: "rotate(45deg)" }} />
+                  <div style={{ position: "absolute", bottom: "14px", right: "16%", width: "7px", height: "7px", borderRadius: "2px", background: "#cbd5e1", opacity: 0.75, transform: "rotate(15deg)" }} />
+
+                  {/* Brushed Silver Pill Badge */}
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 14px", borderRadius: "999px", background: "linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)", border: "1px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)", marginBottom: "10px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#34d399", boxShadow: "0 0 8px #34d399" }} />
+                    <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#e2e8f0" }}>
+                      30 DAYS • FULL {primaryQuotaInfo.displayQuota.toUpperCase()} RESET
+                    </span>
+                  </div>
+
+                  {/* Giant 3D Metallic Price Typography */}
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "6px", margin: "4px 0 6px 0" }}>
+                    <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "#94a3b8" }}>Rs.</span>
+                    <span style={{
+                      fontSize: "3.2rem",
+                      fontWeight: 900,
+                      lineHeight: 1,
+                      letterSpacing: "-0.03em",
+                      background: "linear-gradient(180deg, #ffffff 0%, #cbd5e1 55%, #64748b 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      textShadow: "0 10px 30px rgba(0,0,0,0.5)"
+                    }}>
+                      {liveRenewalPrice}
+                    </span>
+                  </div>
+
+                  {/* Title & Subtitle */}
+                  <h3 style={{ margin: "4px 0 2px 0", fontSize: "1.15rem", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.01em" }}>
+                    Renew Your VPN
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "#94a3b8", lineHeight: 1.4 }}>
+                    Reset used traffic to 0 GB and extend <strong style={{ color: "#e2e8f0" }}>{primaryConfigTitle}</strong> for 30 days.
+                  </p>
+                </div>
+
+                {/* Single-Row Bank Transfer Pill */}
+                <div
+                  style={{
+                    margin: "14px 0",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "14px",
+                    padding: "10px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "10px"
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>
+                        COMMERCIAL BANK
+                      </span>
+                      <span style={{ color: "#334155" }}>•</span>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        W DULANGA THIPUL
+                      </span>
                     </div>
-                    <div>
-                      <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.01em" }}>
-                        Renew VPN Service
-                      </h2>
-                      <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>
-                        Reset used traffic to 0 GB &amp; extend validity by 30 days
-                      </p>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                      <span style={{ fontSize: "14px", fontWeight: 800, color: "#34d399", fontFamily: "monospace", letterSpacing: "0.03em" }}>
+                        8029138148
+                      </span>
+                      <span style={{ fontSize: "10px", color: "#64748b" }}>(Yatiyanthota)</span>
                     </div>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => {
-                      if (!isRenewing) {
-                        setRenewModalOpen(false);
-                      }
+                      navigator.clipboard.writeText("8029138148");
+                      setCopiedBankField("acc");
+                      setTimeout(() => setCopiedBankField(null), 2500);
                     }}
                     style={{
-                      background: "rgba(255, 255, 255, 0.06)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      background: copiedBankField === "acc" ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.07)",
+                      border: copiedBankField === "acc" ? "1px solid rgba(52, 211, 153, 0.45)" : "1px solid rgba(255, 255, 255, 0.12)",
+                      color: copiedBankField === "acc" ? "#34d399" : "#e2e8f0",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "7px 12px",
                       borderRadius: "10px",
-                      width: "32px",
-                      height: "32px",
+                      cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      color: "#94a3b8",
-                      cursor: "pointer",
-                      fontSize: "14px",
+                      gap: "5px",
+                      flexShrink: 0,
                       transition: "all 0.2s"
                     }}
                   >
-                    ✕
+                    {copiedBankField === "acc" ? "✓ Copied" : "📋 Copy"}
                   </button>
                 </div>
 
-                {/* Config #1 Detected Summary Badge */}
-                <div
-                  style={{
-                    backgroundColor: "rgba(16, 185, 129, 0.06)",
-                    border: "1px solid rgba(52, 211, 153, 0.2)",
-                    borderRadius: "16px",
-                    padding: "16px",
-                    marginBottom: "16px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#34d399" }}>
-                      Target Line: Config #1 (Primary Node)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        backgroundColor: "rgba(52, 211, 153, 0.15)",
-                        color: "#34d399",
-                        padding: "3px 8px",
-                        borderRadius: "20px",
-                        border: "1px solid rgba(52, 211, 153, 0.3)"
-                      }}
-                    >
-                      30-Day Cycle
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "13px", color: "#94a3b8" }}>Configuration:</span>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", textAlign: "right" }}>
-                      {primaryConfigTitle}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "13px", color: "#94a3b8" }}>Traffic Reset:</span>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#34d399", textAlign: "right" }}>
-                      Used Data → 0 GB ({primaryQuotaInfo.displayQuota} Restored)
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "13px", color: "#94a3b8" }}>Validity Extension:</span>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#60a5fa", textAlign: "right" }}>
-                      +30 Days from Renewal
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", paddingTop: "8px", borderTop: "1px dashed rgba(255, 255, 255, 0.1)" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#cbd5e1" }}>Package Tariff:</span>
-                    <span style={{ fontSize: "15px", fontWeight: 800, color: "#fbbf24" }}>
-                      Rs. {primaryVlessInfo.extractedPrice || 724}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bank Account Details */}
-                <div
-                  style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                    borderRadius: "16px",
-                    padding: "14px 16px",
-                    marginBottom: "16px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Bank Transfer Information
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText("8029138148");
-                        setCopiedBankField("acc");
-                        setTimeout(() => setCopiedBankField(null), 2500);
-                      }}
-                      style={{
-                        background: copiedBankField === "acc" ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.06)",
-                        border: copiedBankField === "acc" ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
-                        color: copiedBankField === "acc" ? "#34d399" : "#cbd5e1",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        padding: "3px 8px",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      {copiedBankField === "acc" ? "✓ Copied!" : "📋 Copy Account"}
-                    </button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Bank: </span>
-                      <span style={{ color: "#ffffff", fontWeight: 600 }}>Commercial Bank</span>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Account: </span>
-                      <span style={{ color: "#34d399", fontWeight: 700, fontFamily: "monospace", fontSize: "13px" }}>8029138148</span>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Name: </span>
-                      <span style={{ color: "#ffffff", fontWeight: 500 }}>W DULANGA THIPUL</span>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Branch: </span>
-                      <span style={{ color: "#ffffff", fontWeight: 500 }}>Yatiyanthota</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Slip Upload Box */}
-                <div style={{ marginBottom: "18px" }}>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
-                    Upload Bank Transfer / Deposit Slip
-                  </label>
+                {/* Compact Frosted Slip Upload Dropzone */}
+                <div style={{ marginBottom: "16px" }}>
                   <input
                     type="file"
                     accept="image/*"
@@ -6197,63 +6204,70 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     disabled={isRenewing}
                     onChange={(e) => handleRenewSlipChange(e.target.files?.[0] || null)}
                   />
+
                   {renewSlipPreview ? (
                     <div
                       style={{
-                        border: "1px solid rgba(52, 211, 153, 0.4)",
+                        border: "1px solid rgba(110, 231, 183, 0.35)",
                         borderRadius: "14px",
-                        padding: "12px",
+                        padding: "10px 12px",
                         backgroundColor: "rgba(16, 185, 129, 0.05)",
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
+                        justifyContent: "space-between",
                         gap: "10px"
                       }}
                     >
-                      <img
-                        src={renewSlipPreview}
-                        alt="Slip Preview"
-                        style={{
-                          maxHeight: "150px",
-                          maxWidth: "100%",
-                          borderRadius: "8px",
-                          objectFit: "contain",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.4)"
-                        }}
-                      />
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: "8px" }}>
-                        <span style={{ fontSize: "12px", color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          📄 {renewSlipFile?.name}
-                        </span>
-                        <label
-                          htmlFor="renew-slip-upload"
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                        <img
+                          src={renewSlipPreview}
+                          alt="Slip Preview"
                           style={{
-                            background: "rgba(255, 255, 255, 0.08)",
-                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            width: "42px",
+                            height: "42px",
                             borderRadius: "8px",
-                            padding: "4px 10px",
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            color: "#ffffff",
-                            cursor: "pointer"
+                            objectFit: "cover",
+                            border: "1px solid rgba(255,255,255,0.15)"
                           }}
-                        >
-                          Change
-                        </label>
+                        />
+                        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {renewSlipFile?.name}
+                          </span>
+                          <span style={{ fontSize: "11px", color: "#34d399" }}>
+                            ✓ Slip Attached ({Math.round(((renewSlipFile?.size || 0) / 1024))} KB)
+                          </span>
+                        </div>
                       </div>
+
+                      <label
+                        htmlFor="renew-slip-upload"
+                        style={{
+                          background: "rgba(255, 255, 255, 0.08)",
+                          border: "1px solid rgba(255, 255, 255, 0.15)",
+                          borderRadius: "8px",
+                          padding: "6px 12px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          color: "#ffffff",
+                          cursor: "pointer",
+                          flexShrink: 0
+                        }}
+                      >
+                        Change
+                      </label>
                     </div>
                   ) : (
                     <label
                       htmlFor="renew-slip-upload"
                       style={{
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: "8px",
+                        gap: "10px",
                         border: "1.5px dashed rgba(255, 255, 255, 0.18)",
                         borderRadius: "14px",
-                        padding: "24px 16px",
+                        padding: "16px 14px",
                         backgroundColor: "rgba(255, 255, 255, 0.02)",
                         cursor: isRenewing ? "not-allowed" : "pointer",
                         transition: "all 0.2s"
@@ -6261,35 +6275,36 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     >
                       <div
                         style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "10px",
-                          backgroundColor: "rgba(99, 102, 241, 0.15)",
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "8px",
+                          backgroundColor: "rgba(110, 231, 183, 0.15)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#818cf8"
+                          color: "#6ee7b7",
+                          flexShrink: 0
                         }}
                       >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                           <polyline points="17 8 12 3 7 8"/>
                           <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                       </div>
-                      <div style={{ textAlign: "center" }}>
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#818cf8", display: "block" }}>
-                          Click to upload deposit slip
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#e2e8f0" }}>
+                          Upload Bank Transfer Slip
                         </span>
-                        <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", display: "block" }}>
-                          JPG, PNG or WebP screenshot showing Commercial Bank transfer
+                        <span style={{ fontSize: "10.5px", color: "#64748b" }}>
+                          JPG, PNG or PDF showing payment of Rs. {liveRenewalPrice}
                         </span>
                       </div>
                     </label>
                   )}
                 </div>
 
-                {/* Submit & Action Buttons */}
+                {/* Primary Mint-to-Lime Pill Button */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   <button
                     type="button"
@@ -6297,17 +6312,20 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                     disabled={!renewSlipFile || isRenewing}
                     style={{
                       width: "100%",
-                      padding: "14px",
-                      borderRadius: "14px",
+                      padding: "15px",
+                      borderRadius: "16px",
                       border: "none",
                       background: renewSlipFile
-                        ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                        ? "linear-gradient(90deg, #e0f2fe 0%, #a7f3d0 45%, #bef264 100%)"
                         : "rgba(255, 255, 255, 0.08)",
-                      color: renewSlipFile ? "#ffffff" : "#64748b",
-                      fontWeight: 700,
+                      color: renewSlipFile ? "#064e3b" : "#64748b",
+                      fontWeight: 800,
                       fontSize: "14px",
+                      letterSpacing: "0.01em",
                       cursor: renewSlipFile && !isRenewing ? "pointer" : "not-allowed",
-                      boxShadow: renewSlipFile ? "0 8px 24px rgba(16, 185, 129, 0.35)" : "none",
+                      boxShadow: renewSlipFile
+                        ? "0 10px 30px -5px rgba(167, 243, 208, 0.45), 0 0 20px rgba(190, 242, 100, 0.3)"
+                        : "none",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -6315,11 +6333,11 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       transition: "all 0.2s"
                     }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                       <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    <span>{isRenewing ? "Uploading & Verifying..." : "Submit Slip & Renew VPN"}</span>
+                    <span>{isRenewing ? "Uploading & Verifying..." : "Verify Slip & Renew Now"}</span>
                   </button>
 
                   {/* Admin Sandbox Test Button */}
@@ -6330,13 +6348,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                       disabled={isRenewing}
                       style={{
                         width: "100%",
-                        padding: "12px",
-                        borderRadius: "14px",
-                        border: "1px dashed rgba(245, 158, 11, 0.5)",
-                        background: "linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(180, 83, 9, 0.08) 100%)",
+                        padding: "10px",
+                        borderRadius: "12px",
+                        border: "1px dashed rgba(245, 158, 11, 0.4)",
+                        background: "rgba(245, 158, 11, 0.06)",
                         color: "#fbbf24",
                         fontWeight: 600,
-                        fontSize: "12px",
+                        fontSize: "11.5px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
@@ -6352,18 +6370,16 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!isRenewing) {
-                        setRenewModalOpen(false);
-                      }
+                      if (!isRenewing) setRenewModalOpen(false);
                     }}
                     style={{
                       width: "100%",
-                      padding: "11px",
+                      padding: "10px",
                       borderRadius: "12px",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
-                      background: "rgba(255, 255, 255, 0.03)",
+                      border: "1px solid rgba(255, 255, 255, 0.06)",
+                      background: "transparent",
                       color: "#94a3b8",
-                      fontSize: "13px",
+                      fontSize: "12px",
                       fontWeight: 500,
                       cursor: "pointer"
                     }}
