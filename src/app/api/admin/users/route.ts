@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getGlobalSystemConfig, createXuiClient } from "@/lib/systemConfig";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,13 @@ export async function POST(req: Request) {
     }
 
     const payload = await verifyJwt(sessionCookie.value);
-    if (!payload || !payload.id || payload.email !== "dulangathipul@gmail.com") {
+    const email = (typeof payload?.email === "string" ? payload.email : "").toLowerCase();
+    const adminEmailEnv = (process.env.ADMIN_EMAIL || "").toLowerCase();
+    const isAdmin = email === "dulangathipul@gmail.com" || 
+                    email === "legionzinfo@gmail.com" || 
+                    (Boolean(adminEmailEnv) && email === adminEmailEnv);
+
+    if (!payload || !payload.id || !isAdmin) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 
@@ -105,6 +112,105 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, user: updatedUser });
     }
 
+    // 5. Adjust Days & Validity
+    if (action === "adjust-days") {
+      const targetUser = await prisma.user.findUnique({
+        where: { id: effectiveTargetId }
+      });
+
+      if (!targetUser) {
+        return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+      }
+
+      let existingMeta: any = {};
+      try {
+        if (targetUser.subscriptionLink) existingMeta = JSON.parse(targetUser.subscriptionLink);
+      } catch {}
+
+      const now = Date.now();
+      let baseExpiryMs = Number(existingMeta.expiryTimeMs) || 0;
+      if (!baseExpiryMs && existingMeta.expiryDate) {
+        baseExpiryMs = new Date(`${existingMeta.expiryDate}T23:59:59`).getTime();
+      }
+      if (!baseExpiryMs && targetUser.expiryDate) {
+        baseExpiryMs = new Date(targetUser.expiryDate).getTime();
+      }
+      if (!baseExpiryMs || baseExpiryMs < now) {
+        baseExpiryMs = now;
+      }
+
+      const deltaDays = Number(body.deltaDays ?? data.deltaDays ?? 0);
+      const newExpiryMs = Math.max(now, baseExpiryMs + deltaDays * 86400000);
+      const newExpiryDateStr = new Date(newExpiryMs).toISOString().split("T")[0];
+      const newExpiryIso = new Date(newExpiryMs).toISOString();
+
+      const updatedMeta = {
+        ...existingMeta,
+        expiryTimeMs: newExpiryMs,
+        expiryDate: newExpiryDateStr,
+        accountStatus: "Active"
+      };
+
+      // Also update client's expiry in 3x-ui if active
+      try {
+        const clientUuid = existingMeta.vpnUuid || existingMeta.customVpnUserId;
+        const systemConfig = await getGlobalSystemConfig();
+        if (clientUuid && systemConfig.primary3xui.baseUrl && systemConfig.primary3xui.username) {
+          const xui = createXuiClient(systemConfig.primary3xui);
+          await xui.login(true);
+          const inboundsRes = await xui.getInbounds().catch(() => null);
+          const inbounds = Array.isArray(inboundsRes?.obj) ? inboundsRes.obj : [];
+          for (const ib of inbounds) {
+            let clients: any[] = [];
+            try {
+              if (ib.settings) {
+                const s = typeof ib.settings === "string" ? JSON.parse(ib.settings) : ib.settings;
+                clients = Array.isArray(s.clients) ? s.clients : [];
+              }
+            } catch {}
+            const matchedClient = clients.find((c: any) => c.id === clientUuid || (targetUser.email && c.email?.toLowerCase().includes(targetUser.email.toLowerCase())));
+            if (matchedClient) {
+              await xui.updateClient(String(matchedClient.id), {
+                id: Number(ib.id),
+                settings: JSON.stringify({
+                  clients: [{
+                    ...matchedClient,
+                    expiryTime: newExpiryMs,
+                    enable: true
+                  }]
+                })
+              }).catch(async () => {
+                await xui.updateModernClient(String(matchedClient.email), {
+                  ...matchedClient,
+                  expiryTime: newExpiryMs,
+                  enable: true
+                }).catch(() => null);
+              });
+              break;
+            }
+          }
+        }
+      } catch (xuiSyncErr) {
+        console.warn("3x-ui expiry sync error (non-fatal):", xuiSyncErr);
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: effectiveTargetId },
+        data: {
+          vpnStatus: "Active",
+          expiryDate: newExpiryIso,
+          subscriptionLink: JSON.stringify(updatedMeta)
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        expiryTimeMs: newExpiryMs,
+        expiryDate: newExpiryDateStr,
+        user: updatedUser
+      });
+    }
+
     return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
   } catch (error: any) {
     console.error("Error in /api/admin/users:", error);
@@ -121,7 +227,13 @@ export async function GET() {
     }
 
     const payload = await verifyJwt(sessionCookie.value);
-    if (!payload || !payload.id || payload.email !== "dulangathipul@gmail.com") {
+    const email = (typeof payload?.email === "string" ? payload.email : "").toLowerCase();
+    const adminEmailEnv = (process.env.ADMIN_EMAIL || "").toLowerCase();
+    const isAdmin = email === "dulangathipul@gmail.com" || 
+                    email === "legionzinfo@gmail.com" || 
+                    (Boolean(adminEmailEnv) && email === adminEmailEnv);
+
+    if (!payload || !payload.id || !isAdmin) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 
