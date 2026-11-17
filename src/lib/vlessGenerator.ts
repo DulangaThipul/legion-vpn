@@ -199,6 +199,28 @@ export function generateOrderConfigs(options: {
   return slots;
 }
 
+export function resolveOrderedQuotaLabel(pkg?: any, selectedTier?: any): string {
+  const rawText = `${selectedTier?.name || ""} ${selectedTier?.quota || ""} ${pkg?.quotaLabel || ""} ${pkg?.name || ""}`;
+  if (/unlimited/i.test(rawText)) return "Unlimited";
+  const match = rawText.match(/(\d+)\s*gb/i);
+  if (match && match[1]) return `${match[1]}GB`;
+  if (pkg?.quotaGb && Number(pkg.quotaGb) > 0) return `${pkg.quotaGb}GB`;
+  return "100GB";
+}
+
+export function formatPackageTitleWithQuota(baseName: string, quotaLabel?: string, selectedTier?: any): string {
+  let cleanName = (baseName || "VPN Plan")
+    .replace(/^📦\s*/, "")
+    .replace(/[\[\]]/g, "")
+    .replace(/\s*\(?(?:10\s*gbps|high-speed)?\s*core\)?/gi, "")
+    .replace(/\s*\((?:\d+\s*gb|unlimited)\)/gi, "")
+    .replace(/\s*(?:unlimited|\d+\s*gb)\s*$/i, "")
+    .trim();
+
+  const resolvedQuota = resolveOrderedQuotaLabel({ name: cleanName, quotaLabel }, selectedTier);
+  return `${cleanName} (${resolvedQuota})`;
+}
+
 /**
  * Extracts quota from Primary Config #1 title (e.g. "Dialog Zoom (200GB)" -> 200 GB, "Airtel Unlimited" -> Unlimited)
  */
