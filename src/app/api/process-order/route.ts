@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGlobalSystemConfig, updateGlobalSystemConfig, createXuiClient } from "@/lib/systemConfig";
-import { PACKAGE_ISP_PRICES, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri } from "@/lib/vlessGenerator";
+import { PACKAGE_ISP_PRICES, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri, resolveOrderedQuotaLabel, formatPackageTitleWithQuota } from "@/lib/vlessGenerator";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -364,6 +364,11 @@ export async function POST(req: Request) {
 
     // 2. Load Global System Configuration
     const systemConfig = await getGlobalSystemConfig();
+    const isAutoReviewEnabled = systemConfig.autoApproval === true || systemConfig.autoApprovalEnabled === true;
+
+    // Resolve exact ordered quota label and formatted package display title (e.g. "Airtel YouTube (100GB)")
+    const orderedQuotaLabel = resolveOrderedQuotaLabel({ name: cleanPackageName, quotaLabel: cleanQuotaLabel });
+    const formattedPackageWithGb = formatPackageTitleWithQuota(cleanPackageName, orderedQuotaLabel);
 
     const userEmail = (user.email || "").toLowerCase();
     const adminEmailEnv = (process.env.ADMIN_EMAIL || "").toLowerCase();
@@ -389,6 +394,61 @@ export async function POST(req: Request) {
       try {
         metaData = { ...metaData, ...JSON.parse(user.subscriptionLink) };
       } catch {}
+    }
+
+    // =========================================================================
+    // CRITICAL MANUAL MODE ROUTING:
+    // If Auto-Review is OFF in Admin Panel OR body.orderType === "new" (and !adminTestMode):
+    // STOP IMMEDIATELY before any Groq/Gemini AI OCR call!
+    // =========================================================================
+    if ((!isAutoReviewEnabled || orderType === "new") && !adminTestMode) {
+      const orderId = `ORD-${Date.now()}`;
+      const orderRecord = {
+        id: orderId,
+        orderId,
+        packageId: packageId || "custom",
+        package: formattedPackageWithGb,
+        packageName: formattedPackageWithGb,
+        quotaLabel: orderedQuotaLabel,
+        amount: parsedAmount,
+        receipt: cleanReceiptUrl,
+        receiptUrl: cleanReceiptUrl,
+        status: "Pending Admin Review",
+        date: new Date().toISOString(),
+        verificationNote: "Order submitted. Awaiting manual admin WhatsApp clearance."
+      };
+
+      const updatedPending = [...(metaData.pendingOrders || []), orderRecord];
+      const updatedPayments = [orderRecord, ...(Array.isArray(metaData.payments) ? metaData.payments : [])];
+
+      const updatedMeta = {
+        ...metaData,
+        pendingOrders: updatedPending,
+        payments: updatedPayments
+      };
+
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          subscriptionLink: JSON.stringify(updatedMeta),
+          vpnStatus: user.vpnStatus === "Active" ? "Active" : "Pending"
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        manualMode: true,
+        verified: false,
+        orderId,
+        packageName: formattedPackageWithGb,
+        quotaLabel: orderedQuotaLabel,
+        amount: parsedAmount,
+        slipUrl: cleanReceiptUrl,
+        adminWhatsapp: systemConfig.adminWhatsapp || "94701234567",
+        message: "Receipt uploaded successfully! Please inform the Admin via WhatsApp now so your V2Ray configuration can be activated immediately.",
+        order: orderRecord,
+        user: updatedUser
+      });
     }
 
     const fallbackToManualVerification = async (reason: string, auditReport?: any, isManualMode = false) => {
@@ -1059,7 +1119,7 @@ Output STRICT JSON only:
 
     const realSubscriptionUrl = provisionResult.subscriptionUrl;
     const realVlessKey = provisionResult.vlessKey;
-    const formattedConfigKey = `[ ${cleanPackageName} 10Gbps Core ]\n${realVlessKey}`;
+    const formattedConfigKey = `[ ${formattedPackageWithGb} ]\n${realVlessKey}`;
 
     // Optional Bonus USA Node Provisioning (if enabled)
     let generatedUsaSubUrl: string | undefined = undefined;
@@ -1083,9 +1143,9 @@ Output STRICT JSON only:
       id: cleanRefNumber,
       refNumber: cleanRefNumber,
       packageId: packageId || "custom",
-      package: `${cleanPackageName} (${cleanQuotaLabel})`,
-      packageName: cleanPackageName,
-      quotaLabel: cleanQuotaLabel,
+      package: formattedPackageWithGb,
+      packageName: formattedPackageWithGb,
+      quotaLabel: orderedQuotaLabel,
       amount: parsedAmount || ocrAmount,
       receipt: cleanReceiptUrl || "ADMIN_SANDBOX_TEST",
       receiptUrl: cleanReceiptUrl || "ADMIN_SANDBOX_TEST",
@@ -1205,7 +1265,7 @@ Output STRICT JSON only:
       vlessKey: realVlessKey,
       configs: [
         {
-          name: `${cleanPackageName} High-Speed Core`,
+          name: formattedPackageWithGb,
           code: realVlessKey
         }
       ],
