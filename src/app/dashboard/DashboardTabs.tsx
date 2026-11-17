@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateUserAvatar, submitClientPaymentOrder, sendClientHeartbeat } from "@/lib/authActions";
-import { extractQuotaFromPrimaryConfig, parsePrimaryVlessUri } from "@/lib/vlessGenerator";
+import { extractQuotaFromPrimaryConfig, parsePrimaryVlessUri, resolveOrderedQuotaLabel, formatPackageTitleWithQuota } from "@/lib/vlessGenerator";
 import DashboardMatrix from "@/components/DashboardMatrix";
 
 const AVAILABLE_AVATARS = Array.from({ length: 9 }, (_, i) => `/avatars/avatar${i + 1}.gif`);
@@ -514,6 +514,14 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   const [isRenewing, setIsRenewing] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [systemConfig, setSystemConfig] = useState<any>(null);
+  const [manualWhatsAppModalOpen, setManualWhatsAppModalOpen] = useState(false);
+  const [manualPopupData, setManualPopupData] = useState<{
+    orderId: string;
+    packageName: string;
+    quotaLabel: string;
+    amount: number;
+    slipUrl?: string;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -960,7 +968,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     let parsed = parseConfigs(user?.vpnConfigKey);
     if (parsed.length === 0 && metaData.vlessConfig && typeof metaData.vlessConfig === "string" && metaData.vlessConfig.startsWith("vless://")) {
       parsed = [{
-        name: "LEGION High-Speed Core",
+        name: metaData.vlessConfigTitle || "Dialog Zoom (200GB)",
         code: metaData.vlessConfig.trim()
       }];
     }
@@ -1703,23 +1711,15 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     setSelectedQuota(null);
   };
 
-  // CLOUDINARY UPLOAD & CYBER LABOR ILLUSION OCR ENGINE
+  // STORE CHECKOUT ORDER SUBMISSION HANDLER
   const handleConfirmOrder = async () => {
     if (!slipFile) return;
     setIsUploading(true);
-    setLaborModalOpen(true);
-    setLaborStage(0);
-    setLaborResult(null);
 
-    let stageIdx = 0;
-    const stageTimer = setInterval(() => {
-      stageIdx++;
-      if (stageIdx < LABOR_STAGES.length) {
-        setLaborStage(stageIdx);
-      }
-    }, 2000);
-
-    const startTime = Date.now();
+    const orderedQuota = resolveOrderedQuotaLabel({ name: modalPackage?.name, quotaLabel: selectedQuota });
+    const formattedPkgName = formatPackageTitleWithQuota(modalPackage?.name || "VIP Plan", orderedQuota);
+    const amount = currentQuotaList[selectedQuota!] || 0;
+    const isManualMode = systemConfig?.autoApproval !== true && systemConfig?.autoApprovalEnabled !== true;
 
     try {
       let fileUrl = "";
@@ -1756,19 +1756,18 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         });
       }
 
-      // Immediately unfreeze upload state in checkout form so button is never permanently stuck
+      // Immediately unfreeze upload state in checkout form so button is never stuck
       setIsUploading(false);
 
-      const amount = currentQuotaList[selectedQuota!] || 0;
-
-      // Call /api/process-order for Groq Vision OCR & auto provisioning
+      // Call /api/process-order with explicit orderType: "new"
       const processRes = await fetch("/api/process-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          orderType: "new",
           packageId: modalPackage?.id || "custom",
-          packageName: modalPackage?.name || "Custom Plan",
-          quotaLabel: selectedQuota || "Unlimited",
+          packageName: formattedPkgName,
+          quotaLabel: orderedQuota,
           amount,
           ispPrice: modalPackage?.ispPrice || "",
           receiptUrl: fileUrl,
@@ -1778,15 +1777,26 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       const processJson = await processRes.json();
 
-      // Ensure realistic banking cadence (~8s minimum duration)
-      const elapsed = Date.now() - startTime;
-      const remainingMs = Math.max(0, 8000 - elapsed);
-      await new Promise(r => setTimeout(r, remainingMs));
+      // IF MANUAL MODE OR API RETURNED MANUAL MODE:
+      // DO NOT RUN 5-STEP AUDIT ANIMATION OR SHOW AI DISCREPANCIES.
+      // IMMEDIATELY FORCE OPEN MATTE FROSTED WHATSAPP POPUP WINDOW!
+      if (isManualMode || processJson.manualMode || !processJson.autoApproved) {
+        setLaborModalOpen(false);
+        setManualPopupData({
+          orderId: processJson.orderId || `ORD-${Date.now()}`,
+          packageName: processJson.packageName || formattedPkgName,
+          quotaLabel: processJson.quotaLabel || orderedQuota,
+          amount: processJson.amount || amount,
+          slipUrl: processJson.slipUrl || fileUrl
+        });
+        setManualWhatsAppModalOpen(true);
+        if (processJson.user) {
+          setUser(processJson.user);
+        }
+        return;
+      }
 
-      clearInterval(stageTimer);
-      setLaborStage(LABOR_STAGES.length - 1);
-      setLaborResult(processJson);
-
+      // If auto-approved (e.g. AI approved or test):
       if (processJson.user) {
         setUser(processJson.user);
       }
@@ -1808,7 +1818,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             ...(processJson.user || {}),
             vpnStatus: "Active",
             vpnConfigKey: processJson.vlessKey
-              ? `[ ${processJson.order?.packageName || modalPackage?.name || "VIP"} 10Gbps Core ]\n${processJson.vlessKey}`
+              ? `[ ${processJson.order?.packageName || processJson.configs?.[0]?.name || formattedPkgName} ]\n${processJson.vlessKey}`
               : (processJson.user?.vpnConfigKey || prev?.vpnConfigKey),
             subscriptionLink: JSON.stringify(mergedMeta)
           };
@@ -1818,31 +1828,17 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         } catch {}
       }
     } catch {
-      clearInterval(stageTimer);
-      const amount = currentQuotaList[selectedQuota!] || 0;
-      setLaborResult({
-        success: true,
-        autoApproved: false,
-        manualMode: true,
+      setIsUploading(false);
+      setLaborModalOpen(false);
+      setManualPopupData({
         orderId: `ORD-${Date.now()}`,
-        packageName: modalPackage?.name || "VPN Plan",
+        packageName: formattedPkgName,
+        quotaLabel: orderedQuota,
         amount,
-        adminWhatsapp: systemConfig?.adminWhatsapp || "94701234567",
-        status: "Pending Admin Review",
-        message: "Receipt received! Our team is verifying your payment manually. Config will activate shortly.",
-        auditReport: {
-          overallStatus: "review_required",
-          checks: [
-            { id: "doc", title: "Document Analyzed", passed: true, statusText: "Received", message: "Slip received and queued for admin review." },
-            { id: "account", title: "Beneficiary Confirmed", passed: true, statusText: "Target: 8029138148", message: "Commercial Bank (8029138148)" },
-            { id: "trace", title: "Transaction Trace Valid", passed: true, statusText: "Queued" },
-            { id: "amount", title: "Settlement Matched", passed: true, statusText: "Target: Package Price", message: "Awaiting manual confirmation." },
-            { id: "line", title: "Line Activated", passed: false, statusText: "Manual Verification" }
-          ]
-        }
+        slipUrl: ""
       });
+      setManualWhatsAppModalOpen(true);
     } finally {
-      clearInterval(stageTimer);
       setIsUploading(false);
     }
   };
@@ -1850,6 +1846,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
   // ADMIN-ONLY SLIP-FREE LIVE 3X-UI PROVISIONING TEST
   const handleAdminTestOrder = async () => {
     if (!isAdmin) return;
+
+    const orderedQuota = resolveOrderedQuotaLabel({ name: modalPackage?.name, quotaLabel: selectedQuota });
+    const formattedPkgName = formatPackageTitleWithQuota(modalPackage?.name || "VIP Plan", orderedQuota);
 
     // Do NOT call setIsUploading(true) - prevents freezing checkout button
     setLaborModalOpen(true);
@@ -1873,9 +1872,10 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          orderType: "new",
           packageId: modalPackage?.id || "custom",
-          packageName: modalPackage?.name || "Custom Plan",
-          quotaLabel: selectedQuota || "Unlimited",
+          packageName: formattedPkgName,
+          quotaLabel: orderedQuota,
           amount,
           ispPrice: modalPackage?.ispPrice || "",
           adminTestMode: true
@@ -1913,7 +1913,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
             ...(processJson.user || {}),
             vpnStatus: "Active",
             vpnConfigKey: processJson.vlessKey
-              ? `[ ${processJson.order?.packageName || modalPackage?.name || "VIP"} 10Gbps Core ]\n${processJson.vlessKey}`
+              ? `[ ${processJson.order?.packageName || processJson.configs?.[0]?.name || formattedPkgName} ]\n${processJson.vlessKey}`
               : (processJson.user?.vpnConfigKey || prev?.vpnConfigKey),
             subscriptionLink: JSON.stringify(mergedMeta)
           };
@@ -5403,7 +5403,7 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                         {!laborResult
                           ? (LABOR_STAGES[laborStage] || "Reconciling institutional deposit record with gateway...")
                           : (laborResult.autoApproved || laborResult.verified)
-                          ? (laborResult.message || "Your 10Gbps Singapore core line & VLESS configs are active.")
+                          ? (laborResult.message || "Your Singapore line & VLESS configs are active.")
                           : (laborResult.message || "A discrepancy was detected during automated clearance.")}
                       </p>
                     </div>
@@ -5447,8 +5447,8 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                           {
                             id: "line",
                             title: "Line Activated",
-                            activeLabel: "Provisioning high-speed 10Gbps core slot...",
-                            passedText: "Singapore core slot & VLESS config key generated.",
+                            activeLabel: "Provisioning high-speed V2Ray slot...",
+                            passedText: "Singapore slot & VLESS config key generated.",
                             failedText: "Dedicated slot allocated upon final clearance."
                           }
                         ];
@@ -5730,6 +5730,241 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
                   </div>
                 )}
 
+              </div>
+            </div>,
+            document.body
+          )}
+
+          {/* 📱 CENTERED MATTE FROSTED WHATSAPP POP-UP MODAL (MANUAL MODE) */}
+          {manualWhatsAppModalOpen && manualPopupData && mounted && typeof document !== "undefined" && createPortal(
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 99999,
+                backgroundColor: "rgba(5, 7, 6, 0.84)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+                boxSizing: "border-box"
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setManualWhatsAppModalOpen(false);
+                }
+              }}
+            >
+              <div
+                className="legion-matte-scroll"
+                style={{
+                  maxWidth: "420px",
+                  width: "100%",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  borderRadius: "28px",
+                  background: "linear-gradient(165deg, rgba(22, 26, 24, 0.97) 0%, rgba(11, 13, 12, 0.99) 100%)",
+                  border: "1px solid rgba(52, 211, 153, 0.22)",
+                  boxShadow: "0 28px 90px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+                  padding: "28px 22px",
+                  position: "relative",
+                  boxSizing: "border-box",
+                  color: "#f8fafc",
+                  textAlign: "left"
+                }}
+              >
+                {/* TOP-LEFT AMBIENT EMERALD LIGHT GLOW */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-60px",
+                    left: "-60px",
+                    width: "200px",
+                    height: "200px",
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, transparent 70%)",
+                    pointerEvents: "none"
+                  }}
+                />
+
+                {/* TOP-RIGHT CLOSE (X) BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManualWhatsAppModalOpen(false);
+                    closeCheckout();
+                    setActiveTab("configs");
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: "18px",
+                    right: "18px",
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    color: "#94a3b8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: "15px",
+                    lineHeight: 1,
+                    zIndex: 10
+                  }}
+                  aria-label="Close modal"
+                >
+                  ✕
+                </button>
+
+                {/* CENTERED EMERALD SHIELD/CHECK BADGE */}
+                <div
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "18px",
+                    background: "rgba(16, 185, 129, 0.14)",
+                    border: "1px solid rgba(52, 211, 153, 0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 14px auto",
+                    boxShadow: "0 0 25px rgba(16, 185, 129, 0.25)"
+                  }}
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <polyline points="9 12 11 14 15 10" />
+                  </svg>
+                </div>
+
+                {/* TITLE */}
+                <h3
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: 700,
+                    textAlign: "center",
+                    margin: "8px 0 6px",
+                    color: "#ffffff",
+                    letterSpacing: "-0.01em"
+                  }}
+                >
+                  Receipt Uploaded Successfully!
+                </h3>
+
+                {/* NOTICE & SINHALA SUBTITLE */}
+                <div style={{ textAlign: "center", marginBottom: "18px" }}>
+                  <p style={{ fontSize: "13px", color: "#94a3b8", lineHeight: 1.5, margin: "0 0 6px 0" }}>
+                    Please inform the Admin via WhatsApp now so your V2Ray configuration can be activated immediately.
+                  </p>
+                  <p style={{ fontSize: "12px", color: "#34d399", lineHeight: 1.5, fontWeight: 500, margin: 0 }}>
+                    (WhatsApp හරහා Admin ව දැනුවත් කරන්න — එවිට ඉක්මනින්ම ඔබගේ V2Ray එක හදලා දෙයි.)
+                  </p>
+                </div>
+
+                {/* SUMMARY BOX */}
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "16px",
+                    padding: "16px",
+                    margin: "16px 0",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>Package</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff" }}>
+                      {manualPopupData.packageName}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>Data Quota</span>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#60a5fa" }}>
+                      {manualPopupData.quotaLabel}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>Amount</span>
+                    <span style={{ fontSize: "14px", fontWeight: 700, color: "#34d399" }}>
+                      Rs. {manualPopupData.amount}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed rgba(255, 255, 255, 0.08)", paddingTop: "8px" }}>
+                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>Order ID</span>
+                    <span style={{ fontFamily: "monospace", fontSize: "12px", color: "#cbd5e1" }}>
+                      {manualPopupData.orderId}
+                    </span>
+                  </div>
+                </div>
+
+                {/* WHATSAPP & CLOSE BUTTONS */}
+                {(() => {
+                  const rawWa = systemConfig?.adminWhatsapp || "94701234567";
+                  const cleanWa = String(rawWa).replace(/\+/g, "").replace(/\s+/g, "").trim();
+                  const whatsappText = `Hi Admin, I have uploaded my payment slip for package: ${manualPopupData.packageName} (${manualPopupData.quotaLabel}) - Rs. ${manualPopupData.amount}.\nOrder ID: ${manualPopupData.orderId}\nEmail: ${user?.email || ""}${manualPopupData.slipUrl ? `\nReceipt Slip: ${manualPopupData.slipUrl}` : ""}\nPlease activate my V2Ray configuration.`;
+                  const waUrl = `https://wa.me/${cleanWa}?text=${encodeURIComponent(whatsappText)}`;
+
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "14px" }}>
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          width: "100%",
+                          padding: "14px",
+                          borderRadius: "14px",
+                          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                          color: "#ffffff",
+                          fontWeight: 600,
+                          fontSize: "14px",
+                          textDecoration: "none",
+                          boxShadow: "0 8px 24px rgba(16, 185, 129, 0.35)",
+                          boxSizing: "border-box",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.101-.476-.15-.677.15-.201.3-.777.98-.953 1.18-.176.2-.352.226-.653.076-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.201-.301.301-.502.101-.201.05-.377-.025-.527-.075-.15-.677-1.632-.928-2.233-.244-.585-.492-.506-.677-.515-.176-.009-.377-.01-.578-.01-.201 0-.527.075-.803.376s-1.055 1.03-1.055 2.511c0 1.481 1.08 2.908 1.231 3.109.15.201 2.125 3.245 5.148 4.551.719.311 1.28.497 1.718.636.723.23 1.381.198 1.901.12.58-.087 1.78-.727 2.031-1.431.251-.703.251-1.306.176-1.431-.075-.126-.276-.201-.577-.351zM12.042 2C6.516 2 2.023 6.493 2.023 12.019c0 1.996.586 3.905 1.696 5.533L2 22l4.603-1.66c1.554.912 3.332 1.401 5.439 1.401 5.525 0 10.018-4.493 10.018-10.019C22.06 6.493 17.567 2 12.042 2z"/>
+                        </svg>
+                        <span>Inform Admin on WhatsApp</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualWhatsAppModalOpen(false);
+                          closeCheckout();
+                          setActiveTab("configs");
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "12px",
+                          borderRadius: "14px",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          backgroundColor: "rgba(255, 255, 255, 0.04)",
+                          color: "#cbd5e1",
+                          fontSize: "13px",
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          boxSizing: "border-box"
+                        }}
+                      >
+                        Close &amp; Check Later
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>,
             document.body
