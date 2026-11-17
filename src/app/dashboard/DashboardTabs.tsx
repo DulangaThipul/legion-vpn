@@ -1769,7 +1769,6 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
     const orderedQuota = resolveOrderedQuotaLabel({ name: modalPackage?.name, quotaLabel: selectedQuota });
     const formattedPkgName = formatPackageTitleWithQuota(modalPackage?.name || "VIP Plan", orderedQuota);
     const amount = currentQuotaList[selectedQuota!] || 0;
-    const isManualMode = systemConfig?.autoApproval !== true && systemConfig?.autoApprovalEnabled !== true;
 
     try {
       let fileUrl = "";
@@ -1824,25 +1823,21 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       const processJson = await processRes.json();
 
-      // IF MANUAL MODE OR API RETURNED MANUAL MODE:
-      // DO NOT RUN 5-STEP AUDIT ANIMATION OR SHOW AI DISCREPANCIES.
-      // IMMEDIATELY FORCE OPEN MATTE FROSTED WHATSAPP POPUP WINDOW!
-      if (isManualMode || processJson.manualMode || !processJson.autoApproved) {
-        setIsUploading(false);
-        setLaborModalOpen(false);
-        setManualPopupData({
-          orderId: processJson.orderId || `ORD-${Date.now()}`,
-          packageName: processJson.packageName || formattedPkgName,
-          quotaLabel: processJson.quotaLabel || orderedQuota,
-          amount: processJson.amount || amount,
-          slipUrl: processJson.slipUrl || fileUrl
-        });
-        setManualWhatsAppModalOpen(true);
-        if (processJson.user) {
-          setUser(processJson.user);
-        }
-        return;
+      // STORE NEW ORDERS ALWAYS TRANSITION DIRECTLY TO WHATSAPP POPUP MODAL (MANUAL CLEARANCE)
+      setIsUploading(false);
+      setLaborModalOpen(false);
+      setManualPopupData({
+        orderId: processJson.orderId || `ORD-${Date.now()}`,
+        packageName: processJson.packageName || formattedPkgName,
+        quotaLabel: processJson.quotaLabel || orderedQuota,
+        amount: processJson.amount || amount,
+        slipUrl: processJson.slipUrl || fileUrl
+      });
+      setManualWhatsAppModalOpen(true);
+      if (processJson.user) {
+        setUser(processJson.user);
       }
+      return;
 
       // If auto-approved (e.g. AI approved or test):
       setIsUploading(false);
@@ -2092,8 +2087,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       if (processJson.autoApproved || processJson.verified) {
         setLiveDataUsed("0 GB");
-        if (processJson.renewalInfo?.newExpiryDate) {
-          setLiveExpiryDate(processJson.renewalInfo.newExpiryDate);
+        const nextExpiryDate = processJson.renewalInfo?.newExpiryDate || processJson.newExpiryDate;
+        if (nextExpiryDate) {
+          setLiveExpiryDate(nextExpiryDate);
         }
         setUser((prev: any) => {
           let currentMeta: any = {};
@@ -2102,11 +2098,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           } catch {}
           const mergedMeta = {
             ...currentMeta,
+            ...(processJson.updatedMetadata || {}),
             dataUsed: "0 GB",
             previousUsage: 0,
             previousUsageGB: 0,
-            dataTotal: primaryQuotaInfo.displayQuota,
-            expiryDate: processJson.renewalInfo?.newExpiryDate || currentMeta.expiryDate,
+            dataTotal: processJson.newDataTotal || primaryQuotaInfo.displayQuota,
+            expiryDate: nextExpiryDate || currentMeta.expiryDate,
+            expiryTimeMs: processJson.updatedMetadata?.expiryTimeMs || (nextExpiryDate ? new Date(`${nextExpiryDate}T23:59:59`).getTime() : currentMeta.expiryTimeMs),
             accountStatus: "Active"
           };
           return {
@@ -2201,8 +2199,9 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
 
       if (processJson.autoApproved || processJson.verified) {
         setLiveDataUsed("0 GB");
-        if (processJson.renewalInfo?.newExpiryDate) {
-          setLiveExpiryDate(processJson.renewalInfo.newExpiryDate);
+        const nextExpiryDate = processJson.renewalInfo?.newExpiryDate || processJson.newExpiryDate;
+        if (nextExpiryDate) {
+          setLiveExpiryDate(nextExpiryDate);
         }
         setUser((prev: any) => {
           let currentMeta: any = {};
@@ -2211,11 +2210,13 @@ export default function DashboardTabs({ user: initialUser }: { user: any }) {
           } catch {}
           const mergedMeta = {
             ...currentMeta,
+            ...(processJson.updatedMetadata || {}),
             dataUsed: "0 GB",
             previousUsage: 0,
             previousUsageGB: 0,
-            dataTotal: primaryQuotaInfo.displayQuota,
-            expiryDate: processJson.renewalInfo?.newExpiryDate || currentMeta.expiryDate,
+            dataTotal: processJson.newDataTotal || primaryQuotaInfo.displayQuota,
+            expiryDate: nextExpiryDate || currentMeta.expiryDate,
+            expiryTimeMs: processJson.updatedMetadata?.expiryTimeMs || (nextExpiryDate ? new Date(`${nextExpiryDate}T23:59:59`).getTime() : currentMeta.expiryTimeMs),
             accountStatus: "Active"
           };
           return {
