@@ -6,10 +6,10 @@
 import https from "https";
 import http from "http";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS } from "./vlessGenerator";
+import { DEFAULT_ISP_DOMAINS, DEFAULT_PACKAGE_SNIS, resolveOrderedQuotaLabel, formatPackageTitleWithQuota } from "./vlessGenerator";
 import { ThreeXUI, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri } from "./threeXuiClient";
 
-export { ThreeXUI, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri };
+export { ThreeXUI, extractQuotaFromPrimaryConfig, parsePrimaryVlessUri, resolveOrderedQuotaLabel, formatPackageTitleWithQuota };
 
 // Bypass self-signed SSL errors globally for VPS connections
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -85,8 +85,8 @@ export const DEFAULT_SYSTEM_CONFIG: GlobalSystemConfig = {
     password: "",
     inboundId: 1
   },
-  autoApprovalEnabled: true,
-  autoApproval: true,
+  autoApprovalEnabled: false,
+  autoApproval: false,
   enableAdminTestButton: true,
   adminWhatsapp: "94701234567",
   expectedBankAccount: "8029138148",
@@ -126,9 +126,7 @@ export async function getGlobalSystemConfig(): Promise<GlobalSystemConfig> {
     }
 
     const saved = parsedMeta._globalSystemConfig || {};
-    const isAuto = saved.autoApproval !== undefined
-      ? Boolean(saved.autoApproval)
-      : (saved.autoApprovalEnabled !== undefined ? Boolean(saved.autoApprovalEnabled) : true);
+    const isAuto = saved.autoApproval === true || saved.autoApprovalEnabled === true;
 
     return {
       ispDomains: { ...DEFAULT_SYSTEM_CONFIG.ispDomains, ...(saved.ispDomains || {}) },
@@ -187,8 +185,8 @@ export async function updateGlobalSystemConfig(updates: Partial<GlobalSystemConf
       packageSnis: { ...DEFAULT_PACKAGE_SNIS, ...(currentGlobal.packageSnis || {}), ...(updates.packageSnis || {}) },
       primary3xui: { ...DEFAULT_SYSTEM_CONFIG.primary3xui, ...(currentGlobal.primary3xui || {}), ...(updates.primary3xui || {}) },
       bonusUsa3xui: { ...DEFAULT_SYSTEM_CONFIG.bonusUsa3xui, ...(currentGlobal.bonusUsa3xui || {}), ...(updates.bonusUsa3xui || {}) },
-      autoApprovalEnabled: updates.autoApproval !== undefined ? Boolean(updates.autoApproval) : (updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApproval ?? currentGlobal.autoApprovalEnabled ?? true)),
-      autoApproval: updates.autoApproval !== undefined ? Boolean(updates.autoApproval) : (updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApproval ?? currentGlobal.autoApprovalEnabled ?? true)),
+      autoApprovalEnabled: updates.autoApproval !== undefined ? Boolean(updates.autoApproval) : (updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApproval === true || currentGlobal.autoApprovalEnabled === true)),
+      autoApproval: updates.autoApproval !== undefined ? Boolean(updates.autoApproval) : (updates.autoApprovalEnabled !== undefined ? Boolean(updates.autoApprovalEnabled) : (currentGlobal.autoApproval === true || currentGlobal.autoApprovalEnabled === true)),
       enableAdminTestButton: updates.enableAdminTestButton !== undefined ? Boolean(updates.enableAdminTestButton) : (currentGlobal.enableAdminTestButton ?? true),
       adminWhatsapp: updates.adminWhatsapp || currentGlobal.adminWhatsapp || DEFAULT_SYSTEM_CONFIG.adminWhatsapp || "94701234567",
       expectedBankAccount: updates.expectedBankAccount || currentGlobal.expectedBankAccount || DEFAULT_SYSTEM_CONFIG.expectedBankAccount,
