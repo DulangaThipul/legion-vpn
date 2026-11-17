@@ -2246,7 +2246,7 @@ function ServerNodeTab({ showToast }: { showToast: (msg: string) => void }) {
 
 function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void }) {
   const [loading, setLoading] = useState(true);
-  const [autoApproval, setAutoApproval] = useState(true);
+  const [autoApproval, setAutoApproval] = useState(false);
   const [enableAdminTestButton, setEnableAdminTestButton] = useState(true);
   const [adminWhatsapp, setAdminWhatsapp] = useState("94701234567");
   const [expectedAccount, setExpectedAccount] = useState("8029138148");
@@ -2276,7 +2276,7 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
         const res = await fetch("/api/admin/system-config");
         const json = await res.json();
         if (json.success && json.config) {
-          setAutoApproval(Boolean(json.config.autoApprovalEnabled));
+          setAutoApproval(Boolean(json.config.autoApproval ?? json.config.autoApprovalEnabled));
           if (json.config.enableAdminTestButton !== undefined) setEnableAdminTestButton(Boolean(json.config.enableAdminTestButton));
           if (json.config.adminWhatsapp) setAdminWhatsapp(json.config.adminWhatsapp);
           if (json.config.expectedBankAccount) setExpectedAccount(json.config.expectedBankAccount);
@@ -2326,6 +2326,7 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           config: {
+            autoApproval,
             autoApprovalEnabled: autoApproval,
             enableAdminTestButton,
             adminWhatsapp: adminWhatsapp.trim(),
@@ -2540,7 +2541,7 @@ function AutomationSecurityTab({ showToast }: { showToast: (msg: string) => void
             </div>
 
             <div style={{ marginTop: "1.5rem", padding: "0.9rem", borderRadius: "10px", background: autoApproval ? "rgba(34, 197, 94, 0.08)" : "rgba(239, 68, 68, 0.08)", border: `1px solid ${autoApproval ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`, fontSize: "0.8rem", color: autoApproval ? "#86efac" : "#fca5a5" }}>
-              Current State: <strong>{autoApproval ? "Instant Automated Provisioning Active" : "100% Manual Admin Review Fallback Mode"}</strong>
+              Current State: <strong>{autoApproval ? "ON — AI Auto-Verification Active" : "OFF — Manual WhatsApp Approval"}</strong>
             </div>
           </div>
 
